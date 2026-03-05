@@ -65,7 +65,7 @@
 		}
 	},
 	"simple-git-hooks": {
-		"pre-commit": "bun run lint && bun run type-check"
+		"pre-commit": "bun run format && bun run lint && bun run type-check"
 	},
 	"dependencies": {
 		"html2canvas": "^1.4.1"
