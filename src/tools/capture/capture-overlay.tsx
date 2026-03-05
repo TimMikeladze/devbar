@@ -130,11 +130,11 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 						top: "50%",
 						left: "50%",
 						transform: "translate(-50%, -50%)",
-						background: "#0a0a0a",
-						border: "1px solid rgba(255,255,255,0.08)",
+						background: "var(--deloop-bg)",
+						border: "1px solid var(--deloop-border)",
 						borderRadius: 16,
 						padding: 24,
-						boxShadow: "0 24px 72px rgba(0,0,0,0.5)",
+						boxShadow: "0 24px 72px rgba(0,0,0,0.25)",
 						display: "flex",
 						flexDirection: "column",
 						gap: 10,
@@ -142,7 +142,7 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 						minWidth: 220,
 					}}
 				>
-					<div style={{ fontSize: 14, fontWeight: 600, color: "#ededed", textAlign: "center", marginBottom: 4, letterSpacing: "-0.02em" }}>
+					<div style={{ fontSize: 14, fontWeight: 600, color: "var(--deloop-text)", textAlign: "center", marginBottom: 4, letterSpacing: "-0.02em" }}>
 						Screenshot
 					</div>
 					<button
@@ -151,9 +151,9 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 						style={{
 							...btnBase,
 							padding: "10px 24px",
-							border: "1px solid rgba(255,255,255,0.1)",
+							border: "1px solid var(--deloop-border)",
 							background: "transparent",
-							color: "#ededed",
+							color: "var(--deloop-text)",
 						}}
 					>
 						Full Page
@@ -165,8 +165,8 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 							...btnBase,
 							padding: "10px 24px",
 							border: "none",
-							background: "#ededed",
-							color: "#0a0a0a",
+							background: "var(--deloop-accent)",
+							color: "var(--deloop-bg)",
 						}}
 					>
 						Select Region
@@ -179,7 +179,7 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 							padding: "6px 12px",
 							border: "none",
 							background: "transparent",
-							color: "#555",
+							color: "var(--deloop-text-muted)",
 							fontSize: 12,
 						}}
 					>
@@ -218,15 +218,15 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 						top: "50%",
 						left: "50%",
 						transform: "translate(-50%, -50%)",
-						background: "#0a0a0a",
-						border: "1px solid rgba(255,255,255,0.08)",
-						color: "#ededed",
+						background: "var(--deloop-bg)",
+						border: "1px solid var(--deloop-border)",
+						color: "var(--deloop-text)",
 						padding: "16px 28px",
 						borderRadius: 12,
 						fontSize: 14,
 						fontWeight: 500,
 						zIndex: 2147483646,
-						boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+						boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
 					}}
 				>
 					Capturing...

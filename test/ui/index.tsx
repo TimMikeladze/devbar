@@ -1,10 +1,11 @@
 import { serve } from "bun";
 import index from "./index.html";
 
-serve({
+const server = serve({
+	port: 3847,
 	routes: {
 		"/*": index,
 	},
 });
 
-console.log("🚀 Server running at http://localhost:3000");
+console.log(`🚀 Server running at ${server.url}`);

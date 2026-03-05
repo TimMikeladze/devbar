@@ -38,11 +38,13 @@
 		"prepare": "bun simple-git-hooks",
 		"release": "bumpp --commit --push --tag",
 		"test": "bun test",
+		"test:e2e": "bunx playwright test",
 		"test:coverage": "bun test --coverage",
 		"test:watch": "bun test --watch",
 		"type-check": "tsc --noEmit"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.58.2",
 		"@types/bun": "^1.3.10",
 		"@types/react": "^19.2.14",
 		"bumpp": "^10.4.1",

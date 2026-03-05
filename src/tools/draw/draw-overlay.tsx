@@ -10,12 +10,20 @@ type DrawOverlayProps = {
 
 const ALL_TOOLS: DrawTool[] = ["pen", "arrow", "rectangle", "circle"];
 
+const DRAW_COLORS = ["#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#0070f3", "#5856d6", "#ff2d55", "#ffffff", "#000000"];
+
+const LINE_WIDTHS = [
+	{ label: "S", value: 1.5 },
+	{ label: "M", value: 2.5 },
+	{ label: "L", value: 4 },
+];
+
 const btnBase: React.CSSProperties = {
 	padding: "6px 14px",
 	fontSize: 12.5,
 	fontWeight: 500,
 	fontFamily: "inherit",
-	border: "1px solid rgba(255,255,255,0.1)",
+	border: "1px solid var(--deloop-border)",
 	borderRadius: 8,
 	cursor: "pointer",
 	transition: "all 0.12s",
@@ -24,6 +32,8 @@ const btnBase: React.CSSProperties = {
 export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.ReactNode {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [activeTool, setActiveTool] = useState<DrawTool>("pen");
+	const [activeColor, setActiveColor] = useState("#ff3b30");
+	const [activeWidth, setActiveWidth] = useState(2.5);
 	const [shapes, setShapes] = useState<DrawShape[]>([]);
 	const currentShape = useRef<DrawShape | null>(null);
 	const drawing = useRef(false);
@@ -68,17 +78,22 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 			currentShape.current = {
 				tool: activeTool,
 				points: [point],
-				color: "#ff3b30",
-				lineWidth: 2.5,
+				color: activeColor,
+				lineWidth: activeWidth,
 			};
 		},
-		[activeTool],
+		[activeTool, activeColor, activeWidth],
 	);
 
 	const onMouseMove = useCallback(
 		(e: React.MouseEvent) => {
 			if (!drawing.current || !currentShape.current) return;
-			currentShape.current.points.push({ x: e.clientX, y: e.clientY });
+			const point: DrawPoint = { x: e.clientX, y: e.clientY };
+			if (currentShape.current.tool === "pen") {
+				currentShape.current.points.push(point);
+			} else {
+				currentShape.current.points[1] = point;
+			}
 			redraw();
 		},
 		[redraw],
@@ -87,10 +102,11 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 	const onMouseUp = useCallback(() => {
 		if (!drawing.current || !currentShape.current) return;
 		drawing.current = false;
-		if (currentShape.current.points.length > 1) {
-			setShapes((prev) => [...prev, currentShape.current!]);
-		}
+		const shape = currentShape.current;
 		currentShape.current = null;
+		if (shape.points.length > 1) {
+			setShapes((prev) => [...prev, shape]);
+		}
 	}, []);
 
 	const finishDrawing = useCallback(async () => {
@@ -164,8 +180,9 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 					transform: "translateX(-50%)",
 					display: "flex",
 					gap: 3,
-					background: "#0a0a0a",
-					border: "1px solid rgba(255,255,255,0.08)",
+					alignItems: "center",
+					background: "var(--deloop-bg)",
+					border: "1px solid var(--deloop-border)",
 					borderRadius: 14,
 					padding: 5,
 					zIndex: 2147483646,
@@ -179,16 +196,54 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 						onClick={() => setActiveTool(tool)}
 						style={{
 							...btnBase,
-							background: activeTool === tool ? "rgba(255,255,255,0.1)" : "transparent",
-							color: activeTool === tool ? "#ededed" : "#888",
-							borderColor: activeTool === tool ? "rgba(255,255,255,0.15)" : "transparent",
+							background: activeTool === tool ? "var(--deloop-accent-glow)" : "transparent",
+							color: activeTool === tool ? "var(--deloop-text)" : "var(--deloop-text-secondary)",
+							borderColor: activeTool === tool ? "var(--deloop-border-hover)" : "transparent",
 							textTransform: "capitalize",
 						}}
 					>
 						{tool}
 					</button>
 				))}
-				<div style={{ width: 1, background: "rgba(255,255,255,0.08)", margin: "0 2px" }} />
+				<div style={{ width: 1, background: "var(--deloop-border)", margin: "0 2px" }} />
+				{DRAW_COLORS.map((color) => (
+					<button
+						key={color}
+						type="button"
+						onClick={() => setActiveColor(color)}
+						style={{
+							width: 18,
+							height: 18,
+							borderRadius: "50%",
+							border: activeColor === color ? "2px solid var(--deloop-text)" : "2px solid transparent",
+							background: color,
+							cursor: "pointer",
+							padding: 0,
+							outline: "none",
+							transition: "all 0.12s",
+							flexShrink: 0,
+						}}
+					/>
+				))}
+				<div style={{ width: 1, background: "var(--deloop-border)", margin: "0 2px" }} />
+				{LINE_WIDTHS.map((lw) => (
+					<button
+						key={lw.label}
+						type="button"
+						onClick={() => setActiveWidth(lw.value)}
+						style={{
+							...btnBase,
+							padding: "4px 10px",
+							background: activeWidth === lw.value ? "var(--deloop-accent-glow)" : "transparent",
+							color: activeWidth === lw.value ? "var(--deloop-text)" : "var(--deloop-text-secondary)",
+							borderColor: activeWidth === lw.value ? "var(--deloop-border-hover)" : "transparent",
+							fontSize: 11,
+						}}
+					>
+						{lw.label}
+					</button>
+				))}
+				<div style={{ width: 1, background: "var(--deloop-border)", margin: "0 2px" }} />
 				<button
 					type="button"
 					onClick={() => {
@@ -199,14 +254,14 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 							ctx?.clearRect(0, 0, canvas.width, canvas.height);
 						}
 					}}
-					style={{ ...btnBase, background: "transparent", color: "#555", borderColor: "transparent" }}
+					style={{ ...btnBase, background: "transparent", color: "var(--deloop-text-muted)", borderColor: "transparent" }}
 				>
 					Clear
 				</button>
 				<button
 					type="button"
 					onClick={finishDrawing}
-					style={{ ...btnBase, background: "#ededed", color: "#0a0a0a", borderColor: "transparent" }}
+					style={{ ...btnBase, background: "var(--deloop-accent)", color: "var(--deloop-bg)", borderColor: "transparent" }}
 				>
 					Done
 				</button>

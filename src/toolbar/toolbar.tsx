@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Annotation, DeloopPayload, DeloopPosition, DeloopTheme, PromptTemplate, ToolMode } from "@/session/types";
+import type { Annotation, DeloopPayload, DeloopPosition, DeloopTheme, MarkerData, PromptTemplate, ScreenshotData, ToolMode } from "@/session/types";
 import type { ElementData, TextData } from "@/session/types";
 import { buildPayload } from "@/output/payload";
 import { copyToClipboard } from "@/output/clipboard";
@@ -75,6 +75,31 @@ function annotationLabel(a: Annotation): string {
 
 const ALL_TOOLS: ToolMode[] = ["select", "draw", "text", "marker", "capture"];
 
+type HighlightRect = { x: number; y: number; width: number; height: number };
+
+function getAnnotationRect(a: Annotation): HighlightRect | null {
+	switch (a.type) {
+		case "element": {
+			const d = a.data as ElementData;
+			return d.boundingRect;
+		}
+		case "marker": {
+			const d = a.data as MarkerData;
+			return { x: d.position.x - 16, y: d.position.y - 16, width: 32, height: 32 };
+		}
+		case "text": {
+			const d = a.data as TextData;
+			return { x: d.position.x - 8, y: d.position.y - 8, width: 16, height: 16 };
+		}
+		case "screenshot": {
+			const d = a.data as ScreenshotData;
+			return d.region ?? null;
+		}
+		default:
+			return null;
+	}
+}
+
 const THEME_CYCLE: DeloopTheme[] = ["light", "dark", "auto"];
 const THEME_ICONS: Record<DeloopTheme, () => React.ReactNode> = {
 	light: SunIcon,
@@ -136,18 +161,94 @@ export function DeloopToolbar({
 	const [panelOpen, setPanelOpen] = useState(false);
 	const [toast, setToast] = useState<string | null>(null);
 	const [theme, setTheme] = useState<DeloopTheme>(initialTheme);
+	const [collapsed, setCollapsed] = useState(false);
+	const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+	const [editingNoteText, setEditingNoteText] = useState("");
+	const [badgePulse, setBadgePulse] = useState(false);
+	const [hoveredAnnotation, setHoveredAnnotation] = useState<string | null>(null);
+	const prevAnnotationCount = useRef(0);
+	const panelRef = useRef<HTMLDivElement>(null);
 	const drag = useBarDrag();
 
 	const availableTools = enabledTools ?? ALL_TOOLS;
 	const toolDefs = TOOLS.filter((t) => availableTools.includes(t.key));
+	const activeToolDef = TOOLS.find((t) => t.key === state.activeMode);
+
+	// Badge pulse when annotation count changes
+	useEffect(() => {
+		if (state.annotations.length > prevAnnotationCount.current) {
+			setBadgePulse(true);
+			const timer = setTimeout(() => setBadgePulse(false), 300);
+			return () => clearTimeout(timer);
+		}
+		prevAnnotationCount.current = state.annotations.length;
+	}, [state.annotations.length]);
+
+	// Update ref outside effect to avoid stale values
+	useEffect(() => {
+		prevAnnotationCount.current = state.annotations.length;
+	}, [state.annotations.length]);
+
+	// Close panel on outside click
+	useEffect(() => {
+		if (!panelOpen) return;
+		const onClick = (e: MouseEvent) => {
+			const target = e.target as HTMLElement;
+			if (target.closest(".deloop-panel") || target.closest(".deloop-bar")) return;
+			setPanelOpen(false);
+		};
+		window.addEventListener("mousedown", onClick);
+		return () => window.removeEventListener("mousedown", onClick);
+	}, [panelOpen]);
 
 	// Keyboard shortcuts
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (state.activeMode) return;
 			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
+			// Undo: Cmd+Z / Ctrl+Z
+			if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+				if (state.annotations.length > 0) {
+					e.preventDefault();
+					state.removeAnnotation(state.annotations[state.annotations.length - 1]!.id);
+					showToast("Undid last annotation");
+					return;
+				}
+			}
+
+			// Copy: Cmd+Enter / Ctrl+Enter
+			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+				if (state.annotations.length > 0) {
+					e.preventDefault();
+					handleCopy();
+					return;
+				}
+			}
+
+			// Don't handle tool shortcuts while a tool is active
+			if (state.activeMode) {
+				return;
+			}
+
 			const key = e.key.toLowerCase();
+
+			// Toggle annotations panel: A
+			if (key === "a") {
+				e.preventDefault();
+				setPanelOpen((v) => !v);
+				return;
+			}
+
+			// Toggle collapse: Escape
+			if (key === "escape") {
+				if (panelOpen) {
+					setPanelOpen(false);
+				} else {
+					setCollapsed((v) => !v);
+				}
+				return;
+			}
+
 			for (const tool of toolDefs) {
 				if (key === tool.shortcut.toLowerCase()) {
 					e.preventDefault();
@@ -159,7 +260,7 @@ export function DeloopToolbar({
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [state.activeMode, toolDefs, state.activateTool]);
+	}, [state.activeMode, toolDefs, state.activateTool, state.annotations, state.removeAnnotation, panelOpen]);
 
 	const showToast = useCallback((msg: string) => {
 		setToast(msg);
@@ -207,9 +308,18 @@ export function DeloopToolbar({
 		[state.addAnnotation],
 	);
 
+	// Rapid mode: stay in tool after capture for supported tools
 	const handleToolDone = useCallback(() => {
 		state.deactivateTool();
 	}, [state.deactivateTool]);
+
+	const handleRapidCapture = useCallback(
+		(annotation: Annotation) => {
+			state.addAnnotation(annotation);
+			// Don't deactivate - stay in tool mode
+		},
+		[state.addAnnotation],
+	);
 
 	const togglePanel = useCallback(() => {
 		setPanelOpen((v) => !v);
@@ -222,13 +332,46 @@ export function DeloopToolbar({
 		});
 	}, []);
 
+	const startEditNote = useCallback((id: string, currentNote: string) => {
+		setEditingNoteId(id);
+		setEditingNoteText(currentNote);
+	}, []);
+
+	const saveEditNote = useCallback(() => {
+		if (editingNoteId) {
+			state.updateAnnotationNote(editingNoteId, editingNoteText);
+			setEditingNoteId(null);
+			setEditingNoteText("");
+		}
+	}, [editingNoteId, editingNoteText, state.updateAnnotationNote]);
+
 	const ThemeIcon = THEME_ICONS[theme];
+
+	// Panel positioning: follow drag offset
+	const panelStyle: React.CSSProperties = drag.offset
+		? {
+				left: drag.offset.x + 180, // center above bar roughly
+				bottom: "auto",
+				top: drag.offset.y - 10,
+				transform: "translateX(-50%) translateY(-100%)",
+			}
+		: {};
+
+	// Toast positioning: follow drag offset
+	const toastStyle: React.CSSProperties = drag.offset
+		? {
+				left: drag.offset.x + 180,
+				bottom: "auto",
+				top: drag.offset.y - 10,
+				transform: "translateX(-50%) translateY(-100%)",
+			}
+		: {};
 
 	return (
 		<div data-deloop="toolbar" className="deloop-toolbar">
 			{/* Annotations panel */}
 			{panelOpen && !state.activeMode && (
-				<div className="deloop-panel">
+				<div className="deloop-panel" style={panelStyle} ref={panelRef}>
 					<div className="deloop-panel-header">
 						<span className="deloop-panel-title">
 							Annotations{state.annotations.length > 0 ? ` (${state.annotations.length})` : ""}
@@ -251,8 +394,14 @@ export function DeloopToolbar({
 						) : (
 							state.annotations.map((a) => {
 								const ItemIcon = ITEM_ICONS[a.type];
+								const isEditing = editingNoteId === a.id;
 								return (
-									<div key={a.id} className="deloop-annotation-item">
+									<div
+									key={a.id}
+									className="deloop-annotation-item"
+									onMouseEnter={() => setHoveredAnnotation(a.id)}
+									onMouseLeave={() => setHoveredAnnotation(null)}
+								>
 										<div className="deloop-annotation-icon">
 											{ItemIcon ? <ItemIcon /> : null}
 										</div>
@@ -260,8 +409,30 @@ export function DeloopToolbar({
 											<div className="deloop-annotation-label">
 												{annotationLabel(a)}
 											</div>
-											{a.note && (
-												<div className="deloop-annotation-note">{a.note}</div>
+											{isEditing ? (
+												<div className="deloop-annotation-note-edit">
+													<input
+														className="deloop-annotation-note-input"
+														type="text"
+														value={editingNoteText}
+														onChange={(e) => setEditingNoteText(e.target.value)}
+														onKeyDown={(e) => {
+															if (e.key === "Enter" || e.key === "Escape") saveEditNote();
+														}}
+														onBlur={saveEditNote}
+														autoFocus
+														placeholder="Add a note..."
+													/>
+												</div>
+											) : (
+												<div
+													className="deloop-annotation-note"
+													onClick={() => startEditNote(a.id, a.note ?? "")}
+													style={{ cursor: "pointer" }}
+													title="Click to edit note"
+												>
+													{a.note || "Add note..."}
+												</div>
 											)}
 										</div>
 										<button
@@ -310,8 +481,52 @@ export function DeloopToolbar({
 				</div>
 			)}
 
+			{/* Mini bar (visible during tool mode) */}
+			{state.activeMode && (
+				<div className={`deloop-minibar deloop-theme-${theme}`}>
+					{activeToolDef && (
+						<div className="deloop-minibar-active-icon">
+							{activeToolDef.icon()}
+						</div>
+					)}
+					<span className="deloop-minibar-label">{activeToolDef?.label}</span>
+					<div className="deloop-bar-divider" />
+					{state.annotations.length > 0 && (
+						<>
+							<span className="deloop-minibar-label" style={{ padding: "0 4px" }}>
+								{state.annotations.length} item{state.annotations.length !== 1 ? "s" : ""}
+							</span>
+							<div className="deloop-bar-divider" />
+						</>
+					)}
+					<button
+						type="button"
+						className="deloop-minibar-btn"
+						onClick={() => state.deactivateTool()}
+					>
+						Done
+					</button>
+				</div>
+			)}
+
+			{/* Collapsed dot */}
+			{collapsed && !state.activeMode && (
+				<div
+					className={`deloop-dot deloop-theme-${theme}`}
+					onClick={() => setCollapsed(false)}
+					title="Expand toolbar"
+				>
+					<AnnotationsIcon />
+					{state.annotations.length > 0 && (
+						<span className={`deloop-badge ${badgePulse ? "deloop-badge-pulse" : ""}`}>
+							{state.annotations.length}
+						</span>
+					)}
+				</div>
+			)}
+
 			{/* Bottom bar */}
-			{!state.activeMode && (
+			{!state.activeMode && !collapsed && (
 				<div
 					className={`deloop-bar deloop-theme-${theme}`}
 					style={drag.offset ? {
@@ -354,6 +569,15 @@ export function DeloopToolbar({
 						<ThemeIcon />
 						<span className="deloop-tooltip">{THEME_LABELS[theme]}</span>
 					</button>
+					<button
+						type="button"
+						className="deloop-bar-btn"
+						onClick={() => setCollapsed(true)}
+						title="Minimize"
+					>
+						<MinimizeIcon />
+						<span className="deloop-tooltip">Minimize</span>
+					</button>
 					<div className="deloop-bar-divider" />
 					<button
 						type="button"
@@ -362,9 +586,14 @@ export function DeloopToolbar({
 					>
 						<AnnotationsIcon />
 						{state.annotations.length > 0 && (
-							<span className="deloop-badge">{state.annotations.length}</span>
+							<span className={`deloop-badge ${badgePulse ? "deloop-badge-pulse" : ""}`}>
+								{state.annotations.length}
+							</span>
 						)}
-						<span className="deloop-tooltip">Annotations</span>
+						<span className="deloop-tooltip">
+							Annotations
+							<span className="deloop-tooltip-key">A</span>
+						</span>
 					</button>
 					<button
 						type="button"
@@ -375,30 +604,65 @@ export function DeloopToolbar({
 						<SubmitIcon />
 						<span className="deloop-tooltip">
 							Copy
+							<span className="deloop-tooltip-key">⌘↵</span>
 						</span>
 					</button>
 				</div>
 			)}
 
-			{/* Tool overlays */}
+			{/* Annotation hover highlight */}
+			{hoveredAnnotation && (() => {
+				const a = state.annotations.find((ann) => ann.id === hoveredAnnotation);
+				if (!a) return null;
+				const rect = getAnnotationRect(a);
+				if (!rect) return null;
+				return (
+					<div
+						className="deloop-hover-highlight"
+						style={{
+							position: "fixed",
+							left: rect.x - 4,
+							top: rect.y - 4,
+							width: rect.width + 8,
+							height: rect.height + 8,
+							border: "2px solid var(--deloop-blue)",
+							backgroundColor: "rgba(0, 112, 243, 0.08)",
+							borderRadius: 6,
+							pointerEvents: "none",
+							zIndex: 2147483643,
+							transition: "all 0.15s ease-out",
+						}}
+					/>
+				);
+			})()}
+
+			{/* Tool overlays — rapid mode for select/text/marker */}
 			{state.activeMode === "select" && (
-				<SelectOverlay onCapture={handleCapture} onDone={handleToolDone} />
+				<SelectOverlay onCapture={handleRapidCapture} onDone={handleToolDone} />
 			)}
 			{state.activeMode === "draw" && (
 				<DrawOverlay onCapture={handleCapture} onDone={handleToolDone} />
 			)}
 			{state.activeMode === "text" && (
-				<TextOverlay onCapture={handleCapture} onDone={handleToolDone} annotations={state.annotations} />
+				<TextOverlay onCapture={handleRapidCapture} onDone={handleToolDone} annotations={state.annotations} />
 			)}
 			{state.activeMode === "marker" && (
-				<MarkerOverlay onCapture={handleCapture} onDone={handleToolDone} annotations={state.annotations} />
+				<MarkerOverlay onCapture={handleRapidCapture} onDone={handleToolDone} annotations={state.annotations} />
 			)}
 			{state.activeMode === "capture" && (
 				<CaptureOverlay onCapture={handleCapture} onDone={handleToolDone} />
 			)}
 
 			{/* Toast */}
-			{toast && <div className="deloop-toast">{toast}</div>}
+			{toast && <div className="deloop-toast" style={toastStyle}>{toast}</div>}
 		</div>
+	);
+}
+
+function MinimizeIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+			<path d="M5 12h14" />
+		</svg>
 	);
 }

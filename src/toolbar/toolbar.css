@@ -257,7 +257,7 @@
 	max-height: 280px;
 	overflow-y: auto;
 	scrollbar-width: thin;
-	scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+	scrollbar-color: var(--deloop-border) transparent;
 }
 
 .deloop-panel-body::-webkit-scrollbar {
@@ -269,7 +269,7 @@
 }
 
 .deloop-panel-body::-webkit-scrollbar-thumb {
-	background: rgba(255, 255, 255, 0.08);
+	background: var(--deloop-border);
 	border-radius: 2px;
 }
 
@@ -292,7 +292,7 @@
 }
 
 .deloop-annotation-item:hover {
-	background: rgba(255, 255, 255, 0.03);
+	background: var(--deloop-accent-glow);
 }
 
 .deloop-annotation-icon {
@@ -302,7 +302,7 @@
 	width: 30px;
 	height: 30px;
 	border-radius: 8px;
-	background: rgba(255, 255, 255, 0.05);
+	background: var(--deloop-accent-glow);
 	border: 1px solid var(--deloop-border);
 	flex-shrink: 0;
 }
@@ -335,6 +335,13 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	margin-top: 1px;
+	border-radius: 3px;
+	padding: 0 2px;
+	transition: background 0.12s;
+}
+
+.deloop-annotation-note:hover {
+	background: var(--deloop-accent-glow);
 }
 
 .deloop-annotation-remove {
@@ -359,7 +366,7 @@
 }
 
 .deloop-annotation-remove:hover {
-	background: rgba(255, 255, 255, 0.06);
+	background: var(--deloop-accent-glow);
 	color: var(--deloop-text-secondary);
 }
 
@@ -485,12 +492,190 @@
 	padding: 0 5px;
 	margin: 0 2px;
 	border-radius: 4px;
-	background: rgba(255, 255, 255, 0.08);
+	background: var(--deloop-accent-glow);
 	border: 1px solid var(--deloop-border);
 	font-size: 10.5px;
 	font-weight: 500;
 	font-family: inherit;
 	color: var(--deloop-text);
+}
+
+/* ─── Mini bar (visible during tool mode) ─── */
+.deloop-minibar {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 14px;
+	padding: 4px 5px;
+	backdrop-filter: blur(20px) saturate(1.5);
+	-webkit-backdrop-filter: blur(20px) saturate(1.5);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 12px 40px -8px rgba(0, 0, 0, 0.4);
+	animation: deloop-minibar-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-minibar-label {
+	font-size: 11.5px;
+	font-weight: 500;
+	color: var(--deloop-text-secondary);
+	padding: 0 8px 0 6px;
+	white-space: nowrap;
+	letter-spacing: -0.01em;
+}
+
+.deloop-minibar-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 28px;
+	padding: 0 10px;
+	border-radius: 8px;
+	border: none;
+	background: transparent;
+	color: var(--deloop-text-secondary);
+	cursor: pointer;
+	font-size: 11.5px;
+	font-weight: 500;
+	font-family: inherit;
+	transition: all 0.12s;
+	white-space: nowrap;
+}
+
+.deloop-minibar-btn:hover {
+	background: var(--deloop-accent-glow);
+	color: var(--deloop-text);
+}
+
+.deloop-minibar-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
+.deloop-minibar-active-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	background: var(--deloop-accent-glow);
+	color: var(--deloop-accent);
+}
+
+.deloop-minibar-active-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* ─── Minimize dot ─── */
+.deloop-dot {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	backdrop-filter: blur(20px) saturate(1.5);
+	-webkit-backdrop-filter: blur(20px) saturate(1.5);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 8px 24px -4px rgba(0, 0, 0, 0.4);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	animation: deloop-dot-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-dot:hover {
+	transform: translateX(-50%) scale(1.12);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 12px 32px -4px rgba(0, 0, 0, 0.5);
+}
+
+.deloop-dot svg {
+	width: 16px;
+	height: 16px;
+	color: var(--deloop-text-secondary);
+}
+
+.deloop-dot .deloop-badge {
+	position: absolute;
+	top: -2px;
+	right: -2px;
+}
+
+/* ─── Editable note in panel ─── */
+.deloop-annotation-note-edit {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-top: 2px;
+}
+
+.deloop-annotation-note-input {
+	flex: 1;
+	border: 1px solid var(--deloop-border);
+	border-radius: 5px;
+	padding: 2px 6px;
+	font-size: 11px;
+	background: var(--deloop-accent-glow);
+	color: var(--deloop-text);
+	outline: none;
+	font-family: inherit;
+	min-width: 0;
+}
+
+.deloop-annotation-note-input:focus {
+	border-color: var(--deloop-border-hover);
+}
+
+.deloop-annotation-note-input::placeholder {
+	color: var(--deloop-text-muted);
+}
+
+.deloop-annotation-note-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 4px;
+	border: none;
+	background: transparent;
+	color: var(--deloop-text-muted);
+	cursor: pointer;
+	font-size: 10px;
+	transition: all 0.12s;
+	flex-shrink: 0;
+}
+
+.deloop-annotation-note-btn:hover {
+	background: var(--deloop-accent-glow);
+	color: var(--deloop-text);
+}
+
+/* ─── Badge pulse ─── */
+@keyframes deloop-badge-pulse {
+	0% { transform: scale(1); }
+	50% { transform: scale(1.25); }
+	100% { transform: scale(1); }
+}
+
+.deloop-badge-pulse {
+	animation: deloop-badge-pulse 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ─── Animations ─── */
@@ -502,5 +687,27 @@
 	to {
 		opacity: 1;
 		transform: translateX(-50%) translateY(0) scale(1);
+	}
+}
+
+@keyframes deloop-minibar-enter {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(6px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0) scale(1);
+	}
+}
+
+@keyframes deloop-dot-enter {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) scale(0.5);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) scale(1);
 	}
 }

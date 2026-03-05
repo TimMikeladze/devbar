@@ -38,10 +38,11 @@ export function SelectOverlay({ onCapture, onDone }: SelectOverlayProps): React.
 
 		const onClick = (e: MouseEvent) => {
 			if (noteInput) return;
+			if ((e.target as HTMLElement).closest("[data-deloop]")) return;
 			e.preventDefault();
 			e.stopPropagation();
 			const el = hoveredEl.current;
-			if (!el || el.closest("[data-deloop]")) return;
+			if (!el) return;
 
 			const data = extractElementData(el);
 			const annotation: Annotation = {
@@ -111,11 +112,11 @@ export function SelectOverlay({ onCapture, onDone }: SelectOverlayProps): React.
 						left: Math.min(noteInput.x, window.innerWidth - 280),
 						top: Math.min(noteInput.y, window.innerHeight - 60),
 						zIndex: 2147483646,
-						background: "#0a0a0a",
-						border: "1px solid rgba(255,255,255,0.1)",
+						background: "var(--deloop-bg)",
+						border: "1px solid var(--deloop-border)",
 						borderRadius: 12,
 						padding: 6,
-						boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+						boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
 						display: "flex",
 						gap: 4,
 					}}
@@ -131,14 +132,14 @@ export function SelectOverlay({ onCapture, onDone }: SelectOverlayProps): React.
 						}}
 						autoFocus
 						style={{
-							border: "1px solid rgba(255,255,255,0.1)",
+							border: "1px solid var(--deloop-border)",
 							borderRadius: 8,
 							padding: "6px 10px",
 							fontSize: 13,
 							width: 200,
 							outline: "none",
-							background: "rgba(255,255,255,0.05)",
-							color: "#ededed",
+							background: "var(--deloop-accent-glow)",
+							color: "var(--deloop-text)",
 							fontFamily: "inherit",
 						}}
 					/>
@@ -146,8 +147,8 @@ export function SelectOverlay({ onCapture, onDone }: SelectOverlayProps): React.
 						type="button"
 						onClick={submitNote}
 						style={{
-							background: "#ededed",
-							color: "#0a0a0a",
+							background: "var(--deloop-accent)",
+							color: "var(--deloop-bg)",
 							border: "none",
 							borderRadius: 8,
 							padding: "6px 14px",

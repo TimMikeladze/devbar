@@ -18,7 +18,7 @@ Thank you for your interest in contributing to our project! This guide will help
 
 ### Development Mode
 
-Run `bun run dev` - This starts a Bun + React preview app at http://localhost:3000 to test components in real-time.
+Run `bun run dev` - This starts a Bun + React preview app at http://localhost:3847 to test components in real-time.
 
 ## Development Workflow
 
