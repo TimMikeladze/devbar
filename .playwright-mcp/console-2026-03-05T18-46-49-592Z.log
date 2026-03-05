@@ -1,0 +1,17 @@
+[     734ms] [ERROR] Failed to load resource: net::ERR_NAME_NOT_RESOLVED @ https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap:0
+[     792ms] ReferenceError: import_toolbar_module is not defined
+    at DeloopToolbar5 (http://localhost:3000/_bun/client/index-0000000003b671bd.js:1684:20)
+    at Object.react_stack_bottom_frame (http://localhost:3000/_bun/client/index-0000000003b671bd.js:24672:20)
+    at renderWithHooks (http://localhost:3000/_bun/client/index-0000000003b671bd.js:15199:24)
+    at updateFunctionComponent (http://localhost:3000/_bun/client/index-0000000003b671bd.js:16623:21)
+    at beginWork (http://localhost:3000/_bun/client/index-0000000003b671bd.js:17252:20)
+    at runWithFiberInDEV (http://localhost:3000/_bun/client/index-0000000003b671bd.js:11335:72)
+    at performUnitOfWork (http://localhost:3000/_bun/client/index-0000000003b671bd.js:19833:98)
+    at workLoopSync (http://localhost:3000/_bun/client/index-0000000003b671bd.js:19719:11)
+    at renderRootSync (http://localhost:3000/_bun/client/index-0000000003b671bd.js:19702:15)
+    at performWorkOnRoot (http://localhost:3000/_bun/client/index-0000000003b671bd.js:19361:37)
+[     788ms] [WARNING] %s
+
+%s
+ An error occurred in the <DeloopToolbar5> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/_bun/client/index-0000000003b671bd.js:16271

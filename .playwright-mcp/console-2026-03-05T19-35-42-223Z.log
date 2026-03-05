@@ -1,0 +1,16 @@
+[   72603ms] TypeError: Cannot read properties of null (reading 'color')
+    at Object.renderShape2 [as renderShape] (http://localhost:3000/_bun/client/index-0000000022938c69.js:10865:31)
+    at http://localhost:3000/_bun/client/index-0000000022938c69.js:10677:25
+    at http://localhost:3000/_bun/client/index-0000000022938c69.js:10689:9
+    at Object.react_stack_bottom_frame (http://localhost:3000/_bun/client/index-0000000022938c69.js:25329:20)
+    at runWithFiberInDEV (http://localhost:3000/_bun/client/index-0000000022938c69.js:11942:72)
+    at commitHookEffectListMount (http://localhost:3000/_bun/client/index-0000000022938c69.js:18445:166)
+    at commitHookPassiveMountEffects (http://localhost:3000/_bun/client/index-0000000022938c69.js:18493:60)
+    at commitPassiveMountOnFiber (http://localhost:3000/_bun/client/index-0000000022938c69.js:19559:29)
+    at recursivelyTraversePassiveMountEffects (http://localhost:3000/_bun/client/index-0000000022938c69.js:19547:13)
+    at commitPassiveMountOnFiber (http://localhost:3000/_bun/client/index-0000000022938c69.js:19616:13)
+[   72597ms] [WARNING] %s
+
+%s
+ An error occurred in the <DrawOverlay2> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/_bun/client/index-0000000022938c69.js:16878

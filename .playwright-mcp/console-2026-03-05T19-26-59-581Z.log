@@ -1,0 +1,19 @@
+[  204338ms] TypeError: Cannot read properties of null (reading 'color')
+    at Object.renderShape2 [as renderShape] (http://localhost:3000/_bun/client/index-00000000d03453df.js:10387:31)
+    at http://localhost:3000/_bun/client/index-00000000d03453df.js:10217:25
+    at http://localhost:3000/_bun/client/index-00000000d03453df.js:10229:9
+    at Object.react_stack_bottom_frame (http://localhost:3000/_bun/client/index-00000000d03453df.js:24839:20)
+    at runWithFiberInDEV (http://localhost:3000/_bun/client/index-00000000d03453df.js:11452:72)
+    at commitHookEffectListMount (http://localhost:3000/_bun/client/index-00000000d03453df.js:17955:166)
+    at commitHookPassiveMountEffects (http://localhost:3000/_bun/client/index-00000000d03453df.js:18003:60)
+    at commitPassiveMountOnFiber (http://localhost:3000/_bun/client/index-00000000d03453df.js:19069:29)
+    at recursivelyTraversePassiveMountEffects (http://localhost:3000/_bun/client/index-00000000d03453df.js:19057:13)
+    at commitPassiveMountOnFiber (http://localhost:3000/_bun/client/index-00000000d03453df.js:19126:13)
+[  204333ms] [WARNING] %s
+
+%s
+ An error occurred in the <DrawOverlay2> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/_bun/client/index-00000000d03453df.js:16388
+[  488846ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_bun/hmr' failed:  @ http://localhost:3000/_bun/client/index-0000000028b3db2a.js:20
+[  488861ms] [WARNING] [Bun] Hot-module-reloading socket disconnected, reconnecting... @ http://localhost:3000/_bun/client/index-0000000028b3db2a.js:20
+[  489882ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_bun/hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_bun/client/index-0000000028b3db2a.js:20

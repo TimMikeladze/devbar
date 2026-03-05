@@ -1,0 +1,506 @@
+.deloop-toolbar {
+	position: fixed;
+	z-index: 2147483647;
+	font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	font-size: 13px;
+	line-height: 1.4;
+	-webkit-font-smoothing: antialiased;
+	--deloop-bg: #0a0a0a;
+	--deloop-bg-elevated: #141414;
+	--deloop-border: rgba(255, 255, 255, 0.08);
+	--deloop-border-hover: rgba(255, 255, 255, 0.14);
+	--deloop-text: #ededed;
+	--deloop-text-secondary: #888;
+	--deloop-text-muted: #555;
+	--deloop-accent: #fff;
+	--deloop-accent-glow: rgba(255, 255, 255, 0.06);
+	--deloop-blue: #0070f3;
+	--deloop-radius: 12px;
+}
+
+.deloop-theme-light {
+	--deloop-bg: #ffffff;
+	--deloop-bg-elevated: #f5f5f5;
+	--deloop-border: rgba(0, 0, 0, 0.1);
+	--deloop-border-hover: rgba(0, 0, 0, 0.18);
+	--deloop-text: #171717;
+	--deloop-text-secondary: #6b6b6b;
+	--deloop-text-muted: #a0a0a0;
+	--deloop-accent: #000;
+	--deloop-accent-glow: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: light) {
+	.deloop-theme-auto {
+		--deloop-bg: #ffffff;
+		--deloop-bg-elevated: #f5f5f5;
+		--deloop-border: rgba(0, 0, 0, 0.1);
+		--deloop-border-hover: rgba(0, 0, 0, 0.18);
+		--deloop-text: #171717;
+		--deloop-text-secondary: #6b6b6b;
+		--deloop-text-muted: #a0a0a0;
+		--deloop-accent: #000;
+		--deloop-accent-glow: rgba(0, 0, 0, 0.05);
+	}
+}
+
+/* ─── Bottom bar ─── */
+.deloop-bar {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 18px;
+	padding: 5px 6px;
+	backdrop-filter: blur(20px) saturate(1.5);
+	-webkit-backdrop-filter: blur(20px) saturate(1.5);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 20px 60px -10px rgba(0, 0, 0, 0.5),
+		0 0 80px -20px rgba(0, 0, 0, 0.3);
+}
+
+.deloop-bar-drag {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 34px;
+	cursor: grab;
+	color: var(--deloop-text-muted);
+	transition: color 0.15s;
+	user-select: none;
+	border-radius: 8px;
+}
+
+.deloop-bar-drag:hover {
+	color: var(--deloop-text-secondary);
+	background: var(--deloop-accent-glow);
+}
+
+.deloop-bar-drag:active {
+	cursor: grabbing;
+}
+
+.deloop-bar-drag svg {
+	width: 14px;
+	height: 14px;
+}
+
+.deloop-bar-divider {
+	width: 1px;
+	height: 18px;
+	background: var(--deloop-border);
+	margin: 0 3px;
+	flex-shrink: 0;
+}
+
+.deloop-bar-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border-radius: 10px;
+	border: none;
+	background: transparent;
+	color: var(--deloop-text-secondary);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	position: relative;
+	outline: none;
+}
+
+.deloop-bar-btn:hover {
+	background: var(--deloop-accent-glow);
+	color: var(--deloop-text);
+}
+
+.deloop-bar-btn:active {
+	transform: scale(0.94);
+}
+
+.deloop-bar-btn-active {
+	background: var(--deloop-accent-glow);
+	color: var(--deloop-accent);
+}
+
+.deloop-bar-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+.deloop-badge {
+	position: absolute;
+	top: 3px;
+	right: 3px;
+	min-width: 13px;
+	height: 13px;
+	padding: 0 3px;
+	border-radius: 7px;
+	background: var(--deloop-blue);
+	color: #fff;
+	font-size: 8.5px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+	letter-spacing: -0.02em;
+}
+
+/* ─── Tooltip ─── */
+.deloop-tooltip {
+	position: absolute;
+	bottom: calc(100% + 10px);
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 5px 10px;
+	background: var(--deloop-text);
+	color: var(--deloop-bg);
+	font-size: 11px;
+	font-weight: 500;
+	border-radius: 6px;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.15s ease, transform 0.15s ease;
+	transform: translateX(-50%) translateY(4px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.deloop-tooltip-key {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	margin-left: 6px;
+	border-radius: 3px;
+	background: rgba(0, 0, 0, 0.15);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}
+
+.deloop-bar-btn:hover .deloop-tooltip {
+	opacity: 1;
+	transform: translateX(-50%) translateY(0);
+}
+
+/* ─── Panel ─── */
+.deloop-panel {
+	position: fixed;
+	bottom: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 360px;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 16px;
+	backdrop-filter: blur(20px) saturate(1.5);
+	-webkit-backdrop-filter: blur(20px) saturate(1.5);
+	box-shadow:
+		0 0 0 1px rgba(0, 0, 0, 0.3),
+		0 24px 72px -12px rgba(0, 0, 0, 0.5);
+	overflow: hidden;
+	animation: deloop-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 16px 12px;
+	border-bottom: 1px solid var(--deloop-border);
+}
+
+.deloop-panel-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--deloop-text);
+	letter-spacing: -0.02em;
+}
+
+.deloop-panel-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 22px;
+	padding: 0 7px;
+	border-radius: 5px;
+	border: 1px solid var(--deloop-border);
+	background: transparent;
+	color: var(--deloop-text-muted);
+	cursor: pointer;
+	font-size: 10.5px;
+	font-weight: 500;
+	font-family: inherit;
+	transition: all 0.15s;
+	letter-spacing: 0.01em;
+}
+
+.deloop-panel-close:hover {
+	background: var(--deloop-accent-glow);
+	border-color: var(--deloop-border-hover);
+	color: var(--deloop-text-secondary);
+}
+
+.deloop-panel-body {
+	padding: 6px;
+	max-height: 280px;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.deloop-panel-body::-webkit-scrollbar {
+	width: 4px;
+}
+
+.deloop-panel-body::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.deloop-panel-body::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 2px;
+}
+
+.deloop-empty {
+	padding: 28px 16px;
+	text-align: center;
+	color: var(--deloop-text-muted);
+	font-size: 12.5px;
+	line-height: 1.5;
+}
+
+/* ─── Annotation items ─── */
+.deloop-annotation-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 10px;
+	border-radius: 10px;
+	transition: background 0.12s;
+}
+
+.deloop-annotation-item:hover {
+	background: rgba(255, 255, 255, 0.03);
+}
+
+.deloop-annotation-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid var(--deloop-border);
+	flex-shrink: 0;
+}
+
+.deloop-annotation-icon svg {
+	width: 14px;
+	height: 14px;
+	color: var(--deloop-text-secondary);
+}
+
+.deloop-annotation-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.deloop-annotation-label {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--deloop-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	letter-spacing: -0.01em;
+}
+
+.deloop-annotation-note {
+	font-size: 11.5px;
+	color: var(--deloop-text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-top: 1px;
+}
+
+.deloop-annotation-remove {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 5px;
+	border: none;
+	background: transparent;
+	color: var(--deloop-text-muted);
+	cursor: pointer;
+	font-size: 13px;
+	flex-shrink: 0;
+	transition: all 0.12s;
+	opacity: 0;
+}
+
+.deloop-annotation-item:hover .deloop-annotation-remove {
+	opacity: 1;
+}
+
+.deloop-annotation-remove:hover {
+	background: rgba(255, 255, 255, 0.06);
+	color: var(--deloop-text-secondary);
+}
+
+/* ─── Panel footer ─── */
+.deloop-panel-footer {
+	display: flex;
+	gap: 6px;
+	padding: 10px 12px;
+	border-top: 1px solid var(--deloop-border);
+}
+
+.deloop-submit-btn {
+	flex: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 8px 16px;
+	font-size: 13px;
+	font-weight: 550;
+	font-family: inherit;
+	border: none;
+	background: var(--deloop-text);
+	color: var(--deloop-bg);
+	border-radius: 10px;
+	cursor: pointer;
+	transition: all 0.15s;
+	letter-spacing: -0.01em;
+}
+
+.deloop-submit-btn svg {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+}
+
+.deloop-submit-btn:hover {
+	background: #d4d4d4;
+}
+
+.deloop-submit-btn:active {
+	transform: scale(0.98);
+}
+
+.deloop-submit-btn-secondary {
+	background: transparent;
+	color: var(--deloop-text);
+	border: 1px solid var(--deloop-border);
+}
+
+.deloop-submit-btn-secondary:hover {
+	background: var(--deloop-accent-glow);
+	border-color: var(--deloop-border-hover);
+}
+
+.deloop-clear-btn {
+	padding: 8px 14px;
+	font-size: 13px;
+	font-weight: 500;
+	font-family: inherit;
+	border: 1px solid var(--deloop-border);
+	background: transparent;
+	color: var(--deloop-text-secondary);
+	border-radius: 10px;
+	cursor: pointer;
+	transition: all 0.15s;
+	letter-spacing: -0.01em;
+}
+
+.deloop-clear-btn:hover {
+	background: var(--deloop-accent-glow);
+	border-color: var(--deloop-border-hover);
+	color: var(--deloop-text);
+}
+
+/* ─── Toast ─── */
+.deloop-toast {
+	position: fixed;
+	bottom: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--deloop-text);
+	color: var(--deloop-bg);
+	padding: 8px 16px;
+	border-radius: 10px;
+	font-size: 13px;
+	font-weight: 500;
+	z-index: 2147483647;
+	animation: deloop-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+	letter-spacing: -0.01em;
+}
+
+/* ─── Instruction banner (shared by overlays) ─── */
+.deloop-instruction {
+	position: fixed;
+	bottom: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	color: var(--deloop-text-secondary);
+	padding: 8px 16px;
+	border-radius: 10px;
+	font-size: 12.5px;
+	font-weight: 450;
+	z-index: 2147483646;
+	pointer-events: none;
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+	animation: deloop-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	white-space: nowrap;
+	letter-spacing: -0.01em;
+}
+
+.deloop-instruction kbd {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	margin: 0 2px;
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid var(--deloop-border);
+	font-size: 10.5px;
+	font-weight: 500;
+	font-family: inherit;
+	color: var(--deloop-text);
+}
+
+/* ─── Animations ─── */
+@keyframes deloop-panel-enter {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(8px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0) scale(1);
+	}
+}

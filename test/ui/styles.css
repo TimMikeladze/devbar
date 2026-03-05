@@ -12,6 +12,9 @@
 
 * {
 	font-family: "Inter", sans-serif;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
 }
 
 body {
@@ -20,9 +23,7 @@ body {
 }
 
 main {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 100dvh;
-	width: 100%;
+	max-width: 900px;
+	margin: 0 auto;
+	padding: 40px 20px;
 }
