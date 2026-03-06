@@ -1,5 +1,5 @@
 {
-	"name": "deloop",
+	"name": "deloop.dev",
 	"version": "0.1.0",
 	"description": "a drop-in toolbar into any website that lets user's annoate, capture xpaths, screenshots, and all contextual info in order to prompt an LLM with fixes",
 	"homepage": "https://github.com/TimMikeladze/deloop#readme",

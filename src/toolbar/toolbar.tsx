@@ -211,7 +211,9 @@ function useBarDrag() {
 				// Persist position after drag ends
 				setOffset((current) => {
 					if (current) {
-						try { localStorage.setItem("deloop-bar-position", JSON.stringify(current)); } catch {}
+						try {
+							localStorage.setItem("deloop-bar-position", JSON.stringify(current));
+						} catch {}
 					}
 					return current;
 				});
@@ -576,9 +578,7 @@ export function DeloopToolbar({
 			<div className="deloop-settings-row">
 				<div className="deloop-settings-label">
 					<div className="deloop-settings-title">Theme</div>
-					<div className="deloop-settings-desc">
-						Light, dark, or follow system
-					</div>
+					<div className="deloop-settings-desc">Light, dark, or follow system</div>
 				</div>
 				<div className="deloop-settings-segmented">
 					{THEME_CYCLE.map((t) => {
@@ -616,9 +616,7 @@ export function DeloopToolbar({
 			<div className="deloop-settings-row">
 				<div className="deloop-settings-label">
 					<div className="deloop-settings-title">Image export format</div>
-					<div className="deloop-settings-desc">
-						How images are saved when exporting to file
-					</div>
+					<div className="deloop-settings-desc">How images are saved when exporting to file</div>
 				</div>
 				<div className="deloop-settings-segmented">
 					<button
@@ -640,9 +638,7 @@ export function DeloopToolbar({
 			<div className="deloop-settings-row">
 				<div className="deloop-settings-label">
 					<div className="deloop-settings-title">Side panel layout</div>
-					<div className="deloop-settings-desc">
-						Overlay on top or push page content aside
-					</div>
+					<div className="deloop-settings-desc">Overlay on top or push page content aside</div>
 				</div>
 				<div className="deloop-settings-segmented">
 					<button
@@ -689,7 +685,10 @@ export function DeloopToolbar({
 
 	// Preview renderer
 	const renderPreview = (maxHeight?: string) => (
-		<div className="deloop-panel-body deloop-preview-body" style={maxHeight ? { maxHeight } : undefined}>
+		<div
+			className="deloop-panel-body deloop-preview-body"
+			style={maxHeight ? { maxHeight } : undefined}
+		>
 			<div className="deloop-preview-tabs">
 				<button
 					type="button"
@@ -731,10 +730,59 @@ export function DeloopToolbar({
 					No annotations yet.
 					<br />
 					<span style={{ fontSize: 11, marginTop: 6, display: "block", opacity: 0.7 }}>
-						Press <kbd style={{ padding: "1px 5px", borderRadius: 4, background: "var(--deloop-accent-glow)", border: "1px solid var(--deloop-border)", fontSize: 10, fontFamily: "inherit" }}>S</kbd> Select{" "}
-						<kbd style={{ padding: "1px 5px", borderRadius: 4, background: "var(--deloop-accent-glow)", border: "1px solid var(--deloop-border)", fontSize: 10, fontFamily: "inherit" }}>D</kbd> Draw{" "}
-						<kbd style={{ padding: "1px 5px", borderRadius: 4, background: "var(--deloop-accent-glow)", border: "1px solid var(--deloop-border)", fontSize: 10, fontFamily: "inherit" }}>M</kbd> Marker{" "}
-						<kbd style={{ padding: "1px 5px", borderRadius: 4, background: "var(--deloop-accent-glow)", border: "1px solid var(--deloop-border)", fontSize: 10, fontFamily: "inherit" }}>C</kbd> Capture
+						Press{" "}
+						<kbd
+							style={{
+								padding: "1px 5px",
+								borderRadius: 4,
+								background: "var(--deloop-accent-glow)",
+								border: "1px solid var(--deloop-border)",
+								fontSize: 10,
+								fontFamily: "inherit",
+							}}
+						>
+							S
+						</kbd>{" "}
+						Select{" "}
+						<kbd
+							style={{
+								padding: "1px 5px",
+								borderRadius: 4,
+								background: "var(--deloop-accent-glow)",
+								border: "1px solid var(--deloop-border)",
+								fontSize: 10,
+								fontFamily: "inherit",
+							}}
+						>
+							D
+						</kbd>{" "}
+						Draw{" "}
+						<kbd
+							style={{
+								padding: "1px 5px",
+								borderRadius: 4,
+								background: "var(--deloop-accent-glow)",
+								border: "1px solid var(--deloop-border)",
+								fontSize: 10,
+								fontFamily: "inherit",
+							}}
+						>
+							M
+						</kbd>{" "}
+						Marker{" "}
+						<kbd
+							style={{
+								padding: "1px 5px",
+								borderRadius: 4,
+								background: "var(--deloop-accent-glow)",
+								border: "1px solid var(--deloop-border)",
+								fontSize: 10,
+								fontFamily: "inherit",
+							}}
+						>
+							C
+						</kbd>{" "}
+						Capture
 					</span>
 				</div>
 			) : (
@@ -821,7 +869,7 @@ export function DeloopToolbar({
 										<button
 											type="button"
 											className="deloop-thread-send"
-										title="Send comment"
+											title="Send comment"
 											onClick={() => submitComment(a.id)}
 											disabled={!newCommentText.trim()}
 										>
@@ -849,7 +897,12 @@ export function DeloopToolbar({
 				>
 					<PreviewIcon />
 				</button>
-				<button type="button" className="deloop-submit-btn" onClick={handleCopy} title="Copy to clipboard (⌘↵)">
+				<button
+					type="button"
+					className="deloop-submit-btn"
+					onClick={handleCopy}
+					title="Copy to clipboard (⌘↵)"
+				>
 					{copied ? <CheckIcon /> : <CopyIcon />}
 					{copied ? "Copied" : "Copy"}
 				</button>
@@ -886,7 +939,11 @@ export function DeloopToolbar({
 						setSidePanelOpen(false);
 						setClearConfirm(false);
 					}}
-					style={clearConfirm ? { borderColor: "rgba(242, 92, 92, 0.4)", color: "var(--deloop-red)" } : undefined}
+					style={
+						clearConfirm
+							? { borderColor: "rgba(242, 92, 92, 0.4)", color: "var(--deloop-red)" }
+							: undefined
+					}
 				>
 					{clearConfirm ? "Confirm?" : "Clear"}
 				</button>
@@ -918,10 +975,7 @@ export function DeloopToolbar({
 
 			{/* Side panel backdrop (overlay mode only) */}
 			{sidePanelOpen && settings.sidePanelMode === "overlay" && (
-				<div
-					className="deloop-side-panel-backdrop"
-					onClick={() => setSidePanelOpen(false)}
-				/>
+				<div className="deloop-side-panel-backdrop" onClick={() => setSidePanelOpen(false)} />
 			)}
 
 			{/* Side panel drawer */}
@@ -933,7 +987,10 @@ export function DeloopToolbar({
 							<button
 								type="button"
 								className={`deloop-panel-close ${showHelp ? "deloop-panel-close-active" : ""}`}
-								onClick={() => { setShowHelp((v) => !v); setShowSettings(false); }}
+								onClick={() => {
+									setShowHelp((v) => !v);
+									setShowSettings(false);
+								}}
 								title="Keyboard shortcuts"
 							>
 								?
@@ -941,7 +998,10 @@ export function DeloopToolbar({
 							<button
 								type="button"
 								className={`deloop-panel-close ${showSettings ? "deloop-panel-close-active" : ""}`}
-								onClick={() => { setShowSettings((v) => !v); setShowHelp(false); }}
+								onClick={() => {
+									setShowSettings((v) => !v);
+									setShowHelp(false);
+								}}
 								title="Settings"
 							>
 								<SettingsIcon />
@@ -1007,33 +1067,36 @@ export function DeloopToolbar({
 					)}
 
 					{/* Annotations / Preview section (hidden when settings or help is open) */}
-					{!showSettings && !showHelp && (previewMode !== "off" ? (
-						<div className="deloop-side-panel-section" style={{ flex: 1, minHeight: 0 }}>
-							<div className="deloop-side-panel-section-label">Preview</div>
-							{renderPreview("none")}
-						</div>
-					) : (
-						<>
-							<div className="deloop-side-panel-section">
-								<div className="deloop-side-panel-section-label">
-									Annotations{state.annotations.length > 0 ? ` (${state.annotations.length})` : ""}
-								</div>
-								{renderAnnotationList("none")}
+					{!showSettings &&
+						!showHelp &&
+						(previewMode !== "off" ? (
+							<div className="deloop-side-panel-section" style={{ flex: 1, minHeight: 0 }}>
+								<div className="deloop-side-panel-section-label">Preview</div>
+								{renderPreview("none")}
 							</div>
-
-							{/* Plugin panels */}
-							{plugins
-								.filter((p) => p.panel)
-								.map((plugin) => (
-									<div key={plugin.key} className="deloop-side-panel-section">
-										<div className="deloop-side-panel-section-label">{plugin.label}</div>
-										<div className="deloop-panel-body" style={{ maxHeight: "none" }}>
-											{plugin.panel!()}
-										</div>
+						) : (
+							<>
+								<div className="deloop-side-panel-section">
+									<div className="deloop-side-panel-section-label">
+										Annotations
+										{state.annotations.length > 0 ? ` (${state.annotations.length})` : ""}
 									</div>
-								))}
-						</>
-					))}
+									{renderAnnotationList("none")}
+								</div>
+
+								{/* Plugin panels */}
+								{plugins
+									.filter((p) => p.panel)
+									.map((plugin) => (
+										<div key={plugin.key} className="deloop-side-panel-section">
+											<div className="deloop-side-panel-section-label">{plugin.label}</div>
+											<div className="deloop-panel-body" style={{ maxHeight: "none" }}>
+												{plugin.panel!()}
+											</div>
+										</div>
+									))}
+							</>
+						))}
 
 					{/* Footer */}
 					{renderFooter()}
@@ -1186,7 +1249,11 @@ export function DeloopToolbar({
 					<button
 						type="button"
 						className={`deloop-bar-btn ${showSettings ? "deloop-bar-btn-active" : ""}`}
-						onClick={() => { setShowSettings((v) => !v); setPanelOpen(false); setShowHelp(false); }}
+						onClick={() => {
+							setShowSettings((v) => !v);
+							setPanelOpen(false);
+							setShowHelp(false);
+						}}
 					>
 						<SettingsIcon />
 						<span className="deloop-tooltip">Settings</span>
