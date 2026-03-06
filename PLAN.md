@@ -10,7 +10,7 @@ Developers, QA testers, and end users. Toolbar adapts via `mode` config (`develo
 
 ## Distribution
 
-1. **React component** (primary) - `<DeloopToolbar />`
+1. **React component** (primary) - `<Deloop />`
 2. **Script tag** - `Deloop.init(config)` wraps React mount
 3. **Browser extension** - future phase
 
@@ -140,7 +140,7 @@ Ships with sensible defaults. Consumer can provide custom function or string tem
 ## Component API
 
 ```tsx
-<DeloopToolbar
+<Deloop
 	// Output
 	clipboard={true}
 	onSubmit={(payload) => fetch("/api/bugs", { body: JSON.stringify(payload) })}
@@ -183,7 +183,7 @@ Deloop.init({
 src/
   index.tsx                    # Public exports
   toolbar/
-    toolbar.tsx                # Main DeloopToolbar component
+    toolbar.tsx                # Main Deloop component
     toolbar.module.css         # Toolbar styles (prefixed)
     drag.ts                    # Drag-and-drop logic
     state.ts                   # Session store (annotations, active mode)

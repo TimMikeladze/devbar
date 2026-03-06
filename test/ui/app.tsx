@@ -1,6 +1,6 @@
 import "./styles.css";
 
-import { DeloopToolbar } from "../../src";
+import { Deloop } from "../../src";
 
 export function App() {
 	return (
@@ -241,7 +241,7 @@ export function App() {
 				</div>
 			</section>
 
-			<DeloopToolbar clipboard onSubmit={(payload) => console.log("Deloop payload:", payload)} />
+			<Deloop clipboard onSubmit={(payload) => console.log("Deloop payload:", payload)} />
 		</main>
 	);
 }

@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en" class="dark">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<title>deloop.dev — Annotate Any Website, Prompt Any LLM</title>
+		<meta
+			name="description"
+			content="Open-source drop-in toolbar for annotating websites. Select elements, draw, capture screenshots, and export XPaths, CSS selectors, React context, and structured prompts for any LLM."
+		/>
+
+		<link rel="canonical" href="https://deloop.dev" />
+		<meta name="theme-color" content="#09090b" />
+
+		<!-- Open Graph -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://deloop.dev" />
+		<meta property="og:locale" content="en_US" />
+		<meta property="og:title" content="deloop.dev — Annotate Any Website, Prompt Any LLM" />
+		<meta
+			property="og:description"
+			content="Drop-in annotation toolbar for any website. Select elements, draw, capture screenshots, and generate structured LLM prompts with XPaths, CSS selectors, and React context."
+		/>
+		<meta property="og:site_name" content="deloop.dev" />
+		<meta property="og:image" content="https://deloop.dev/og.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:alt" content="deloop.dev — annotate any website, prompt any LLM" />
+
+		<!-- Twitter -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@linesofcode" />
+		<meta name="twitter:creator" content="@linesofcode" />
+		<meta name="twitter:title" content="deloop.dev — Annotate Any Website, Prompt Any LLM" />
+		<meta
+			name="twitter:description"
+			content="Drop-in annotation toolbar for any website. Select elements, draw, capture screenshots, and generate structured LLM prompts with XPaths, CSS selectors, and React context."
+		/>
+		<meta name="twitter:image" content="https://deloop.dev/og.png" />
+		<meta name="twitter:image:alt" content="deloop.dev — annotate any website, prompt any LLM" />
+
+		<!-- SEO -->
+		<meta
+			name="keywords"
+			content="website annotation, bug reporting tool, LLM prompt, AI bug fix, element inspector, XPath capture, CSS selector, React component context, screenshot annotation, visual feedback, QA tool, Chrome extension, drop-in toolbar, open source, prompt engineering, web annotation, visual debugging"
+		/>
+		<meta name="author" content="Tim Mikeladze" />
+		<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+		<link rel="icon" type="image/svg+xml" href="/vite.svg" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+
+		<!-- JSON-LD: SoftwareApplication -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "SoftwareApplication",
+				"name": "deloop.dev",
+				"alternateName": ["deloop", "website annotation tool", "LLM prompt generator", "visual bug reporter"],
+				"description": "Open-source drop-in toolbar for annotating any website. Select elements to capture XPaths, CSS selectors, computed styles, and React component context. Draw, place markers, take screenshots, and generate structured Markdown prompts ready for any LLM.",
+				"url": "https://deloop.dev",
+				"applicationCategory": "DeveloperApplication",
+				"applicationSubCategory": "Annotation & QA",
+				"operatingSystem": "Any",
+				"offers": {
+					"@type": "Offer",
+					"price": "0",
+					"priceCurrency": "USD"
+				},
+				"author": {
+					"@type": "Person",
+					"name": "Tim Mikeladze",
+					"url": "https://github.com/TimMikeladze",
+					"sameAs": [
+						"https://x.com/linesofcode",
+						"https://bsky.app/profile/linesofcode.bsky.social",
+						"https://github.com/TimMikeladze"
+					]
+				},
+				"codeRepository": "https://github.com/TimMikeladze/deloop",
+				"license": "https://opensource.org/licenses/MIT",
+				"programmingLanguage": ["TypeScript", "JavaScript"],
+				"runtimePlatform": "Browser",
+				"featureList": [
+					"Element inspector with XPath, CSS selector, and computed styles capture",
+					"React fiber tree walker for component hierarchy, props, and source locations",
+					"Freehand drawing annotations with context screenshots",
+					"Full-page and region screenshot capture",
+					"Numbered marker pins with nearest element detection",
+					"Structured Markdown prompt generation for LLMs",
+					"Custom prompt template support",
+					"Clipboard copy, JSON/Markdown file export, and webhook delivery",
+					"Chrome extension for annotating any website",
+					"CDN script tag — no build step required",
+					"React component and programmatic init APIs",
+					"Plugin system for custom tools and panels",
+					"Light, dark, and auto theme with configurable position"
+				]
+			}
+		</script>
+
+		<!-- JSON-LD: FAQPage -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "FAQPage",
+				"mainEntity": [
+					{
+						"@type": "Question",
+						"name": "Why not a browser DevTools extension?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "DevTools is for developers. deloop.dev is a toolbar you embed in your app so anyone — designers, QA, PMs — can annotate issues and generate LLM-ready context without leaving the page."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "How does React context extraction work?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "When you select an element, deloop walks the React fiber tree to find the component hierarchy, props, and source file locations. This gives the LLM enough context to suggest exact code changes."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Does deloop.dev work without React?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Yes. React context extraction is automatic when React is detected, but all other features — element selection, XPaths, CSS selectors, drawing, screenshots, markers — work on any website."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "What output formats are supported?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Copy to clipboard as Markdown, download as JSON or Markdown files, or POST to a webhook URL. Images can be embedded as base64 or exported as separate files."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Can I customize the prompt?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Yes. Pass a promptTemplate function that receives all annotations, page URL, viewport, user agent, and settings. Return any string you want — Markdown, XML, plain text."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "How do I use deloop on sites I don't own?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Install the Chrome extension. It injects the toolbar into any page without modifying the source code."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Does deloop affect my app's performance?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "The toolbar renders in its own DOM container and only captures data when you interact with it. No polling, no mutation observers running in the background."
+						}
+					}
+				]
+			}
+		</script>
+
+		<!-- JSON-LD: WebSite -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebSite",
+				"name": "deloop.dev",
+				"url": "https://deloop.dev",
+				"description": "Open-source drop-in annotation toolbar for any website with LLM prompt generation"
+			}
+		</script>
+
+		<!-- JSON-LD: HowTo -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "HowTo",
+				"name": "How to annotate a website and generate an LLM prompt with deloop.dev",
+				"description": "Install deloop.dev and start annotating any website to generate structured prompts for AI-powered bug fixes in under 60 seconds.",
+				"step": [
+					{
+						"@type": "HowToStep",
+						"name": "Install deloop.dev",
+						"text": "Run 'bun add deloop.dev' to install the package, or add the CDN script tag to your HTML."
+					},
+					{
+						"@type": "HowToStep",
+						"name": "Add the toolbar",
+						"text": "Render the <Deloop /> React component, call init() programmatically, or use the Chrome extension."
+					},
+					{
+						"@type": "HowToStep",
+						"name": "Annotate the page",
+						"text": "Use the toolbar tools to select elements, draw annotations, place markers, and capture screenshots."
+					},
+					{
+						"@type": "HowToStep",
+						"name": "Submit and prompt",
+						"text": "Click submit to copy the structured prompt to your clipboard, download it as a file, or send it to a webhook. Paste into any LLM for AI-powered fixes."
+					}
+				]
+			}
+		</script>
+	</head>
+	<body class="bg-[#09090b] text-[#e4e4e7] antialiased">
+		<div id="root"></div>
+		<script type="module" src="/src/main.tsx"></script>
+	</body>
+</html>

@@ -1,6 +1,6 @@
 import "@/toolbar/toolbar.css";
-export { DeloopToolbar } from "@/toolbar/toolbar";
-export type { DeloopToolbarProps, DeloopPlugin } from "@/toolbar/toolbar";
+export { Deloop } from "@/toolbar/toolbar";
+export type { DeloopProps, DeloopPlugin } from "@/toolbar/toolbar";
 export { init } from "@/standalone";
 export type {
 	Annotation,

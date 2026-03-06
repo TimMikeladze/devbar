@@ -55,7 +55,7 @@ export type DeloopPlugin = {
 	onDeactivate?: () => void;
 };
 
-export type DeloopToolbarProps = {
+export type DeloopProps = {
 	clipboard?: boolean;
 	onSubmit?: (payload: DeloopPayload) => void;
 	promptTemplate?: PromptTemplate;
@@ -230,13 +230,13 @@ function useBarDrag() {
 	return { offset, onMouseDown };
 }
 
-export function DeloopToolbar({
+export function Deloop({
 	onSubmit,
 	promptTemplate,
 	tools: enabledTools,
 	theme: initialTheme = "dark",
 	plugins = [],
-}: DeloopToolbarProps): React.ReactNode {
+}: DeloopProps): React.ReactNode {
 	const state = useDeloopState();
 	const [uiMode, setUiMode] = useState<"toolbar" | "panel">("toolbar");
 	const [panelOpen, setPanelOpen] = useState(false);

@@ -1,10 +1,10 @@
 import { init } from "@/standalone";
-import type { DeloopToolbarProps } from "@/toolbar/toolbar";
+import type { DeloopProps } from "@/toolbar/toolbar";
 
 declare global {
 	interface Window {
 		Deloop: {
-			init: (config?: DeloopToolbarProps) => { destroy: () => void };
+			init: (config?: DeloopProps) => { destroy: () => void };
 		};
 	}
 }
