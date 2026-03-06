@@ -10,7 +10,17 @@ type DrawOverlayProps = {
 
 const ALL_TOOLS: DrawTool[] = ["pen", "arrow", "rectangle", "circle"];
 
-const DRAW_COLORS = ["#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#0070f3", "#5856d6", "#ff2d55", "#ffffff", "#000000"];
+const DRAW_COLORS = [
+	"#ff3b30",
+	"#ff9500",
+	"#ffcc00",
+	"#34c759",
+	"#0070f3",
+	"#5856d6",
+	"#ff2d55",
+	"#ffffff",
+	"#000000",
+];
 
 const LINE_WIDTHS = [
 	{ label: "S", value: 1.5 },
@@ -18,15 +28,37 @@ const LINE_WIDTHS = [
 	{ label: "L", value: 4 },
 ];
 
-const btnBase: React.CSSProperties = {
-	padding: "6px 14px",
-	fontSize: 12.5,
-	fontWeight: 500,
-	fontFamily: "inherit",
-	border: "1px solid var(--deloop-border)",
-	borderRadius: 8,
-	cursor: "pointer",
-	transition: "all 0.12s",
+const S = {
+	fill: "none",
+	stroke: "currentColor",
+	strokeWidth: 1.5,
+	strokeLinecap: "round" as const,
+	strokeLinejoin: "round" as const,
+};
+
+const TOOL_ICONS: Record<DrawTool, () => React.ReactNode> = {
+	pen: () => (
+		<svg viewBox="0 0 24 24" {...S}>
+			<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" />
+			<path d="M20.71 7.04a1 1 0 000-1.42l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.82z" />
+		</svg>
+	),
+	arrow: () => (
+		<svg viewBox="0 0 24 24" {...S}>
+			<path d="M5 19L19 5" />
+			<path d="M12 5h7v7" />
+		</svg>
+	),
+	rectangle: () => (
+		<svg viewBox="0 0 24 24" {...S}>
+			<rect x="3" y="5" width="18" height="14" rx="2" />
+		</svg>
+	),
+	circle: () => (
+		<svg viewBox="0 0 24 24" {...S}>
+			<circle cx="12" cy="12" r="9" />
+		</svg>
+	),
 };
 
 export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.ReactNode {
@@ -60,10 +92,26 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 		redraw();
 	}, [redraw]);
 
+	const handleUndo = useCallback(() => {
+		setShapes((prev) => {
+			if (prev.length === 0) return prev;
+			return prev.slice(0, -1);
+		});
+	}, []);
+
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
 				finishDrawing();
+			}
+			if ((e.metaKey || e.ctrlKey) && e.key === "z") {
+				e.preventDefault();
+				handleUndo();
+			}
+			if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+				const toolMap: Record<string, DrawTool> = { "1": "pen", "2": "arrow", "3": "rectangle", "4": "circle" };
+				const tool = toolMap[e.key];
+				if (tool) setActiveTool(tool);
 			}
 		};
 		window.addEventListener("keydown", onKeyDown);
@@ -127,7 +175,9 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 		canvas.style.display = "none";
 		const toolbar = document.querySelector("[data-deloop-draw-toolbar]") as HTMLElement | null;
 		if (toolbar) toolbar.style.display = "none";
-		const instruction = canvas.parentElement?.querySelector(".deloop-instruction") as HTMLElement | null;
+		const instruction = canvas.parentElement?.querySelector(
+			".deloop-instruction",
+		) as HTMLElement | null;
 		if (instruction) instruction.style.display = "none";
 
 		let screenshotDataUri: string;
@@ -149,6 +199,7 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 				viewportOffset: { x: window.scrollX, y: window.scrollY },
 				dimensions: { width: canvas.width, height: canvas.height },
 			},
+			comments: [],
 		};
 		onCapture(annotation);
 		onDone();
@@ -161,89 +212,56 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 				onMouseDown={onMouseDown}
 				onMouseMove={onMouseMove}
 				onMouseUp={onMouseUp}
-				style={{
-					position: "fixed",
-					top: 0,
-					left: 0,
-					width: "100vw",
-					height: "100vh",
-					zIndex: 2147483644,
-					cursor: "crosshair",
-				}}
+				className="deloop-overlay deloop-overlay-crosshair"
 			/>
-			<div
-				data-deloop-draw-toolbar
-				style={{
-					position: "fixed",
-					top: 20,
-					left: "50%",
-					transform: "translateX(-50%)",
-					display: "flex",
-					gap: 3,
-					alignItems: "center",
-					background: "var(--deloop-bg)",
-					border: "1px solid var(--deloop-border)",
-					borderRadius: 14,
-					padding: 5,
-					zIndex: 2147483646,
-					boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
-				}}
-			>
-				{ALL_TOOLS.map((tool) => (
-					<button
-						key={tool}
-						type="button"
-						onClick={() => setActiveTool(tool)}
-						style={{
-							...btnBase,
-							background: activeTool === tool ? "var(--deloop-accent-glow)" : "transparent",
-							color: activeTool === tool ? "var(--deloop-text)" : "var(--deloop-text-secondary)",
-							borderColor: activeTool === tool ? "var(--deloop-border-hover)" : "transparent",
-							textTransform: "capitalize",
-						}}
-					>
-						{tool}
-					</button>
-				))}
-				<div style={{ width: 1, background: "var(--deloop-border)", margin: "0 2px" }} />
+			<div data-deloop-draw-toolbar className="deloop-overlay-toolbar">
+				{ALL_TOOLS.map((tool, i) => {
+					const Icon = TOOL_ICONS[tool];
+					const label = tool.charAt(0).toUpperCase() + tool.slice(1);
+					return (
+						<button
+							key={tool}
+							type="button"
+							onClick={() => setActiveTool(tool)}
+							className={`deloop-overlay-btn deloop-overlay-btn-icon ${activeTool === tool ? "deloop-overlay-btn-active" : ""}`}
+							title={`${label} (${i + 1})`}
+							aria-label={`${label} (${i + 1})`}
+						>
+							<Icon />
+						</button>
+					);
+				})}
+				<div className="deloop-overlay-toolbar-divider" />
 				{DRAW_COLORS.map((color) => (
 					<button
 						key={color}
 						type="button"
 						onClick={() => setActiveColor(color)}
-						style={{
-							width: 18,
-							height: 18,
-							borderRadius: "50%",
-							border: activeColor === color ? "2px solid var(--deloop-text)" : "2px solid transparent",
-							background: color,
-							cursor: "pointer",
-							padding: 0,
-							outline: "none",
-							transition: "all 0.12s",
-							flexShrink: 0,
-						}}
+						className={`deloop-color-swatch ${activeColor === color ? "deloop-color-swatch-active" : ""}`}
+						style={{ background: color }}
 					/>
 				))}
-				<div style={{ width: 1, background: "var(--deloop-border)", margin: "0 2px" }} />
+				<div className="deloop-overlay-toolbar-divider" />
 				{LINE_WIDTHS.map((lw) => (
 					<button
 						key={lw.label}
 						type="button"
 						onClick={() => setActiveWidth(lw.value)}
-						style={{
-							...btnBase,
-							padding: "4px 10px",
-							background: activeWidth === lw.value ? "var(--deloop-accent-glow)" : "transparent",
-							color: activeWidth === lw.value ? "var(--deloop-text)" : "var(--deloop-text-secondary)",
-							borderColor: activeWidth === lw.value ? "var(--deloop-border-hover)" : "transparent",
-							fontSize: 11,
-						}}
+						className={`deloop-overlay-btn ${activeWidth === lw.value ? "deloop-overlay-btn-active" : ""}`}
+						style={{ padding: "4px 10px", fontSize: 11 }}
 					>
 						{lw.label}
 					</button>
 				))}
-				<div style={{ width: 1, background: "var(--deloop-border)", margin: "0 2px" }} />
+				<div className="deloop-overlay-toolbar-divider" />
+				<button
+					type="button"
+					onClick={handleUndo}
+					disabled={shapes.length === 0}
+					className="deloop-overlay-btn deloop-overlay-btn-muted"
+				>
+					Undo
+				</button>
 				<button
 					type="button"
 					onClick={() => {
@@ -254,20 +272,20 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 							ctx?.clearRect(0, 0, canvas.width, canvas.height);
 						}
 					}}
-					style={{ ...btnBase, background: "transparent", color: "var(--deloop-text-muted)", borderColor: "transparent" }}
+					className="deloop-overlay-btn deloop-overlay-btn-muted"
 				>
 					Clear
 				</button>
 				<button
 					type="button"
 					onClick={finishDrawing}
-					style={{ ...btnBase, background: "var(--deloop-accent)", color: "var(--deloop-bg)", borderColor: "transparent" }}
+					className="deloop-overlay-btn deloop-overlay-btn-primary"
 				>
 					Done
 				</button>
 			</div>
 			<div className="deloop-instruction">
-				Draw on the page &middot; <kbd>Esc</kbd> to finish
+				Draw on the page &middot; <kbd>1</kbd>-<kbd>4</kbd> tools &middot; <kbd>⌘Z</kbd> undo &middot; <kbd>Esc</kbd> finish
 			</div>
 		</div>
 	);

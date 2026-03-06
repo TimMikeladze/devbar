@@ -1,3 +1,5 @@
+export type { ReactComponentContext, ReactComponentInfo } from "@/tools/select/react-fiber";
+
 export type AnnotationType = "element" | "drawing" | "text" | "screenshot" | "marker";
 
 export type ElementData = {
@@ -10,6 +12,7 @@ export type ElementData = {
 	innerText: string;
 	boundingRect: { x: number; y: number; width: number; height: number };
 	outerHTML: string;
+	reactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
 };
 
 export type DrawingData = {
@@ -23,6 +26,8 @@ export type TextData = {
 	text: string;
 	position: { x: number; y: number };
 	nearestElementXPath: string;
+	nearestElementCssSelector: string;
+	nearestReactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
 };
 
 export type ScreenshotData = {
@@ -36,7 +41,15 @@ export type MarkerData = {
 	color: string;
 	number: number;
 	nearestElementXPath: string;
-	note?: string;
+	nearestElementCssSelector: string;
+	nearestReactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
+};
+
+export type Comment = {
+	id: string;
+	author: string;
+	text: string;
+	timestamp: number;
 };
 
 export type Annotation = {
@@ -44,10 +57,10 @@ export type Annotation = {
 	type: AnnotationType;
 	timestamp: number;
 	data: ElementData | DrawingData | TextData | ScreenshotData | MarkerData;
-	note?: string;
+	comments: Comment[];
 };
 
-export type ToolMode = "select" | "draw" | "text" | "capture" | "marker" | null;
+export type ToolMode = "select" | "draw" | "capture" | "marker" | null;
 
 export type DeloopTheme = "light" | "dark" | "auto";
 
@@ -55,14 +68,33 @@ export type DeloopPosition = "top-left" | "top-right" | "bottom-left" | "bottom-
 
 export type PromptTemplate = (context: {
 	url: string;
+	route: {
+		pathname: string;
+		search: string;
+		hash: string;
+	};
 	title: string;
 	viewport: { width: number; height: number };
 	userAgent: string;
 	annotations: Annotation[];
+	settings?: DeloopSettings;
 }) => string;
+
+export type SidePanelMode = "overlay" | "push";
+
+export type DeloopSettings = {
+	includeImages: boolean;
+	imageExportMode: "base64" | "files";
+	sidePanelMode: SidePanelMode;
+};
 
 export type DeloopPayload = {
 	url: string;
+	route: {
+		pathname: string;
+		search: string;
+		hash: string;
+	};
 	title: string;
 	viewport: { width: number; height: number };
 	userAgent: string;

@@ -16,9 +16,7 @@ const POSITION_OFFSETS: Record<DeloopPosition, () => Position> = {
 };
 
 export function useDrag(initialPosition: DeloopPosition): DragState {
-	const [position, setPosition] = useState<Position>(() =>
-		POSITION_OFFSETS[initialPosition](),
-	);
+	const [position, setPosition] = useState<Position>(() => POSITION_OFFSETS[initialPosition]());
 	const dragging = useRef(false);
 	const offset = useRef<Position>({ x: 0, y: 0 });
 

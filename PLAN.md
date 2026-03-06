@@ -61,45 +61,45 @@ Monolithic toolbar component. Three UI layers:
 ## Data Model
 
 ```typescript
-type AnnotationType = "element" | "drawing" | "text" | "screenshot"
+type AnnotationType = "element" | "drawing" | "text" | "screenshot";
 
 type Annotation = {
-  id: string
-  type: AnnotationType
-  timestamp: number
-  data: ElementData | DrawingData | TextData | ScreenshotData
-  note?: string
-}
+	id: string;
+	type: AnnotationType;
+	timestamp: number;
+	data: ElementData | DrawingData | TextData | ScreenshotData;
+	note?: string;
+};
 
 type ElementData = {
-  xpath: string
-  cssSelector: string
-  tagName: string
-  id: string
-  classes: string[]
-  computedStyles: Record<string, string>
-  innerText: string
-  boundingRect: DOMRect
-  outerHTML: string
-}
+	xpath: string;
+	cssSelector: string;
+	tagName: string;
+	id: string;
+	classes: string[];
+	computedStyles: Record<string, string>;
+	innerText: string;
+	boundingRect: DOMRect;
+	outerHTML: string;
+};
 
 type DrawingData = {
-  imageDataUri: string
-  viewportOffset: { x: number; y: number }
-  dimensions: { width: number; height: number }
-}
+	imageDataUri: string;
+	viewportOffset: { x: number; y: number };
+	dimensions: { width: number; height: number };
+};
 
 type TextData = {
-  text: string
-  position: { x: number; y: number }
-  nearestElementXPath: string
-}
+	text: string;
+	position: { x: number; y: number };
+	nearestElementXPath: string;
+};
 
 type ScreenshotData = {
-  imageDataUri: string
-  region?: { x: number; y: number; width: number; height: number }
-  fullPage: boolean
-}
+	imageDataUri: string;
+	region?: { x: number; y: number; width: number; height: number };
+	fullPage: boolean;
+};
 ```
 
 ## Output
@@ -108,14 +108,14 @@ type ScreenshotData = {
 
 ```typescript
 type DeloopPayload = {
-  url: string
-  title: string
-  viewport: { width: number; height: number }
-  userAgent: string
-  timestamp: number
-  annotations: Annotation[]
-  prompt: string // rendered from template
-}
+	url: string;
+	title: string;
+	viewport: { width: number; height: number };
+	userAgent: string;
+	timestamp: number;
+	annotations: Annotation[];
+	prompt: string; // rendered from template
+};
 ```
 
 ### Channels
@@ -127,12 +127,12 @@ type DeloopPayload = {
 
 ```typescript
 type PromptTemplate = (context: {
-  url: string
-  title: string
-  viewport: { width: number; height: number }
-  userAgent: string
-  annotations: Annotation[]
-}) => string
+	url: string;
+	title: string;
+	viewport: { width: number; height: number };
+	userAgent: string;
+	annotations: Annotation[];
+}) => string;
 ```
 
 Ships with sensible defaults. Consumer can provide custom function or string template.
@@ -141,21 +141,18 @@ Ships with sensible defaults. Consumer can provide custom function or string tem
 
 ```tsx
 <DeloopToolbar
-  // Output
-  clipboard={true}
-  onSubmit={(payload) => fetch('/api/bugs', { body: JSON.stringify(payload) })}
-  promptTemplate={customTemplate}
-
-  // UI
-  position="bottom-right"
-  minimized={false}
-  theme="light" // "light" | "dark" | "auto"
-
-  // Tools
-  tools={['select', 'draw', 'text', 'capture']}
-
-  // Persona
-  mode="developer" // "developer" | "qa" | "user"
+	// Output
+	clipboard={true}
+	onSubmit={(payload) => fetch("/api/bugs", { body: JSON.stringify(payload) })}
+	promptTemplate={customTemplate}
+	// UI
+	position="bottom-right"
+	minimized={false}
+	theme="light" // "light" | "dark" | "auto"
+	// Tools
+	tools={["select", "draw", "text", "capture"]}
+	// Persona
+	mode="developer" // "developer" | "qa" | "user"
 />
 ```
 
@@ -172,13 +169,13 @@ Deloop.init({
 
 ## Persona Modes
 
-| Feature          | developer     | qa              | user              |
-|------------------|---------------|-----------------|-------------------|
-| XPath/CSS        | Shown         | Shown           | Hidden            |
-| Computed styles  | Shown         | Hidden          | Hidden            |
-| outerHTML        | Shown         | Hidden          | Hidden            |
-| Drawing tools    | All           | All             | Pen + arrow only  |
-| Prompt detail    | Full technical| Structured report| Simple description|
+| Feature         | developer      | qa                | user               |
+| --------------- | -------------- | ----------------- | ------------------ |
+| XPath/CSS       | Shown          | Shown             | Hidden             |
+| Computed styles | Shown          | Hidden            | Hidden             |
+| outerHTML       | Shown          | Hidden            | Hidden             |
+| Drawing tools   | All            | All               | Pen + arrow only   |
+| Prompt detail   | Full technical | Structured report | Simple description |
 
 ## File Structure
 
@@ -229,17 +226,17 @@ Scoped CSS modules with `deloop-` prefix on all class names. No Shadow DOM.
 
 ## Decision Log
 
-| # | Decision | Alternatives | Rationale |
-|---|----------|-------------|-----------|
-| 1 | Monolithic component | Plugin arch, Headless+UI | 4 tools in v1; simple to ship |
-| 2 | Scoped/prefixed CSS | Shadow DOM, iframe | Pragmatic, avoids complexity |
-| 3 | Draggable floating panel | Fixed sidebar, bottom bar | Must not obstruct annotated page |
-| 4 | Auto-minimize during tool use | Keep visible | Maximize visible page area |
-| 5 | Multi-annotation sessions | Single per submit | Complex bugs need multiple evidence |
-| 6 | Clipboard + webhook output | Direct LLM API, SaaS | Consumer controls destination |
-| 7 | Configurable prompt templates | Fixed format | Different personas need different prompts |
-| 8 | Three persona modes | Single mode | Balance simplicity with detail levels |
-| 9 | html2canvas | Native APIs, extension-only | Cross-browser, no permissions needed |
-| 10 | No cross-page persistence | localStorage | Keeps v1 simple |
-| 11 | React primary, script tag wrapper | Script tag first | Project is React; wrapper is thin |
-| 12 | No console/network in v1 | Include from start | Tight scope; easy to add later |
+| #   | Decision                          | Alternatives                | Rationale                                 |
+| --- | --------------------------------- | --------------------------- | ----------------------------------------- |
+| 1   | Monolithic component              | Plugin arch, Headless+UI    | 4 tools in v1; simple to ship             |
+| 2   | Scoped/prefixed CSS               | Shadow DOM, iframe          | Pragmatic, avoids complexity              |
+| 3   | Draggable floating panel          | Fixed sidebar, bottom bar   | Must not obstruct annotated page          |
+| 4   | Auto-minimize during tool use     | Keep visible                | Maximize visible page area                |
+| 5   | Multi-annotation sessions         | Single per submit           | Complex bugs need multiple evidence       |
+| 6   | Clipboard + webhook output        | Direct LLM API, SaaS        | Consumer controls destination             |
+| 7   | Configurable prompt templates     | Fixed format                | Different personas need different prompts |
+| 8   | Three persona modes               | Single mode                 | Balance simplicity with detail levels     |
+| 9   | html2canvas                       | Native APIs, extension-only | Cross-browser, no permissions needed      |
+| 10  | No cross-page persistence         | localStorage                | Keeps v1 simple                           |
+| 11  | React primary, script tag wrapper | Script tag first            | Project is React; wrapper is thin         |
+| 12  | No console/network in v1          | Include from start          | Tight scope; easy to add later            |

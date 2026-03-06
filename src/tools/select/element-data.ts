@@ -1,8 +1,7 @@
 import type { ElementData } from "@/session/types";
+import { extractReactContext } from "./react-fiber";
 
 export function getXPath(el: Element): string {
-	if (el.id) return `//*[@id="${el.id}"]`;
-
 	const parts: string[] = [];
 	let current: Element | null = el;
 
@@ -14,7 +13,8 @@ export function getXPath(el: Element): string {
 			sibling = sibling.previousElementSibling;
 		}
 		const tagName = current.tagName.toLowerCase();
-		parts.unshift(index > 1 ? `${tagName}[${index}]` : tagName);
+		const part = index > 1 ? `${tagName}[${index}]` : tagName;
+		parts.unshift(current.id ? `${part}[@id="${current.id}"]` : part);
 		current = current.parentElement;
 	}
 
@@ -93,5 +93,6 @@ export function extractElementData(el: Element): ElementData {
 		innerText: (el.textContent ?? "").slice(0, MAX_TEXT),
 		boundingRect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
 		outerHTML: el.outerHTML.slice(0, MAX_HTML),
+		reactContext: extractReactContext(el),
 	};
 }

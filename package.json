@@ -15,7 +15,8 @@
 		"test/**"
 	],
 	"files": [
-		"dist"
+		"dist",
+		"extension"
 	],
 	"type": "module",
 	"module": "./dist/index.js",
@@ -27,6 +28,7 @@
 				"default": "./dist/index.js"
 			}
 		},
+		"./cdn": "./dist/cdn/cdn.global.js",
 		"./styles.css": "./dist/index.css",
 		"./package.json": "./package.json"
 	},
@@ -42,6 +44,9 @@
 		"test:coverage": "bun test --coverage",
 		"test:watch": "bun test --watch",
 		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"html2canvas": "^1.4.1"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.58.2",
@@ -68,8 +73,5 @@
 	},
 	"simple-git-hooks": {
 		"pre-commit": "bun run format && bun run lint && bun run type-check"
-	},
-	"dependencies": {
-		"html2canvas": "^1.4.1"
 	}
 }

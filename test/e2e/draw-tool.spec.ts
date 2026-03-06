@@ -19,10 +19,11 @@ test.describe("Draw Tool", () => {
 		await page.getByRole("button", { name: "Draw D" }).click();
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
-		await expect(page.getByRole("button", { name: "pen" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "arrow" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "rectangle" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "circle" })).toBeVisible();
+		const toolbar = page.locator("[data-deloop-draw-toolbar]");
+		await expect(toolbar.getByRole("button", { name: /Pen/ })).toBeVisible();
+		await expect(toolbar.getByRole("button", { name: /Arrow/ })).toBeVisible();
+		await expect(toolbar.getByRole("button", { name: /Rectangle/ })).toBeVisible();
+		await expect(toolbar.getByRole("button", { name: /Circle/ })).toBeVisible();
 	});
 
 	test("draw toolbar has color swatches", async ({ page }) => {
@@ -32,7 +33,7 @@ test.describe("Draw Tool", () => {
 		// Count all interactive elements in the draw toolbar
 		const toolbar = page.locator("[data-deloop-draw-toolbar]");
 		const allButtons = toolbar.locator("button");
-		// pen, arrow, rectangle, circle, 9 colors, S, M, L, Clear, Done = 18-19
+		// 4 tool icons, 9 colors, S, M, L, Undo, Clear, Done = 20
 		const count = await allButtons.count();
 		expect(count).toBeGreaterThanOrEqual(18);
 	});
@@ -41,20 +42,26 @@ test.describe("Draw Tool", () => {
 		await page.getByRole("button", { name: "Draw D" }).click();
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
-		await expect(page.locator("[data-deloop-draw-toolbar]").getByRole("button", { name: "S", exact: true })).toBeVisible();
-		await expect(page.locator("[data-deloop-draw-toolbar]").getByRole("button", { name: "M", exact: true })).toBeVisible();
-		await expect(page.locator("[data-deloop-draw-toolbar]").getByRole("button", { name: "L", exact: true })).toBeVisible();
+		await expect(
+			page.locator("[data-deloop-draw-toolbar]").getByRole("button", { name: "S", exact: true }),
+		).toBeVisible();
+		await expect(
+			page.locator("[data-deloop-draw-toolbar]").getByRole("button", { name: "M", exact: true }),
+		).toBeVisible();
+		await expect(
+			page.locator("[data-deloop-draw-toolbar]").getByRole("button", { name: "L", exact: true }),
+		).toBeVisible();
 	});
 
 	test("can switch shape tools", async ({ page }) => {
 		await page.getByRole("button", { name: "Draw D" }).click();
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
+		const toolbar = page.locator("[data-deloop-draw-toolbar]");
 		// Click arrow tool
-		await page.getByRole("button", { name: "arrow" }).click();
-		// Arrow button should have the active style (accent glow background)
-		const arrowBtn = page.getByRole("button", { name: "arrow" });
-		await expect(arrowBtn).toHaveCSS("background-color", /[^transparent]/);
+		await toolbar.getByRole("button", { name: /Arrow/ }).click();
+		// Arrow button should have the active class
+		await expect(toolbar.getByRole("button", { name: /Arrow/ })).toHaveClass(/deloop-overlay-btn-active/);
 	});
 
 	test("clear button clears drawings", async ({ page }) => {

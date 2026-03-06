@@ -12,7 +12,7 @@ test.describe("Select Tool", () => {
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toContainText("Select");
 		await expect(page.locator(".deloop-instruction")).toBeVisible();
-		await expect(page.locator(".deloop-instruction")).toContainText("Click to select an element");
+		await expect(page.locator(".deloop-instruction")).toContainText("Click to select");
 	});
 
 	test("clicking an element shows note input", async ({ page }) => {
@@ -21,17 +21,19 @@ test.describe("Select Tool", () => {
 
 		await page.locator("h1").click();
 		await expect(page.locator("[data-deloop='note-input']")).toBeVisible();
-		await expect(page.getByPlaceholder("Add a note (optional)")).toBeVisible();
+		await expect(page.getByPlaceholder("Add a comment (optional)")).toBeVisible();
 	});
 
-	test("submitting note captures annotation and stays in select mode (rapid mode)", async ({ page }) => {
+	test("submitting note captures annotation and stays in select mode (rapid mode)", async ({
+		page,
+	}) => {
 		await page.getByRole("button", { name: "Select S" }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		// Select first element
 		await page.locator("h1").click();
 		await page.waitForSelector("[data-deloop='note-input']");
-		await page.getByPlaceholder("Add a note (optional)").fill("Test note");
+		await page.getByPlaceholder("Add a comment (optional)").fill("Test note");
 		await page.keyboard.press("Enter");
 
 		// Should still be in select mode (rapid mode)

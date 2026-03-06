@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Annotation, MarkerData } from "@/session/types";
-import { getXPath } from "@/tools/select/element-data";
+import { getXPath, getCssSelector } from "@/tools/select/element-data";
+import { extractReactContext } from "@/tools/select/react-fiber";
 
 type MarkerOverlayProps = {
 	onCapture: (annotation: Annotation) => void;
 	onDone: () => void;
 	annotations: Annotation[];
+	onFocusAnnotation?: (id: string) => void;
 };
 
 const MARKER_COLORS = [
@@ -21,9 +23,22 @@ const MARKER_COLORS = [
 	"#ff6482",
 ];
 
-export function MarkerOverlay({ onCapture, onDone, annotations }: MarkerOverlayProps): React.ReactNode {
-	const [noteInput, setNoteInput] = useState<{ x: number; y: number; xpath: string; color: string; number: number } | null>(null);
-	const [noteText, setNoteText] = useState("");
+export function MarkerOverlay({
+	onCapture,
+	onDone,
+	annotations,
+	onFocusAnnotation,
+}: MarkerOverlayProps): React.ReactNode {
+	const [commentInput, setCommentInput] = useState<{
+		x: number;
+		y: number;
+		xpath: string;
+		cssSelector: string;
+		reactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
+		color: string;
+		number: number;
+	} | null>(null);
+	const [commentText, setCommentText] = useState("");
 
 	const markerAnnotations = annotations.filter((a) => a.type === "marker");
 	const nextNumber = markerAnnotations.length + 1;
@@ -32,28 +47,32 @@ export function MarkerOverlay({ onCapture, onDone, annotations }: MarkerOverlayP
 	useEffect(() => {
 		const onClick = (e: MouseEvent) => {
 			if ((e.target as HTMLElement).closest("[data-deloop]")) return;
-			if (noteInput) return;
+			if (commentInput) return;
 
 			e.preventDefault();
 			e.stopPropagation();
 
 			const el = document.elementFromPoint(e.clientX, e.clientY);
 			const xpath = el ? getXPath(el) : "";
+			const cssSelector = el ? getCssSelector(el) : "";
+			const reactContext = el ? extractReactContext(el) : null;
 
-			setNoteInput({
+			setCommentInput({
 				x: e.clientX,
 				y: e.clientY,
 				xpath,
+				cssSelector,
+				reactContext,
 				color: nextColor,
 				number: nextNumber,
 			});
-			setNoteText("");
+			setCommentText("");
 		};
 
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
-				if (noteInput) {
-					setNoteInput(null);
+				if (commentInput) {
+					setCommentInput(null);
 				} else {
 					onDone();
 				}
@@ -66,28 +85,40 @@ export function MarkerOverlay({ onCapture, onDone, annotations }: MarkerOverlayP
 			window.removeEventListener("click", onClick, true);
 			window.removeEventListener("keydown", onKeyDown);
 		};
-	}, [noteInput, onDone, nextColor, nextNumber]);
+	}, [commentInput, onDone, nextColor, nextNumber]);
 
 	const submitMarker = useCallback(() => {
-		if (!noteInput) return;
+		if (!commentInput) return;
+
+		const comments = commentText.trim()
+			? [
+					{
+						id: crypto.randomUUID(),
+						author: localStorage.getItem("deloop-author") || "Anonymous",
+						text: commentText.trim(),
+						timestamp: Date.now(),
+					},
+				]
+			: [];
 
 		const annotation: Annotation = {
 			id: crypto.randomUUID(),
 			type: "marker",
 			timestamp: Date.now(),
 			data: {
-				position: { x: noteInput.x, y: noteInput.y },
-				color: noteInput.color,
-				number: noteInput.number,
-				nearestElementXPath: noteInput.xpath,
-				note: noteText.trim() || undefined,
+				position: { x: commentInput.x, y: commentInput.y },
+				color: commentInput.color,
+				number: commentInput.number,
+				nearestElementXPath: commentInput.xpath,
+				nearestElementCssSelector: commentInput.cssSelector,
+				nearestReactContext: commentInput.reactContext,
 			} satisfies MarkerData,
-			note: noteText.trim() || undefined,
+			comments,
 		};
 		onCapture(annotation);
-		setNoteInput(null);
-		setNoteText("");
-	}, [noteInput, noteText, onCapture]);
+		setCommentInput(null);
+		setCommentText("");
+	}, [commentInput, commentText, onCapture]);
 
 	return (
 		<div data-deloop="marker-overlay">
@@ -98,28 +129,20 @@ export function MarkerOverlay({ onCapture, onDone, annotations }: MarkerOverlayP
 					<div
 						key={a.id}
 						data-deloop="marker-pin"
+						className="deloop-marker-pin"
 						style={{
-							position: "fixed",
 							left: d.position.x - 12,
 							top: d.position.y - 12,
-							width: 24,
-							height: 24,
-							borderRadius: "50%",
 							background: d.color,
-							border: "2.5px solid rgba(255,255,255,0.9)",
 							boxShadow: `0 2px 8px ${d.color}66, 0 1px 3px rgba(0,0,0,0.3)`,
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							fontSize: 11,
-							fontWeight: 700,
-							color: "#fff",
-							zIndex: 2147483644,
-							pointerEvents: "none",
-							fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-							textShadow: "0 1px 2px rgba(0,0,0,0.3)",
 						}}
-						title={d.note ?? `Marker #${d.number}`}
+						title={
+							a.comments.length > 0 ? a.comments[0]!.text : `Marker #${d.number}`
+						}
+						onClick={(e) => {
+							e.stopPropagation();
+							if (onFocusAnnotation) onFocusAnnotation(a.id);
+						}}
 					>
 						{d.number}
 					</div>
@@ -127,93 +150,46 @@ export function MarkerOverlay({ onCapture, onDone, annotations }: MarkerOverlayP
 			})}
 
 			{/* Preview marker at cursor position */}
-			{noteInput && (
+			{commentInput && (
 				<div
 					data-deloop="marker-pin"
+					className="deloop-marker-pin deloop-marker-pin-preview"
 					style={{
-						position: "fixed",
-						left: noteInput.x - 12,
-						top: noteInput.y - 12,
-						width: 24,
-						height: 24,
-						borderRadius: "50%",
-						background: noteInput.color,
-						border: "2.5px solid rgba(255,255,255,0.9)",
-						boxShadow: `0 2px 8px ${noteInput.color}66, 0 1px 3px rgba(0,0,0,0.3)`,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						fontSize: 11,
-						fontWeight: 700,
-						color: "#fff",
-						zIndex: 2147483644,
-						pointerEvents: "none",
-						fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
-						textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+						left: commentInput.x - 12,
+						top: commentInput.y - 12,
+						background: commentInput.color,
+						boxShadow: `0 2px 8px ${commentInput.color}66, 0 1px 3px rgba(0,0,0,0.3)`,
 					}}
 				>
-					{noteInput.number}
+					{commentInput.number}
 				</div>
 			)}
 
-			{/* Note input */}
-			{noteInput && (
+			{/* Comment input */}
+			{commentInput && (
 				<div
 					data-deloop="note-input"
+					className="deloop-note-input"
 					style={{
-						position: "fixed",
-						left: Math.min(noteInput.x + 20, window.innerWidth - 290),
-						top: Math.min(noteInput.y - 16, window.innerHeight - 50),
-						zIndex: 2147483646,
-						background: "var(--deloop-bg)",
-						border: "1px solid var(--deloop-border)",
-						borderRadius: 12,
-						padding: 6,
-						boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
-						display: "flex",
-						gap: 4,
+						left: Math.min(commentInput.x + 20, window.innerWidth - 290),
+						top: Math.min(commentInput.y - 16, window.innerHeight - 50),
 					}}
 				>
 					<input
 						type="text"
-						placeholder="Add a note (optional)"
-						value={noteText}
-						onChange={(e) => setNoteText(e.target.value)}
+						placeholder="Add a comment (optional)"
+						value={commentText}
+						onChange={(e) => setCommentText(e.target.value)}
 						onKeyDown={(e) => {
 							if (e.key === "Enter") submitMarker();
 							if (e.key === "Escape") {
 								e.stopPropagation();
-								setNoteInput(null);
+								setCommentInput(null);
 							}
 						}}
 						autoFocus
-						style={{
-							border: "1px solid var(--deloop-border)",
-							borderRadius: 8,
-							padding: "6px 10px",
-							fontSize: 13,
-							width: 200,
-							outline: "none",
-							background: "var(--deloop-accent-glow)",
-							color: "var(--deloop-text)",
-							fontFamily: "inherit",
-						}}
 					/>
-					<button
-						type="button"
-						onClick={submitMarker}
-						style={{
-							background: "var(--deloop-accent)",
-							color: "var(--deloop-bg)",
-							border: "none",
-							borderRadius: 8,
-							padding: "6px 14px",
-							fontSize: 13,
-							fontWeight: 500,
-							cursor: "pointer",
-							fontFamily: "inherit",
-						}}
-					>
+					<button type="button" onClick={submitMarker}>
 						Pin
 					</button>
 				</div>

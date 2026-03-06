@@ -7,30 +7,54 @@ type CaptureOverlayProps = {
 	onDone: () => void;
 };
 
-type CaptureMode = "choose" | "region" | "capturing";
-
-const btnBase: React.CSSProperties = {
-	fontFamily: "inherit",
-	fontSize: 13,
-	fontWeight: 500,
-	borderRadius: 10,
-	cursor: "pointer",
-	transition: "all 0.12s",
-};
+type CaptureMode = "choose" | "region" | "capturing" | "note";
 
 export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): React.ReactNode {
 	const [captureMode, setCaptureMode] = useState<CaptureMode>("choose");
 	const [regionStart, setRegionStart] = useState<{ x: number; y: number } | null>(null);
 	const [regionEnd, setRegionEnd] = useState<{ x: number; y: number } | null>(null);
+	const [pendingAnnotation, setPendingAnnotation] = useState<Annotation | null>(null);
+	const [noteText, setNoteText] = useState("");
 	const dragging = useRef(false);
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") onDone();
+			if (e.key === "Escape") {
+				if (captureMode === "note" && pendingAnnotation) {
+					// Submit without note on escape
+					onCapture(pendingAnnotation);
+					onDone();
+				} else {
+					onDone();
+				}
+			}
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [onDone]);
+	}, [onDone, captureMode, pendingAnnotation, onCapture]);
+
+	const showNoteInput = useCallback((annotation: Annotation) => {
+		setPendingAnnotation(annotation);
+		setNoteText("");
+		setCaptureMode("note");
+	}, []);
+
+	const submitNote = useCallback(() => {
+		if (!pendingAnnotation) return;
+		const comments = noteText.trim()
+			? [
+					{
+						id: crypto.randomUUID(),
+						author: localStorage.getItem("deloop-author") || "Anonymous",
+						text: noteText.trim(),
+						timestamp: Date.now(),
+					},
+				]
+			: [];
+		const updated = { ...pendingAnnotation, comments };
+		onCapture(updated);
+		onDone();
+	}, [pendingAnnotation, noteText, onCapture, onDone]);
 
 	const handleFullPage = useCallback(async () => {
 		setCaptureMode("capturing");
@@ -40,10 +64,10 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 			type: "screenshot",
 			timestamp: Date.now(),
 			data: { imageDataUri, fullPage: true },
+			comments: [],
 		};
-		onCapture(annotation);
-		onDone();
-	}, [onCapture, onDone]);
+		showNoteInput(annotation);
+	}, [showNoteInput]);
 
 	const handleRegionStart = useCallback(() => {
 		setCaptureMode("region");
@@ -91,10 +115,10 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 			type: "screenshot",
 			timestamp: Date.now(),
 			data: { imageDataUri, region, fullPage: false },
+			comments: [],
 		};
-		onCapture(annotation);
-		onDone();
-	}, [regionStart, regionEnd, onCapture, onDone]);
+		showNoteInput(annotation);
+	}, [regionStart, regionEnd, showNoteInput]);
 
 	const selectionRect =
 		regionStart && regionEnd
@@ -112,76 +136,30 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 			onMouseDown={onMouseDown}
 			onMouseMove={onMouseMove}
 			onMouseUp={onMouseUp}
-			style={{
-				position: "fixed",
-				top: 0,
-				left: 0,
-				width: "100vw",
-				height: "100vh",
-				zIndex: 2147483644,
-				cursor: captureMode === "region" ? "crosshair" : "default",
-			}}
+			className={`deloop-overlay ${captureMode === "region" ? "deloop-overlay-crosshair" : ""}`}
 		>
+			{captureMode === "choose" && <div className="deloop-overlay-scrim" />}
 			{captureMode === "choose" && (
-				<div
-					data-deloop-capture-toolbar
-					style={{
-						position: "fixed",
-						top: "50%",
-						left: "50%",
-						transform: "translate(-50%, -50%)",
-						background: "var(--deloop-bg)",
-						border: "1px solid var(--deloop-border)",
-						borderRadius: 16,
-						padding: 24,
-						boxShadow: "0 24px 72px rgba(0,0,0,0.25)",
-						display: "flex",
-						flexDirection: "column",
-						gap: 10,
-						zIndex: 2147483646,
-						minWidth: 220,
-					}}
-				>
-					<div style={{ fontSize: 14, fontWeight: 600, color: "var(--deloop-text)", textAlign: "center", marginBottom: 4, letterSpacing: "-0.02em" }}>
-						Screenshot
-					</div>
+				<div data-deloop-capture-toolbar className="deloop-capture-dialog">
+					<div className="deloop-capture-dialog-title">Screenshot</div>
 					<button
 						type="button"
 						onClick={handleFullPage}
-						style={{
-							...btnBase,
-							padding: "10px 24px",
-							border: "1px solid var(--deloop-border)",
-							background: "transparent",
-							color: "var(--deloop-text)",
-						}}
+						className="deloop-capture-dialog-btn"
 					>
 						Full Page
 					</button>
 					<button
 						type="button"
 						onClick={handleRegionStart}
-						style={{
-							...btnBase,
-							padding: "10px 24px",
-							border: "none",
-							background: "var(--deloop-accent)",
-							color: "var(--deloop-bg)",
-						}}
+						className="deloop-capture-dialog-btn deloop-capture-dialog-btn-primary"
 					>
 						Select Region
 					</button>
 					<button
 						type="button"
 						onClick={onDone}
-						style={{
-							...btnBase,
-							padding: "6px 12px",
-							border: "none",
-							background: "transparent",
-							color: "var(--deloop-text-muted)",
-							fontSize: 12,
-						}}
+						className="deloop-capture-dialog-btn deloop-capture-dialog-btn-cancel"
 					>
 						Cancel
 					</button>
@@ -189,20 +167,26 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 			)}
 
 			{captureMode === "region" && selectionRect && selectionRect.width > 0 && (
-				<div
-					style={{
-						position: "fixed",
-						left: selectionRect.x,
-						top: selectionRect.y,
-						width: selectionRect.width,
-						height: selectionRect.height,
-						border: "1.5px solid #0070f3",
-						backgroundColor: "rgba(0, 112, 243, 0.06)",
-						pointerEvents: "none",
-						zIndex: 2147483645,
-						borderRadius: 4,
-					}}
-				/>
+				<>
+					<div
+						className="deloop-region-selection"
+						style={{
+							left: selectionRect.x,
+							top: selectionRect.y,
+							width: selectionRect.width,
+							height: selectionRect.height,
+						}}
+					/>
+					<div
+						className="deloop-region-dimensions"
+						style={{
+							left: selectionRect.x + selectionRect.width,
+							top: selectionRect.y + selectionRect.height + 6,
+						}}
+					>
+						{Math.round(selectionRect.width)} &times; {Math.round(selectionRect.height)}
+					</div>
+				</>
 			)}
 
 			{captureMode === "region" && (
@@ -212,24 +196,42 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 			)}
 
 			{captureMode === "capturing" && (
-				<div
-					style={{
-						position: "fixed",
-						top: "50%",
-						left: "50%",
-						transform: "translate(-50%, -50%)",
-						background: "var(--deloop-bg)",
-						border: "1px solid var(--deloop-border)",
-						color: "var(--deloop-text)",
-						padding: "16px 28px",
-						borderRadius: 12,
-						fontSize: 14,
-						fontWeight: 500,
-						zIndex: 2147483646,
-						boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
-					}}
-				>
-					Capturing...
+				<div className="deloop-capture-status">Capturing...</div>
+			)}
+
+			{captureMode === "note" && (
+				<div data-deloop="note-input" className="deloop-capture-note">
+					<div className="deloop-capture-note-title">Screenshot captured</div>
+					<input
+						type="text"
+						placeholder="Add a note (optional)"
+						value={noteText}
+						onChange={(e) => setNoteText(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") submitNote();
+						}}
+						autoFocus
+					/>
+					<div className="deloop-capture-note-actions">
+						<button
+							type="button"
+							className="deloop-capture-dialog-btn deloop-capture-dialog-btn-primary"
+							style={{ flex: 1 }}
+							onClick={submitNote}
+						>
+							Save
+						</button>
+						<button
+							type="button"
+							className="deloop-capture-dialog-btn"
+							onClick={() => {
+								if (pendingAnnotation) onCapture(pendingAnnotation);
+								onDone();
+							}}
+						>
+							Skip
+						</button>
+					</div>
 				</div>
 			)}
 		</div>

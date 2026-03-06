@@ -9,7 +9,6 @@ test.describe("Toolbar", () => {
 	test("renders the full toolbar with all tool buttons", async ({ page }) => {
 		await expect(page.getByRole("button", { name: "Select S" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Draw D" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "Text T" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Marker M" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Capture C" })).toBeVisible();
 	});
@@ -113,12 +112,6 @@ test.describe("Keyboard Shortcuts", () => {
 		await page.keyboard.press("d");
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toContainText("Draw");
-	});
-
-	test("T activates text tool", async ({ page }) => {
-		await page.keyboard.press("t");
-		await expect(page.locator(".deloop-minibar")).toBeVisible();
-		await expect(page.locator(".deloop-minibar")).toContainText("Text");
 	});
 
 	test("M activates marker tool", async ({ page }) => {

@@ -56,9 +56,15 @@ function renderArrow(ctx: CanvasRenderingContext2D, points: DrawPoint[]): void {
 
 	ctx.beginPath();
 	ctx.moveTo(end.x, end.y);
-	ctx.lineTo(end.x - headLen * Math.cos(angle - Math.PI / 6), end.y - headLen * Math.sin(angle - Math.PI / 6));
+	ctx.lineTo(
+		end.x - headLen * Math.cos(angle - Math.PI / 6),
+		end.y - headLen * Math.sin(angle - Math.PI / 6),
+	);
 	ctx.moveTo(end.x, end.y);
-	ctx.lineTo(end.x - headLen * Math.cos(angle + Math.PI / 6), end.y - headLen * Math.sin(angle + Math.PI / 6));
+	ctx.lineTo(
+		end.x - headLen * Math.cos(angle + Math.PI / 6),
+		end.y - headLen * Math.sin(angle + Math.PI / 6),
+	);
 	ctx.stroke();
 }
 
@@ -66,8 +72,12 @@ function renderRectangle(ctx: CanvasRenderingContext2D, points: DrawPoint[]): vo
 	if (points.length < 2) return;
 	const start = points[0]!;
 	const end = points[points.length - 1]!;
+	const x = Math.min(start.x, end.x);
+	const y = Math.min(start.y, end.y);
+	const w = Math.abs(end.x - start.x);
+	const h = Math.abs(end.y - start.y);
 	ctx.beginPath();
-	ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
+	ctx.rect(x, y, w, h);
 	ctx.stroke();
 }
 

@@ -28,7 +28,7 @@ test.describe("Marker Tool", () => {
 
 		await page.locator("h1").click();
 		await page.waitForSelector("[data-deloop='note-input']");
-		await page.getByPlaceholder("Add a note (optional)").fill("First marker");
+		await page.getByPlaceholder("Add a comment (optional)").fill("First marker");
 		await page.keyboard.press("Enter");
 
 		// Should still be in marker mode
@@ -48,45 +48,6 @@ test.describe("Marker Tool", () => {
 
 		// Marker pin should be visible
 		await expect(page.locator("[data-deloop='marker-pin']")).toHaveCount(1);
-	});
-});
-
-test.describe("Text Tool", () => {
-	test.beforeEach(async ({ page }) => {
-		await page.goto("/");
-		await page.waitForSelector(".deloop-bar");
-	});
-
-	test("activating shows minibar and instruction", async ({ page }) => {
-		await page.getByRole("button", { name: "Text T" }).click();
-
-		await expect(page.locator(".deloop-minibar")).toBeVisible();
-		await expect(page.locator(".deloop-minibar")).toContainText("Text");
-		await expect(page.locator(".deloop-instruction")).toContainText("Click to place a text note");
-	});
-
-	test("clicking shows text input", async ({ page }) => {
-		await page.getByRole("button", { name: "Text T" }).click();
-		await page.waitForSelector(".deloop-instruction");
-
-		await page.locator("h1").click();
-		await expect(page.locator("[data-deloop='text-input']")).toBeVisible();
-		await expect(page.getByPlaceholder("Type your note...")).toBeVisible();
-	});
-
-	test("submitting text creates annotation and stays in mode", async ({ page }) => {
-		await page.getByRole("button", { name: "Text T" }).click();
-		await page.waitForSelector(".deloop-instruction");
-
-		await page.locator("h1").click();
-		await page.waitForSelector("[data-deloop='text-input']");
-		await page.getByPlaceholder("Type your note...").fill("Text annotation");
-		await page.keyboard.press("Enter");
-
-		// Should stay in text mode
-		await expect(page.locator(".deloop-minibar")).toContainText("Text");
-		// Text pin should appear
-		await expect(page.locator("[data-deloop='text-pin']")).toHaveCount(1);
 	});
 });
 
@@ -110,7 +71,10 @@ test.describe("Capture Tool", () => {
 		await page.getByRole("button", { name: "Capture C" }).click();
 		await page.waitForSelector("[data-deloop-capture-toolbar]");
 
-		await page.locator("[data-deloop-capture-toolbar]").getByRole("button", { name: "Cancel" }).click();
+		await page
+			.locator("[data-deloop-capture-toolbar]")
+			.getByRole("button", { name: "Cancel" })
+			.click();
 		await expect(page.locator(".deloop-bar")).toBeVisible();
 		await expect(page.locator("[data-deloop-capture-toolbar]")).not.toBeVisible();
 	});
@@ -120,6 +84,8 @@ test.describe("Capture Tool", () => {
 		await page.waitForSelector("[data-deloop-capture-toolbar]");
 
 		await page.getByRole("button", { name: "Select Region" }).click();
-		await expect(page.locator(".deloop-instruction")).toContainText("Click and drag to select a region");
+		await expect(page.locator(".deloop-instruction")).toContainText(
+			"Click and drag to select a region",
+		);
 	});
 });

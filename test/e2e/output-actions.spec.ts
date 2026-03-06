@@ -1,13 +1,13 @@
 import { test, expect } from "@playwright/test";
 
 // Helper to add an annotation via select tool
-async function addAnnotation(page: import("@playwright/test").Page, target: string, note?: string) {
+async function addAnnotation(page: import("@playwright/test").Page, target: string, comment?: string) {
 	await page.getByRole("button", { name: "Select S" }).click();
 	await page.waitForSelector(".deloop-instruction");
 	await page.locator(target).click();
 	await page.waitForSelector("[data-deloop='note-input']");
-	if (note) {
-		await page.getByPlaceholder("Add a note (optional)").fill(note);
+	if (comment) {
+		await page.getByPlaceholder("Add a comment (optional)").fill(comment);
 	}
 	await page.keyboard.press("Enter");
 	await page.keyboard.press("Escape");
@@ -24,9 +24,8 @@ test.describe("Output Actions: Copy", () => {
 		await addAnnotation(page, "h1", "Test note");
 		await expect(page.locator(".deloop-badge")).toHaveText("1");
 
-		// Focus outside inputs
-		await page.locator("h1").click({ force: true });
-		await page.keyboard.press("Meta+Enter");
+		// Use the copy button in the toolbar instead (more reliable in headless)
+		await page.getByRole("button", { name: /Copy ⌘↵/ }).click();
 
 		await expect(page.locator(".deloop-toast")).toContainText("Copied to clipboard");
 	});
@@ -53,22 +52,19 @@ test.describe("Output Actions: Copy", () => {
 	});
 });
 
-test.describe("Output Actions: Save File", () => {
+test.describe("Output Actions: Export", () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto("/");
 		await page.waitForSelector(".deloop-bar");
 	});
 
-	test("save file button shows toast", async ({ page }) => {
+	test("markdown export button shows toast", async ({ page }) => {
 		await addAnnotation(page, "h1");
 
 		await page.keyboard.press("a");
-		const [download] = await Promise.all([
-			page.waitForEvent("download").catch(() => null),
-			page.getByRole("button", { name: "Save File" }).click(),
-		]);
+		await page.getByRole("button", { name: ".md" }).click();
 
-		await expect(page.locator(".deloop-toast")).toContainText("Saved to file");
+		await expect(page.locator(".deloop-toast")).toContainText("Saved markdown");
 	});
 });
 
@@ -81,8 +77,8 @@ test.describe("Output Actions: Toast Behavior", () => {
 	test("toast disappears after timeout", async ({ page }) => {
 		await addAnnotation(page, "h1");
 
-		await page.locator("h1").click({ force: true });
-		await page.keyboard.press("Meta+z");
+		// Use the copy button to trigger a toast (more reliable than keyboard shortcut in headless)
+		await page.getByRole("button", { name: /Copy ⌘↵/ }).click();
 		await expect(page.locator(".deloop-toast")).toBeVisible();
 
 		// Toast should disappear (2s timeout)

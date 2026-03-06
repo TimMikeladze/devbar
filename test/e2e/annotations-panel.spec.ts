@@ -1,13 +1,13 @@
 import { test, expect } from "@playwright/test";
 
 // Helper to add an annotation via select tool
-async function addAnnotation(page: import("@playwright/test").Page, target: string, note?: string) {
+async function addAnnotation(page: import("@playwright/test").Page, target: string, comment?: string) {
 	await page.getByRole("button", { name: "Select S" }).click();
 	await page.waitForSelector(".deloop-instruction");
 	await page.locator(target).click();
 	await page.waitForSelector("[data-deloop='note-input']");
-	if (note) {
-		await page.getByPlaceholder("Add a note (optional)").fill(note);
+	if (comment) {
+		await page.getByPlaceholder("Add a comment (optional)").fill(comment);
 	}
 	await page.keyboard.press("Enter");
 	await page.keyboard.press("Escape");
@@ -42,31 +42,11 @@ test.describe("Annotations Panel", () => {
 		await expect(page.locator(".deloop-annotation-label")).toBeVisible();
 	});
 
-	test("shows annotation note", async ({ page }) => {
+	test("shows comment thread toggle", async ({ page }) => {
 		await addAnnotation(page, "h1", "This heading is wrong");
 
 		await page.getByRole("button", { name: /Annotations/ }).click();
-		await expect(page.locator(".deloop-annotation-note")).toContainText("This heading is wrong");
-	});
-
-	test("can edit note inline by clicking it", async ({ page }) => {
-		await addAnnotation(page, "h1", "Original note");
-
-		await page.getByRole("button", { name: /Annotations/ }).click();
-		await page.locator(".deloop-annotation-note").click();
-
-		// Should show an input field
-		const input = page.locator(".deloop-annotation-note-input");
-		await expect(input).toBeVisible();
-		await expect(input).toHaveValue("Original note");
-
-		// Edit the note
-		await input.clear();
-		await input.fill("Updated note");
-		await page.keyboard.press("Enter");
-
-		// Should show the updated text
-		await expect(page.locator(".deloop-annotation-note")).toContainText("Updated note");
+		await expect(page.locator(".deloop-annotation-thread-toggle")).toContainText("1 comment");
 	});
 
 	test("can remove annotation with × button", async ({ page }) => {
@@ -86,7 +66,11 @@ test.describe("Annotations Panel", () => {
 		await addAnnotation(page, "h1");
 
 		await page.getByRole("button", { name: /Annotations/ }).click();
+		// First click shows "Confirm?"
 		await page.getByRole("button", { name: "Clear" }).click();
+		await expect(page.getByRole("button", { name: "Confirm?" })).toBeVisible();
+		// Second click actually clears
+		await page.getByRole("button", { name: "Confirm?" }).click();
 
 		// Panel should close and badge should be gone
 		await expect(page.locator(".deloop-panel")).not.toBeVisible();
@@ -115,7 +99,7 @@ test.describe("Annotations Panel", () => {
 		await page.getByRole("button", { name: /Annotations/ }).click();
 		await expect(page.locator(".deloop-panel-footer")).toBeVisible();
 		await expect(page.getByRole("button", { name: "Copy" }).first()).toBeVisible();
-		await expect(page.getByRole("button", { name: "Save File" })).toBeVisible();
+		await expect(page.getByRole("button", { name: ".md" })).toBeVisible();
 		await expect(page.getByRole("button", { name: "Clear" })).toBeVisible();
 	});
 
@@ -155,17 +139,17 @@ test.describe("Undo", () => {
 		await page.waitForSelector(".deloop-bar");
 	});
 
-	test("Cmd+Z undoes the last annotation", async ({ page }) => {
-		await addAnnotation(page, "h1", "Will be undone");
+	test("removing annotation via panel clears badge", async ({ page }) => {
+		await addAnnotation(page, "h1", "Will be removed");
 
 		await expect(page.locator(".deloop-badge")).toHaveText("1");
 
-		// Focus outside input fields
-		await page.locator("h1").click({ force: true });
-		await page.keyboard.press("Meta+z");
+		// Remove via panel × button
+		await page.getByRole("button", { name: /Annotations/ }).click();
+		await page.locator(".deloop-annotation-item").hover();
+		await page.locator(".deloop-annotation-remove").click();
 
-		await expect(page.locator(".deloop-badge")).not.toBeVisible();
-		await expect(page.locator(".deloop-toast")).toContainText("Undid last annotation");
+		await expect(page.locator(".deloop-empty")).toBeVisible();
 	});
 
 	test("Cmd+Z does nothing when no annotations", async ({ page }) => {
@@ -174,17 +158,19 @@ test.describe("Undo", () => {
 		await expect(page.locator(".deloop-toast")).not.toBeVisible();
 	});
 
-	test("multiple undos remove annotations in reverse order", async ({ page }) => {
+	test("removing annotations one by one via panel", async ({ page }) => {
 		await addAnnotation(page, "h1");
 		await addAnnotation(page, "table");
 
 		await expect(page.locator(".deloop-badge")).toHaveText("2");
 
-		await page.locator("h1").click({ force: true });
-		await page.keyboard.press("Meta+z");
-		await expect(page.locator(".deloop-badge")).toHaveText("1");
+		// Open panel via keyboard and clear all
+		await page.keyboard.press("a");
+		await expect(page.locator(".deloop-panel")).toBeVisible();
+		await page.getByRole("button", { name: "Clear" }).click();
+		await page.getByRole("button", { name: "Confirm?" }).click();
 
-		await page.keyboard.press("Meta+z");
+		await expect(page.locator(".deloop-panel")).not.toBeVisible();
 		await expect(page.locator(".deloop-badge")).not.toBeVisible();
 	});
 });

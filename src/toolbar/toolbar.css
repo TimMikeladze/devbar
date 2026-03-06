@@ -1,46 +1,99 @@
 .deloop-toolbar {
 	position: fixed;
 	z-index: 2147483647;
-	font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		BlinkMacSystemFont,
+		"Segoe UI",
+		system-ui,
+		sans-serif;
 	font-size: 13px;
 	line-height: 1.4;
 	-webkit-font-smoothing: antialiased;
-	--deloop-bg: #0a0a0a;
-	--deloop-bg-elevated: #141414;
-	--deloop-border: rgba(255, 255, 255, 0.08);
-	--deloop-border-hover: rgba(255, 255, 255, 0.14);
-	--deloop-text: #ededed;
-	--deloop-text-secondary: #888;
-	--deloop-text-muted: #555;
-	--deloop-accent: #fff;
-	--deloop-accent-glow: rgba(255, 255, 255, 0.06);
-	--deloop-blue: #0070f3;
+	-moz-osx-font-smoothing: grayscale;
+	--deloop-bg: #0c0c0c;
+	--deloop-bg-elevated: #161616;
+	--deloop-bg-surface: rgba(255, 255, 255, 0.03);
+	--deloop-border: rgba(255, 255, 255, 0.07);
+	--deloop-border-hover: rgba(255, 255, 255, 0.13);
+	--deloop-border-active: rgba(255, 255, 255, 0.2);
+	--deloop-text: #f0f0f0;
+	--deloop-text-secondary: #8a8a8a;
+	--deloop-text-muted: #4a4a4a;
+	--deloop-accent: #f0f0f0;
+	--deloop-accent-glow: rgba(255, 255, 255, 0.05);
+	--deloop-accent-hover: rgba(255, 255, 255, 0.08);
+	--deloop-blue: #6e8efb;
+	--deloop-blue-muted: rgba(110, 142, 251, 0.12);
+	--deloop-blue-hover: #8da4fc;
+	--deloop-red: #f25c5c;
+	--deloop-green: #4ade80;
 	--deloop-radius: 12px;
+	--deloop-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+	--deloop-shadow-md:
+		0 0 0 1px rgba(0, 0, 0, 0.4),
+		0 16px 48px -8px rgba(0, 0, 0, 0.5),
+		0 0 1px rgba(255, 255, 255, 0.05) inset;
+	--deloop-shadow-lg:
+		0 0 0 1px rgba(0, 0, 0, 0.5),
+		0 24px 72px -12px rgba(0, 0, 0, 0.6),
+		0 0 1px rgba(255, 255, 255, 0.06) inset;
 }
 
 .deloop-theme-light {
-	--deloop-bg: #ffffff;
-	--deloop-bg-elevated: #f5f5f5;
-	--deloop-border: rgba(0, 0, 0, 0.1);
-	--deloop-border-hover: rgba(0, 0, 0, 0.18);
-	--deloop-text: #171717;
-	--deloop-text-secondary: #6b6b6b;
-	--deloop-text-muted: #a0a0a0;
-	--deloop-accent: #000;
-	--deloop-accent-glow: rgba(0, 0, 0, 0.05);
+	--deloop-bg: #fafafa;
+	--deloop-bg-elevated: #f0f0f0;
+	--deloop-bg-surface: rgba(0, 0, 0, 0.02);
+	--deloop-border: rgba(0, 0, 0, 0.08);
+	--deloop-border-hover: rgba(0, 0, 0, 0.14);
+	--deloop-border-active: rgba(0, 0, 0, 0.22);
+	--deloop-text: #1a1a1a;
+	--deloop-text-secondary: #666;
+	--deloop-text-muted: #aaa;
+	--deloop-accent: #1a1a1a;
+	--deloop-accent-glow: rgba(0, 0, 0, 0.04);
+	--deloop-accent-hover: rgba(0, 0, 0, 0.07);
+	--deloop-blue: #5a7cf7;
+	--deloop-blue-muted: rgba(90, 124, 247, 0.1);
+	--deloop-blue-hover: #4a6ce7;
+	--deloop-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+	--deloop-shadow-md:
+		0 0 0 1px rgba(0, 0, 0, 0.06),
+		0 16px 48px -8px rgba(0, 0, 0, 0.12),
+		0 0 1px rgba(255, 255, 255, 0.8) inset;
+	--deloop-shadow-lg:
+		0 0 0 1px rgba(0, 0, 0, 0.08),
+		0 24px 72px -12px rgba(0, 0, 0, 0.15),
+		0 0 1px rgba(255, 255, 255, 0.9) inset;
 }
 
 @media (prefers-color-scheme: light) {
 	.deloop-theme-auto {
-		--deloop-bg: #ffffff;
-		--deloop-bg-elevated: #f5f5f5;
-		--deloop-border: rgba(0, 0, 0, 0.1);
-		--deloop-border-hover: rgba(0, 0, 0, 0.18);
-		--deloop-text: #171717;
-		--deloop-text-secondary: #6b6b6b;
-		--deloop-text-muted: #a0a0a0;
-		--deloop-accent: #000;
-		--deloop-accent-glow: rgba(0, 0, 0, 0.05);
+		--deloop-bg: #fafafa;
+		--deloop-bg-elevated: #f0f0f0;
+		--deloop-bg-surface: rgba(0, 0, 0, 0.02);
+		--deloop-border: rgba(0, 0, 0, 0.08);
+		--deloop-border-hover: rgba(0, 0, 0, 0.14);
+		--deloop-border-active: rgba(0, 0, 0, 0.22);
+		--deloop-text: #1a1a1a;
+		--deloop-text-secondary: #666;
+		--deloop-text-muted: #aaa;
+		--deloop-accent: #1a1a1a;
+		--deloop-accent-glow: rgba(0, 0, 0, 0.04);
+		--deloop-accent-hover: rgba(0, 0, 0, 0.07);
+		--deloop-blue: #5a7cf7;
+		--deloop-blue-muted: rgba(90, 124, 247, 0.1);
+		--deloop-blue-hover: #4a6ce7;
+		--deloop-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+		--deloop-shadow-md:
+			0 0 0 1px rgba(0, 0, 0, 0.06),
+			0 16px 48px -8px rgba(0, 0, 0, 0.12),
+			0 0 1px rgba(255, 255, 255, 0.8) inset;
+		--deloop-shadow-lg:
+			0 0 0 1px rgba(0, 0, 0, 0.08),
+			0 24px 72px -12px rgba(0, 0, 0, 0.15),
+			0 0 1px rgba(255, 255, 255, 0.9) inset;
 	}
 }
 
@@ -55,25 +108,27 @@
 	gap: 1px;
 	background: var(--deloop-bg);
 	border: 1px solid var(--deloop-border);
-	border-radius: 18px;
-	padding: 5px 6px;
-	backdrop-filter: blur(20px) saturate(1.5);
-	-webkit-backdrop-filter: blur(20px) saturate(1.5);
-	box-shadow:
-		0 0 0 1px rgba(0, 0, 0, 0.3),
-		0 20px 60px -10px rgba(0, 0, 0, 0.5),
-		0 0 80px -20px rgba(0, 0, 0, 0.3);
+	border-radius: 16px;
+	padding: 4px 5px;
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	box-shadow: var(--deloop-shadow-md);
+	transition: box-shadow 0.3s ease;
+}
+
+.deloop-bar:hover {
+	box-shadow: var(--deloop-shadow-lg);
 }
 
 .deloop-bar-drag {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 34px;
+	width: 26px;
+	height: 32px;
 	cursor: grab;
 	color: var(--deloop-text-muted);
-	transition: color 0.15s;
+	transition: color 0.2s, background 0.2s;
 	user-select: none;
 	border-radius: 8px;
 }
@@ -88,15 +143,16 @@
 }
 
 .deloop-bar-drag svg {
-	width: 14px;
-	height: 14px;
+	width: 13px;
+	height: 13px;
+	opacity: 0.7;
 }
 
 .deloop-bar-divider {
 	width: 1px;
-	height: 18px;
+	height: 16px;
 	background: var(--deloop-border);
-	margin: 0 3px;
+	margin: 0 2px;
 	flex-shrink: 0;
 }
 
@@ -104,54 +160,57 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 34px;
-	height: 34px;
-	border-radius: 10px;
+	width: 32px;
+	height: 32px;
+	border-radius: 9px;
 	border: none;
 	background: transparent;
 	color: var(--deloop-text-secondary);
 	cursor: pointer;
-	transition: all 0.15s ease;
+	transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 	position: relative;
 	outline: none;
 }
 
 .deloop-bar-btn:hover {
-	background: var(--deloop-accent-glow);
+	background: var(--deloop-accent-hover);
 	color: var(--deloop-text);
 }
 
 .deloop-bar-btn:active {
-	transform: scale(0.94);
+	transform: scale(0.92);
+	transition-duration: 0.08s;
 }
 
 .deloop-bar-btn-active {
 	background: var(--deloop-accent-glow);
 	color: var(--deloop-accent);
+	box-shadow: 0 0 0 1px var(--deloop-border-hover) inset;
 }
 
 .deloop-bar-btn svg {
-	width: 16px;
-	height: 16px;
+	width: 15px;
+	height: 15px;
 }
 
 .deloop-badge {
 	position: absolute;
-	top: 3px;
-	right: 3px;
-	min-width: 13px;
-	height: 13px;
-	padding: 0 3px;
+	top: 2px;
+	right: 2px;
+	min-width: 14px;
+	height: 14px;
+	padding: 0 3.5px;
 	border-radius: 7px;
 	background: var(--deloop-blue);
 	color: #fff;
-	font-size: 8.5px;
+	font-size: 8px;
 	font-weight: 700;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	line-height: 1;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.03em;
+	box-shadow: 0 0 6px var(--deloop-blue-muted);
 }
 
 /* ─── Tooltip ─── */
@@ -165,13 +224,16 @@
 	color: var(--deloop-bg);
 	font-size: 11px;
 	font-weight: 500;
-	border-radius: 6px;
+	border-radius: 7px;
 	white-space: nowrap;
 	pointer-events: none;
 	opacity: 0;
-	transition: opacity 0.15s ease, transform 0.15s ease;
-	transform: translateX(-50%) translateY(4px);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	transition:
+		opacity 0.12s ease,
+		transform 0.12s ease;
+	transform: translateX(-50%) translateY(3px);
+	box-shadow: var(--deloop-shadow-sm);
+	letter-spacing: -0.01em;
 }
 
 .deloop-tooltip-key {
@@ -182,11 +244,18 @@
 	height: 16px;
 	padding: 0 4px;
 	margin-left: 6px;
-	border-radius: 3px;
-	background: rgba(0, 0, 0, 0.15);
+	border-radius: 4px;
+	background: rgba(128, 128, 128, 0.2);
 	font-size: 10px;
 	font-weight: 600;
 	letter-spacing: 0.02em;
+	font-family:
+		"SF Mono",
+		"JetBrains Mono",
+		"Cascadia Code",
+		"Fira Code",
+		ui-monospace,
+		monospace;
 }
 
 .deloop-bar-btn:hover .deloop-tooltip {
@@ -203,26 +272,24 @@
 	width: 360px;
 	background: var(--deloop-bg);
 	border: 1px solid var(--deloop-border);
-	border-radius: 16px;
-	backdrop-filter: blur(20px) saturate(1.5);
-	-webkit-backdrop-filter: blur(20px) saturate(1.5);
-	box-shadow:
-		0 0 0 1px rgba(0, 0, 0, 0.3),
-		0 24px 72px -12px rgba(0, 0, 0, 0.5);
+	border-radius: 14px;
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	box-shadow: var(--deloop-shadow-lg);
 	overflow: hidden;
-	animation: deloop-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	animation: deloop-panel-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .deloop-panel-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 14px 16px 12px;
+	padding: 13px 14px 11px;
 	border-bottom: 1px solid var(--deloop-border);
 }
 
 .deloop-panel-title {
-	font-size: 13px;
+	font-size: 12.5px;
 	font-weight: 600;
 	color: var(--deloop-text);
 	letter-spacing: -0.02em;
@@ -234,12 +301,12 @@
 	justify-content: center;
 	height: 22px;
 	padding: 0 7px;
-	border-radius: 5px;
+	border-radius: 6px;
 	border: 1px solid var(--deloop-border);
 	background: transparent;
 	color: var(--deloop-text-muted);
 	cursor: pointer;
-	font-size: 10.5px;
+	font-size: 10px;
 	font-weight: 500;
 	font-family: inherit;
 	transition: all 0.15s;
@@ -247,13 +314,13 @@
 }
 
 .deloop-panel-close:hover {
-	background: var(--deloop-accent-glow);
+	background: var(--deloop-accent-hover);
 	border-color: var(--deloop-border-hover);
 	color: var(--deloop-text-secondary);
 }
 
 .deloop-panel-body {
-	padding: 6px;
+	padding: 4px;
 	max-height: 280px;
 	overflow-y: auto;
 	scrollbar-width: thin;
@@ -277,8 +344,9 @@
 	padding: 28px 16px;
 	text-align: center;
 	color: var(--deloop-text-muted);
-	font-size: 12.5px;
-	line-height: 1.5;
+	font-size: 12px;
+	line-height: 1.6;
+	letter-spacing: -0.01em;
 }
 
 /* ─── Annotation items ─── */
@@ -286,8 +354,8 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 8px 10px;
-	border-radius: 10px;
+	padding: 7px 8px;
+	border-radius: 9px;
 	transition: background 0.12s;
 }
 
@@ -299,17 +367,17 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 30px;
-	height: 30px;
-	border-radius: 8px;
-	background: var(--deloop-accent-glow);
+	width: 28px;
+	height: 28px;
+	border-radius: 7px;
+	background: var(--deloop-bg-surface);
 	border: 1px solid var(--deloop-border);
 	flex-shrink: 0;
 }
 
 .deloop-annotation-icon svg {
-	width: 14px;
-	height: 14px;
+	width: 13px;
+	height: 13px;
 	color: var(--deloop-text-secondary);
 }
 
@@ -319,29 +387,32 @@
 }
 
 .deloop-annotation-label {
-	font-size: 13px;
+	font-size: 12.5px;
 	font-weight: 500;
 	color: var(--deloop-text);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	letter-spacing: -0.01em;
+	font-family:
+		"SF Mono",
+		"JetBrains Mono",
+		"Cascadia Code",
+		ui-monospace,
+		monospace;
 }
 
-.deloop-annotation-note {
-	font-size: 11.5px;
+.deloop-annotation-time {
+	font-size: 10px;
+	font-weight: 400;
 	color: var(--deloop-text-muted);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	margin-top: 1px;
-	border-radius: 3px;
-	padding: 0 2px;
-	transition: background 0.12s;
-}
-
-.deloop-annotation-note:hover {
-	background: var(--deloop-accent-glow);
+	margin-left: 6px;
+	font-family:
+		"SF Mono",
+		"JetBrains Mono",
+		ui-monospace,
+		monospace;
+	font-variant-numeric: tabular-nums;
 }
 
 .deloop-annotation-remove {
@@ -366,15 +437,15 @@
 }
 
 .deloop-annotation-remove:hover {
-	background: var(--deloop-accent-glow);
-	color: var(--deloop-text-secondary);
+	background: rgba(242, 92, 92, 0.1);
+	color: var(--deloop-red);
 }
 
 /* ─── Panel footer ─── */
 .deloop-panel-footer {
 	display: flex;
 	gap: 6px;
-	padding: 10px 12px;
+	padding: 10px 10px;
 	border-top: 1px solid var(--deloop-border);
 }
 
@@ -384,31 +455,33 @@
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
-	padding: 8px 16px;
-	font-size: 13px;
+	padding: 7px 14px;
+	font-size: 12.5px;
 	font-weight: 550;
 	font-family: inherit;
 	border: none;
 	background: var(--deloop-text);
 	color: var(--deloop-bg);
-	border-radius: 10px;
+	border-radius: 9px;
 	cursor: pointer;
-	transition: all 0.15s;
+	transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 	letter-spacing: -0.01em;
 }
 
 .deloop-submit-btn svg {
-	width: 14px;
-	height: 14px;
+	width: 13px;
+	height: 13px;
 	flex-shrink: 0;
 }
 
 .deloop-submit-btn:hover {
-	background: #d4d4d4;
+	opacity: 0.85;
+	transform: translateY(-0.5px);
 }
 
 .deloop-submit-btn:active {
-	transform: scale(0.98);
+	transform: scale(0.97) translateY(0);
+	opacity: 0.9;
 }
 
 .deloop-submit-btn-secondary {
@@ -420,26 +493,28 @@
 .deloop-submit-btn-secondary:hover {
 	background: var(--deloop-accent-glow);
 	border-color: var(--deloop-border-hover);
+	opacity: 1;
+	transform: translateY(-0.5px);
 }
 
 .deloop-clear-btn {
-	padding: 8px 14px;
-	font-size: 13px;
+	padding: 7px 12px;
+	font-size: 12.5px;
 	font-weight: 500;
 	font-family: inherit;
 	border: 1px solid var(--deloop-border);
 	background: transparent;
 	color: var(--deloop-text-secondary);
-	border-radius: 10px;
+	border-radius: 9px;
 	cursor: pointer;
 	transition: all 0.15s;
 	letter-spacing: -0.01em;
 }
 
 .deloop-clear-btn:hover {
-	background: var(--deloop-accent-glow);
-	border-color: var(--deloop-border-hover);
-	color: var(--deloop-text);
+	background: rgba(242, 92, 92, 0.06);
+	border-color: rgba(242, 92, 92, 0.2);
+	color: var(--deloop-red);
 }
 
 /* ─── Toast ─── */
@@ -450,13 +525,13 @@
 	transform: translateX(-50%);
 	background: var(--deloop-text);
 	color: var(--deloop-bg);
-	padding: 8px 16px;
-	border-radius: 10px;
-	font-size: 13px;
+	padding: 7px 14px;
+	border-radius: 9px;
+	font-size: 12.5px;
 	font-weight: 500;
 	z-index: 2147483647;
 	animation: deloop-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+	box-shadow: var(--deloop-shadow-md);
 	letter-spacing: -0.01em;
 }
 
@@ -469,15 +544,15 @@
 	background: var(--deloop-bg);
 	border: 1px solid var(--deloop-border);
 	color: var(--deloop-text-secondary);
-	padding: 8px 16px;
-	border-radius: 10px;
-	font-size: 12.5px;
+	padding: 7px 14px;
+	border-radius: 9px;
+	font-size: 12px;
 	font-weight: 450;
 	z-index: 2147483646;
 	pointer-events: none;
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	box-shadow: var(--deloop-shadow-md);
 	animation: deloop-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 	white-space: nowrap;
 	letter-spacing: -0.01em;
@@ -494,9 +569,13 @@
 	border-radius: 4px;
 	background: var(--deloop-accent-glow);
 	border: 1px solid var(--deloop-border);
-	font-size: 10.5px;
+	font-size: 10px;
 	font-weight: 500;
-	font-family: inherit;
+	font-family:
+		"SF Mono",
+		"JetBrains Mono",
+		ui-monospace,
+		monospace;
 	color: var(--deloop-text);
 }
 
@@ -511,21 +590,19 @@
 	gap: 1px;
 	background: var(--deloop-bg);
 	border: 1px solid var(--deloop-border);
-	border-radius: 14px;
-	padding: 4px 5px;
-	backdrop-filter: blur(20px) saturate(1.5);
-	-webkit-backdrop-filter: blur(20px) saturate(1.5);
-	box-shadow:
-		0 0 0 1px rgba(0, 0, 0, 0.3),
-		0 12px 40px -8px rgba(0, 0, 0, 0.4);
+	border-radius: 12px;
+	padding: 3px 4px;
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	box-shadow: var(--deloop-shadow-md);
 	animation: deloop-minibar-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .deloop-minibar-label {
-	font-size: 11.5px;
+	font-size: 11px;
 	font-weight: 500;
 	color: var(--deloop-text-secondary);
-	padding: 0 8px 0 6px;
+	padding: 0 7px 0 5px;
 	white-space: nowrap;
 	letter-spacing: -0.01em;
 }
@@ -534,14 +611,14 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 28px;
-	padding: 0 10px;
-	border-radius: 8px;
+	height: 26px;
+	padding: 0 9px;
+	border-radius: 7px;
 	border: none;
 	background: transparent;
 	color: var(--deloop-text-secondary);
 	cursor: pointer;
-	font-size: 11.5px;
+	font-size: 11px;
 	font-weight: 500;
 	font-family: inherit;
 	transition: all 0.12s;
@@ -549,29 +626,29 @@
 }
 
 .deloop-minibar-btn:hover {
-	background: var(--deloop-accent-glow);
+	background: var(--deloop-accent-hover);
 	color: var(--deloop-text);
 }
 
 .deloop-minibar-btn svg {
-	width: 14px;
-	height: 14px;
+	width: 13px;
+	height: 13px;
 }
 
 .deloop-minibar-active-icon {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 8px;
-	background: var(--deloop-accent-glow);
-	color: var(--deloop-accent);
+	width: 26px;
+	height: 26px;
+	border-radius: 7px;
+	background: var(--deloop-blue-muted);
+	color: var(--deloop-blue);
 }
 
 .deloop-minibar-active-icon svg {
-	width: 14px;
-	height: 14px;
+	width: 13px;
+	height: 13px;
 }
 
 /* ─── Minimize dot ─── */
@@ -580,109 +657,1048 @@
 	bottom: 24px;
 	left: 50%;
 	transform: translateX(-50%);
-	width: 36px;
-	height: 36px;
+	width: 34px;
+	height: 34px;
 	border-radius: 50%;
 	background: var(--deloop-bg);
 	border: 1px solid var(--deloop-border);
-	backdrop-filter: blur(20px) saturate(1.5);
-	-webkit-backdrop-filter: blur(20px) saturate(1.5);
-	box-shadow:
-		0 0 0 1px rgba(0, 0, 0, 0.3),
-		0 8px 24px -4px rgba(0, 0, 0, 0.4);
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	box-shadow: var(--deloop-shadow-md);
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-	animation: deloop-dot-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+	transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+	animation: deloop-dot-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .deloop-dot:hover {
-	transform: translateX(-50%) scale(1.12);
-	box-shadow:
-		0 0 0 1px rgba(0, 0, 0, 0.3),
-		0 12px 32px -4px rgba(0, 0, 0, 0.5);
+	transform: translateX(-50%) scale(1.14);
+	box-shadow: var(--deloop-shadow-lg);
+	border-color: var(--deloop-border-hover);
 }
 
 .deloop-dot svg {
-	width: 16px;
-	height: 16px;
+	width: 15px;
+	height: 15px;
 	color: var(--deloop-text-secondary);
 }
 
 .deloop-dot .deloop-badge {
 	position: absolute;
-	top: -2px;
-	right: -2px;
+	top: -3px;
+	right: -3px;
 }
 
-/* ─── Editable note in panel ─── */
-.deloop-annotation-note-edit {
+/* ─── Comment threads ─── */
+.deloop-annotation-item-wrapper {
+	border-radius: 9px;
+	transition: background 0.12s;
+}
+
+.deloop-annotation-thread-toggle {
+	font-size: 10.5px;
+	color: var(--deloop-text-muted);
+	cursor: pointer;
+	margin-top: 1px;
+	padding: 1px 3px;
+	border-radius: 3px;
+	transition: color 0.15s, background 0.15s;
+	font-family: inherit;
+}
+
+.deloop-annotation-thread-toggle:hover {
+	color: var(--deloop-blue);
+	background: var(--deloop-blue-muted);
+}
+
+.deloop-thread {
+	padding: 4px 8px 8px 46px;
+}
+
+.deloop-thread-comment {
+	padding: 6px 0;
+	border-bottom: 1px solid var(--deloop-border);
+}
+
+.deloop-thread-comment:last-of-type {
+	border-bottom: none;
+}
+
+.deloop-thread-comment-header {
 	display: flex;
 	align-items: center;
-	gap: 2px;
-	margin-top: 2px;
+	gap: 6px;
+	margin-bottom: 3px;
 }
 
-.deloop-annotation-note-input {
-	flex: 1;
-	border: 1px solid var(--deloop-border);
-	border-radius: 5px;
-	padding: 2px 6px;
+.deloop-thread-author {
 	font-size: 11px;
-	background: var(--deloop-accent-glow);
+	font-weight: 600;
 	color: var(--deloop-text);
-	outline: none;
-	font-family: inherit;
-	min-width: 0;
+	letter-spacing: -0.01em;
 }
 
-.deloop-annotation-note-input:focus {
-	border-color: var(--deloop-border-hover);
-}
-
-.deloop-annotation-note-input::placeholder {
+.deloop-thread-time {
+	font-size: 10px;
 	color: var(--deloop-text-muted);
+	font-family:
+		"SF Mono",
+		"JetBrains Mono",
+		ui-monospace,
+		monospace;
+	font-variant-numeric: tabular-nums;
 }
 
-.deloop-annotation-note-btn {
+.deloop-thread-delete {
+	margin-left: auto;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 20px;
-	height: 20px;
+	width: 16px;
+	height: 16px;
 	border-radius: 4px;
 	border: none;
 	background: transparent;
 	color: var(--deloop-text-muted);
 	cursor: pointer;
-	font-size: 10px;
+	font-size: 11px;
+	opacity: 0;
 	transition: all 0.12s;
+}
+
+.deloop-thread-comment:hover .deloop-thread-delete {
+	opacity: 1;
+}
+
+.deloop-thread-delete:hover {
+	background: rgba(242, 92, 92, 0.1);
+	color: var(--deloop-red);
+}
+
+.deloop-thread-comment-text {
+	font-size: 12px;
+	color: var(--deloop-text-secondary);
+	line-height: 1.45;
+	letter-spacing: -0.005em;
+}
+
+.deloop-thread-input-row {
+	display: flex;
+	gap: 4px;
+	margin-top: 6px;
+}
+
+.deloop-thread-author-input {
+	width: 60px;
+	border: 1px solid var(--deloop-border);
+	border-radius: 6px;
+	padding: 4px 6px;
+	font-size: 11px;
+	background: var(--deloop-bg-surface);
+	color: var(--deloop-text);
+	outline: none;
+	font-family: inherit;
+	transition: border-color 0.15s;
+}
+
+.deloop-thread-author-input:focus {
+	border-color: var(--deloop-border-active);
+}
+
+.deloop-thread-author-input::placeholder {
+	color: var(--deloop-text-muted);
+}
+
+.deloop-thread-input {
+	flex: 1;
+	border: 1px solid var(--deloop-border);
+	border-radius: 6px;
+	padding: 4px 8px;
+	font-size: 11px;
+	background: var(--deloop-bg-surface);
+	color: var(--deloop-text);
+	outline: none;
+	font-family: inherit;
+	min-width: 0;
+	transition: border-color 0.15s;
+}
+
+.deloop-thread-input:focus {
+	border-color: var(--deloop-blue);
+	box-shadow: 0 0 0 2px var(--deloop-blue-muted);
+}
+
+.deloop-thread-input::placeholder {
+	color: var(--deloop-text-muted);
+}
+
+.deloop-thread-send {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 6px;
+	border: none;
+	background: var(--deloop-blue);
+	color: #fff;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 600;
+	transition: all 0.15s;
 	flex-shrink: 0;
 }
 
-.deloop-annotation-note-btn:hover {
-	background: var(--deloop-accent-glow);
-	color: var(--deloop-text);
+.deloop-thread-send:disabled {
+	opacity: 0.25;
+	cursor: default;
+}
+
+.deloop-thread-send:not(:disabled):hover {
+	background: var(--deloop-blue-hover);
+	transform: translateY(-0.5px);
 }
 
 /* ─── Badge pulse ─── */
 @keyframes deloop-badge-pulse {
-	0% { transform: scale(1); }
-	50% { transform: scale(1.25); }
-	100% { transform: scale(1); }
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.3);
+	}
+	100% {
+		transform: scale(1);
+	}
 }
 
 .deloop-badge-pulse {
-	animation: deloop-badge-pulse 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+	animation: deloop-badge-pulse 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Side panel drawer ─── */
+.deloop-side-panel {
+	position: fixed;
+	top: 0;
+	right: 0;
+	width: 340px;
+	height: 100vh;
+	background: var(--deloop-bg);
+	border-left: 1px solid var(--deloop-border);
+	display: flex;
+	flex-direction: column;
+	z-index: 2147483646;
+	animation: deloop-side-panel-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+	box-shadow: -12px 0 48px rgba(0, 0, 0, 0.2);
+}
+
+.deloop-side-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 14px 12px;
+	border-bottom: 1px solid var(--deloop-border);
+	flex-shrink: 0;
+}
+
+.deloop-side-panel-header .deloop-panel-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+}
+
+.deloop-side-panel-header .deloop-panel-close svg {
+	width: 14px;
+	height: 14px;
+}
+
+.deloop-panel-close-active {
+	background: var(--deloop-accent-glow) !important;
+	color: var(--deloop-blue) !important;
+}
+
+.deloop-side-panel-tools {
+	padding: 10px 10px 8px;
+	border-bottom: 1px solid var(--deloop-border);
+	flex-shrink: 0;
+}
+
+.deloop-side-panel-section-label {
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--deloop-text-muted);
+	padding: 0 4px 8px;
+}
+
+.deloop-side-panel-tool-row {
+	display: flex;
+	gap: 3px;
+}
+
+.deloop-side-panel-tool-btn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	flex: 1;
+	padding: 9px 4px 7px;
+	border-radius: 9px;
+	border: 1px solid transparent;
+	background: transparent;
+	color: var(--deloop-text-secondary);
+	cursor: pointer;
+	transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.deloop-side-panel-tool-btn:hover {
+	background: var(--deloop-accent-hover);
+	border-color: var(--deloop-border);
+	color: var(--deloop-text);
+}
+
+.deloop-side-panel-tool-btn-active {
+	background: var(--deloop-blue-muted);
+	border-color: rgba(110, 142, 251, 0.2);
+	color: var(--deloop-blue);
+}
+
+.deloop-side-panel-tool-btn svg {
+	width: 17px;
+	height: 17px;
+}
+
+.deloop-side-panel-tool-label {
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+}
+
+.deloop-side-panel-section {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	padding-top: 10px;
+}
+
+.deloop-side-panel-section .deloop-side-panel-section-label {
+	padding: 0 14px 8px;
+}
+
+.deloop-side-panel-section .deloop-panel-body {
+	flex: 1;
+	overflow-y: auto;
+}
+
+.deloop-side-panel .deloop-panel-footer {
+	flex-shrink: 0;
+}
+
+/* ─── Persistent selection markers ─── */
+.deloop-selection-marker {
+	position: fixed;
+	border: 1.5px dashed var(--deloop-blue);
+	background: var(--deloop-blue-muted);
+	border-radius: 4px;
+	pointer-events: none;
+	z-index: 2147483642;
+	transition: background 0.15s, border-color 0.15s;
+}
+
+.deloop-selection-marker-clickable {
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+.deloop-selection-marker-clickable:hover {
+	background: rgba(110, 142, 251, 0.15);
+	border-color: var(--deloop-blue-hover);
+	border-style: solid;
+}
+
+.deloop-selection-note {
+	position: fixed;
+	background: var(--deloop-blue);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 7px;
+	border-radius: 4px;
+	pointer-events: none;
+	z-index: 2147483642;
+	white-space: nowrap;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		system-ui,
+		sans-serif;
+	letter-spacing: -0.01em;
+	box-shadow: 0 2px 6px rgba(110, 142, 251, 0.3);
+}
+
+/* ─── Persistent marker pins ─── */
+.deloop-persistent-pin {
+	position: fixed;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: 2px solid rgba(255, 255, 255, 0.95);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10.5px;
+	font-weight: 700;
+	color: #fff;
+	z-index: 2147483642;
+	pointer-events: none;
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		system-ui,
+		sans-serif;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.deloop-persistent-pin-clickable {
+	pointer-events: auto;
+	cursor: pointer;
+	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+}
+
+.deloop-persistent-pin-clickable:hover {
+	transform: scale(1.2);
+}
+
+.deloop-persistent-pin-note {
+	position: fixed;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	color: var(--deloop-text);
+	font-size: 11px;
+	font-weight: 500;
+	padding: 3px 8px;
+	border-radius: 6px;
+	pointer-events: none;
+	z-index: 2147483642;
+	white-space: nowrap;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	box-shadow: var(--deloop-shadow-sm);
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		system-ui,
+		sans-serif;
+	letter-spacing: -0.01em;
+}
+
+/* ─── Thread popover (inline on page) ─── */
+.deloop-thread-popover {
+	position: fixed;
+	width: 290px;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 13px;
+	z-index: 2147483645;
+	box-shadow: var(--deloop-shadow-lg);
+	animation: deloop-popover-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+	overflow: hidden;
+	backdrop-filter: blur(24px);
+	-webkit-backdrop-filter: blur(24px);
+}
+
+.deloop-thread-popover-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--deloop-border);
+}
+
+.deloop-thread-popover-body {
+	max-height: 200px;
+	overflow-y: auto;
+	padding: 4px 8px;
+	scrollbar-width: thin;
+	scrollbar-color: var(--deloop-border) transparent;
+}
+
+@keyframes deloop-popover-enter {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* ─── Settings panel ─── */
+.deloop-settings-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 0;
+	border-bottom: 1px solid var(--deloop-border);
+}
+
+.deloop-settings-row:last-child {
+	border-bottom: none;
+}
+
+.deloop-settings-label {
+	flex: 1;
+	min-width: 0;
+}
+
+.deloop-settings-title {
+	font-size: 12.5px;
+	font-weight: 500;
+	color: var(--deloop-text);
+	letter-spacing: -0.01em;
+}
+
+.deloop-settings-desc {
+	font-size: 10.5px;
+	color: var(--deloop-text-muted);
+	margin-top: 1px;
+	line-height: 1.4;
+}
+
+.deloop-toggle {
+	width: 36px;
+	height: 20px;
+	border-radius: 10px;
+	border: none;
+	background: var(--deloop-border);
+	cursor: pointer;
+	position: relative;
+	flex-shrink: 0;
+	transition: background 0.2s;
+	padding: 0;
+}
+
+.deloop-toggle-on {
+	background: var(--deloop-blue);
+}
+
+.deloop-toggle-thumb {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #fff;
+	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.deloop-toggle-on .deloop-toggle-thumb {
+	transform: translateX(16px);
+}
+
+.deloop-settings-segmented {
+	display: flex;
+	border: 1px solid var(--deloop-border);
+	border-radius: 7px;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.deloop-settings-seg-btn {
+	padding: 4px 10px;
+	font-size: 11px;
+	font-weight: 500;
+	font-family: inherit;
+	border: none;
+	background: transparent;
+	color: var(--deloop-text-secondary);
+	cursor: pointer;
+	transition: all 0.15s;
+	letter-spacing: -0.01em;
+}
+
+.deloop-settings-seg-btn:not(:last-child) {
+	border-right: 1px solid var(--deloop-border);
+}
+
+.deloop-settings-seg-btn-active {
+	background: var(--deloop-blue-muted);
+	color: var(--deloop-blue);
+}
+
+.deloop-settings-seg-btn:hover:not(.deloop-settings-seg-btn-active) {
+	background: var(--deloop-accent-glow);
+}
+
+/* ─── Side panel backdrop ─── */
+.deloop-side-panel-backdrop {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: rgba(0, 0, 0, 0.25);
+	z-index: 2147483645;
+	animation: deloop-backdrop-enter 0.3s ease;
+}
+
+/* ─── Overlay shared styles ─── */
+.deloop-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	z-index: 2147483644;
+}
+
+.deloop-overlay-crosshair {
+	cursor: crosshair;
+}
+
+.deloop-overlay-scrim {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: rgba(0, 0, 0, 0.3);
+	z-index: 2147483645;
+}
+
+.deloop-overlay-toolbar {
+	position: fixed;
+	top: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	gap: 3px;
+	align-items: center;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 14px;
+	padding: 5px;
+	z-index: 2147483646;
+	box-shadow: var(--deloop-shadow-lg);
+	animation: deloop-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-overlay-toolbar-divider {
+	width: 1px;
+	height: 18px;
+	background: var(--deloop-border);
+	margin: 0 2px;
+	flex-shrink: 0;
+}
+
+.deloop-overlay-btn {
+	padding: 6px 14px;
+	font-size: 12.5px;
+	font-weight: 500;
+	font-family: inherit;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: all 0.12s;
+	background: transparent;
+	color: var(--deloop-text-secondary);
+}
+
+.deloop-overlay-btn:hover {
+	background: var(--deloop-accent-hover);
+	color: var(--deloop-text);
+}
+
+.deloop-overlay-btn-active {
+	background: var(--deloop-accent-glow);
+	color: var(--deloop-text);
+	border-color: var(--deloop-border-hover);
+}
+
+.deloop-overlay-btn-primary {
+	background: var(--deloop-accent);
+	color: var(--deloop-bg);
+	border-color: transparent;
+}
+
+.deloop-overlay-btn-primary:hover {
+	opacity: 0.85;
+}
+
+.deloop-overlay-btn-muted {
+	color: var(--deloop-text-muted);
+}
+
+.deloop-overlay-btn-muted:hover {
+	color: var(--deloop-text-secondary);
+}
+
+.deloop-overlay-btn:disabled {
+	opacity: 0.4;
+	cursor: default;
+	pointer-events: none;
+}
+
+.deloop-overlay-btn-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 28px;
+	padding: 0;
+}
+
+.deloop-overlay-btn-icon svg {
+	width: 15px;
+	height: 15px;
+}
+
+/* ─── Color swatch (draw toolbar) ─── */
+.deloop-color-swatch {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 2px solid transparent;
+	cursor: pointer;
+	padding: 0;
+	outline: none;
+	transition: all 0.12s;
+	flex-shrink: 0;
+}
+
+.deloop-color-swatch:hover {
+	transform: scale(1.15);
+}
+
+.deloop-color-swatch-active {
+	border-color: var(--deloop-text);
+}
+
+/* ─── Note input (shared across overlays) ─── */
+.deloop-note-input {
+	position: fixed;
+	z-index: 2147483646;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 12px;
+	padding: 6px;
+	box-shadow: var(--deloop-shadow-lg);
+	display: flex;
+	gap: 4px;
+	animation: deloop-popover-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-note-input input {
+	border: 1px solid var(--deloop-border);
+	border-radius: 8px;
+	padding: 6px 10px;
+	font-size: 13px;
+	width: 200px;
+	outline: none;
+	background: var(--deloop-bg-surface);
+	color: var(--deloop-text);
+	font-family: inherit;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.deloop-note-input input:focus {
+	border-color: var(--deloop-blue);
+	box-shadow: 0 0 0 2px var(--deloop-blue-muted);
+}
+
+.deloop-note-input input::placeholder {
+	color: var(--deloop-text-muted);
+}
+
+.deloop-note-input button {
+	background: var(--deloop-accent);
+	color: var(--deloop-bg);
+	border: none;
+	border-radius: 8px;
+	padding: 6px 14px;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	font-family: inherit;
+	transition: opacity 0.12s;
+}
+
+.deloop-note-input button:hover {
+	opacity: 0.85;
+}
+
+/* ─── Capture dialog ─── */
+.deloop-capture-dialog {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 16px;
+	padding: 24px;
+	box-shadow: var(--deloop-shadow-lg);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	z-index: 2147483646;
+	min-width: 220px;
+	animation: deloop-popover-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-capture-dialog-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--deloop-text);
+	text-align: center;
+	margin-bottom: 4px;
+	letter-spacing: -0.02em;
+}
+
+.deloop-capture-dialog-btn {
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 500;
+	border-radius: 10px;
+	cursor: pointer;
+	transition: all 0.12s;
+	padding: 10px 24px;
+	border: 1px solid var(--deloop-border);
+	background: transparent;
+	color: var(--deloop-text);
+}
+
+.deloop-capture-dialog-btn:hover {
+	background: var(--deloop-accent-hover);
+	border-color: var(--deloop-border-hover);
+}
+
+.deloop-capture-dialog-btn-primary {
+	border: none;
+	background: var(--deloop-accent);
+	color: var(--deloop-bg);
+}
+
+.deloop-capture-dialog-btn-primary:hover {
+	opacity: 0.85;
+	background: var(--deloop-accent);
+}
+
+.deloop-capture-dialog-btn-cancel {
+	padding: 6px 12px;
+	border: none;
+	background: transparent;
+	color: var(--deloop-text-muted);
+	font-size: 12px;
+}
+
+.deloop-capture-dialog-btn-cancel:hover {
+	color: var(--deloop-text-secondary);
+	background: transparent;
+}
+
+/* ─── Capture note dialog ─── */
+.deloop-capture-note {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 2147483646;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 16px;
+	padding: 20px;
+	box-shadow: var(--deloop-shadow-lg);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-width: 280px;
+	animation: deloop-popover-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-capture-note-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--deloop-text);
+	letter-spacing: -0.02em;
+}
+
+.deloop-capture-note input {
+	border: 1px solid var(--deloop-border);
+	border-radius: 10px;
+	padding: 8px 12px;
+	font-size: 13px;
+	outline: none;
+	background: var(--deloop-bg-surface);
+	color: var(--deloop-text);
+	font-family: inherit;
+	transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.deloop-capture-note input:focus {
+	border-color: var(--deloop-blue);
+	box-shadow: 0 0 0 2px var(--deloop-blue-muted);
+}
+
+.deloop-capture-note input::placeholder {
+	color: var(--deloop-text-muted);
+}
+
+.deloop-capture-note-actions {
+	display: flex;
+	gap: 8px;
+}
+
+/* ─── Capture status ─── */
+.deloop-capture-status {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	color: var(--deloop-text);
+	padding: 16px 28px;
+	border-radius: 12px;
+	font-size: 14px;
+	font-weight: 500;
+	z-index: 2147483646;
+	box-shadow: var(--deloop-shadow-lg);
+	animation: deloop-capture-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes deloop-capture-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.6; }
+}
+
+/* ─── Selection region ─── */
+.deloop-region-selection {
+	position: fixed;
+	border: 1.5px solid var(--deloop-blue);
+	background: rgba(110, 142, 251, 0.06);
+	pointer-events: none;
+	z-index: 2147483645;
+	border-radius: 4px;
+}
+
+.deloop-region-dimensions {
+	position: fixed;
+	transform: translateX(-100%);
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	color: var(--deloop-text);
+	font-size: 11px;
+	border-radius: 6px;
+	padding: 2px 8px;
+	pointer-events: none;
+	z-index: 2147483645;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ─── Element highlight (select tool) ─── */
+.deloop-element-highlight {
+	position: fixed;
+	pointer-events: none;
+	z-index: 2147483645;
+	border-radius: 4px;
+	transition: all 0.08s ease-out;
+}
+
+/* ─── Marker pin (shared in overlay and toolbar) ─── */
+.deloop-marker-pin {
+	position: fixed;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: 2.5px solid rgba(255, 255, 255, 0.9);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 11px;
+	font-weight: 700;
+	color: #fff;
+	z-index: 2147483644;
+	font-family: "SF Pro Display", -apple-system, system-ui, sans-serif;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+	cursor: pointer;
+	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+}
+
+.deloop-marker-pin:hover {
+	transform: scale(1.2);
+}
+
+.deloop-marker-pin-preview {
+	pointer-events: none;
+	cursor: default;
+}
+
+/* ─── Shortcut row (help panel) ─── */
+.deloop-shortcut-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 4px 0;
+}
+
+.deloop-shortcut-desc {
+	font-size: 12px;
+	color: var(--deloop-text-secondary);
+}
+
+.deloop-shortcut-key {
+	padding: 2px 7px;
+	border-radius: 5px;
+	background: var(--deloop-accent-glow);
+	border: 1px solid var(--deloop-border);
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--deloop-text);
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	min-width: 22px;
+	text-align: center;
 }
 
 /* ─── Animations ─── */
+
+@keyframes deloop-backdrop-enter {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes deloop-side-panel-enter {
+	from {
+		opacity: 0;
+		transform: translateX(100%);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
 @keyframes deloop-panel-enter {
 	from {
 		opacity: 0;
-		transform: translateX(-50%) translateY(8px) scale(0.98);
+		transform: translateX(-50%) translateY(10px) scale(0.97);
 	}
 	to {
 		opacity: 1;
@@ -693,7 +1709,7 @@
 @keyframes deloop-minibar-enter {
 	from {
 		opacity: 0;
-		transform: translateX(-50%) translateY(6px) scale(0.96);
+		transform: translateX(-50%) translateY(8px) scale(0.95);
 	}
 	to {
 		opacity: 1;
@@ -704,10 +1720,78 @@
 @keyframes deloop-dot-enter {
 	from {
 		opacity: 0;
-		transform: translateX(-50%) scale(0.5);
+		transform: translateX(-50%) scale(0.4);
 	}
 	to {
 		opacity: 1;
 		transform: translateX(-50%) scale(1);
 	}
+}
+
+/* Preview */
+
+.deloop-preview-body {
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+}
+
+.deloop-preview-tabs {
+	display: flex;
+	gap: 2px;
+	padding: 6px 8px 0;
+	border-bottom: 1px solid var(--deloop-border);
+}
+
+.deloop-preview-tab {
+	padding: 5px 12px;
+	font-size: 11px;
+	font-weight: 500;
+	font-family: inherit;
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	color: var(--deloop-text-secondary);
+	cursor: pointer;
+	transition: all 0.12s ease;
+}
+
+.deloop-preview-tab:hover {
+	color: var(--deloop-text);
+}
+
+.deloop-preview-tab-active {
+	color: var(--deloop-text);
+	border-bottom-color: var(--deloop-blue);
+}
+
+.deloop-preview-content {
+	flex: 1;
+	margin: 0;
+	padding: 10px 12px;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--deloop-text-secondary);
+	white-space: pre-wrap;
+	word-break: break-word;
+	overflow: auto;
+	max-height: 400px;
+	-webkit-user-select: text;
+	user-select: text;
+}
+
+.deloop-side-panel .deloop-preview-content {
+	max-height: none;
+}
+
+.deloop-submit-btn-active {
+	background: var(--deloop-blue-muted) !important;
+	border-color: var(--deloop-blue) !important;
+	color: var(--deloop-blue) !important;
+}
+
+.deloop-settings-seg-btn svg {
+	width: 14px;
+	height: 14px;
 }

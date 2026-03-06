@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Annotation } from "@/session/types";
-import { getXPath } from "@/tools/select/element-data";
+import { getXPath, getCssSelector } from "@/tools/select/element-data";
+import { extractReactContext } from "@/tools/select/react-fiber";
 import { TextPin } from "./text-pin";
 
 type TextOverlayProps = {
@@ -10,7 +11,13 @@ type TextOverlayProps = {
 };
 
 export function TextOverlay({ onCapture, onDone, annotations }: TextOverlayProps): React.ReactNode {
-	const [inputPos, setInputPos] = useState<{ x: number; y: number; xpath: string } | null>(null);
+	const [inputPos, setInputPos] = useState<{
+		x: number;
+		y: number;
+		xpath: string;
+		cssSelector: string;
+		reactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
+	} | null>(null);
 	const [text, setText] = useState("");
 
 	const textAnnotations = annotations.filter((a) => a.type === "text");
@@ -25,8 +32,10 @@ export function TextOverlay({ onCapture, onDone, annotations }: TextOverlayProps
 
 			const el = document.elementFromPoint(e.clientX, e.clientY);
 			const xpath = el ? getXPath(el) : "";
+			const cssSelector = el ? getCssSelector(el) : "";
+			const reactContext = el ? extractReactContext(el) : null;
 
-			setInputPos({ x: e.clientX, y: e.clientY, xpath });
+			setInputPos({ x: e.clientX, y: e.clientY, xpath, cssSelector, reactContext });
 			setText("");
 		};
 
@@ -62,7 +71,10 @@ export function TextOverlay({ onCapture, onDone, annotations }: TextOverlayProps
 				text: text.trim(),
 				position: { x: inputPos.x, y: inputPos.y },
 				nearestElementXPath: inputPos.xpath,
+				nearestElementCssSelector: inputPos.cssSelector,
+				nearestReactContext: inputPos.reactContext,
 			},
+			comments: [],
 		};
 		onCapture(annotation);
 		setInputPos(null);

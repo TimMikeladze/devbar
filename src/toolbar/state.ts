@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { Annotation, ToolMode } from "@/session/types";
+import type { Annotation, Comment, ToolMode } from "@/session/types";
 
 export type DeloopState = {
 	annotations: Annotation[];
@@ -8,7 +8,8 @@ export type DeloopState = {
 	setMinimized: (v: boolean) => void;
 	addAnnotation: (annotation: Annotation) => void;
 	removeAnnotation: (id: string) => void;
-	updateAnnotationNote: (id: string, note: string) => void;
+	addComment: (annotationId: string, comment: Comment) => void;
+	removeComment: (annotationId: string, commentId: string) => void;
 	clearAnnotations: () => void;
 	activateTool: (mode: ToolMode) => void;
 	deactivateTool: () => void;
@@ -27,23 +28,34 @@ export function useDeloopState(): DeloopState {
 		setAnnotations((prev) => prev.filter((a) => a.id !== id));
 	}, []);
 
-	const updateAnnotationNote = useCallback((id: string, note: string): void => {
-		setAnnotations((prev) => prev.map((a) => (a.id === id ? { ...a, note } : a)));
+	const addComment = useCallback((annotationId: string, comment: Comment): void => {
+		setAnnotations((prev) =>
+			prev.map((a) =>
+				a.id === annotationId ? { ...a, comments: [...a.comments, comment] } : a,
+			),
+		);
+	}, []);
+
+	const removeComment = useCallback((annotationId: string, commentId: string): void => {
+		setAnnotations((prev) =>
+			prev.map((a) =>
+				a.id === annotationId
+					? { ...a, comments: a.comments.filter((c) => c.id !== commentId) }
+					: a,
+			),
+		);
 	}, []);
 
 	const clearAnnotations = useCallback((): void => {
 		setAnnotations([]);
 	}, []);
 
-	const activateTool = useCallback(
-		(mode: ToolMode): void => {
-			setActiveMode(mode);
-			if (mode !== null) {
-				setMinimized(true);
-			}
-		},
-		[],
-	);
+	const activateTool = useCallback((mode: ToolMode): void => {
+		setActiveMode(mode);
+		if (mode !== null) {
+			setMinimized(true);
+		}
+	}, []);
 
 	const deactivateTool = useCallback((): void => {
 		setActiveMode(null);
@@ -51,15 +63,16 @@ export function useDeloopState(): DeloopState {
 	}, []);
 
 	return {
-		annotations: annotations,
-		activeMode: activeMode,
-		minimized: minimized,
-		setMinimized: setMinimized,
-		addAnnotation: addAnnotation,
-		removeAnnotation: removeAnnotation,
-		updateAnnotationNote: updateAnnotationNote,
-		clearAnnotations: clearAnnotations,
-		activateTool: activateTool,
-		deactivateTool: deactivateTool,
+		annotations,
+		activeMode,
+		minimized,
+		setMinimized,
+		addAnnotation,
+		removeAnnotation,
+		addComment,
+		removeComment,
+		clearAnnotations,
+		activateTool,
+		deactivateTool,
 	};
 }
