@@ -133,7 +133,11 @@ export function useFilteredReports(orgId: string | undefined) {
 		const typeCounts: Record<string, number> = {};
 		const domainSet = new Set<string>();
 		for (const r of reports) {
-			try { domainSet.add(new URL(r.url).origin); } catch { domainSet.add("Unknown"); }
+			try {
+				domainSet.add(new URL(r.url).origin);
+			} catch {
+				domainSet.add("Unknown");
+			}
 			const anns = (r.payload as any)?.annotations ?? [];
 			totalAnnotations += anns.length;
 			for (const a of anns) {
@@ -143,7 +147,18 @@ export function useFilteredReports(orgId: string | undefined) {
 		return { totalAnnotations, typeCounts, totalReports: reports.length, domains: domainSet.size };
 	}, [reports]);
 
-	return { filtered, grouped, stats, search, setSearch, typeFilter, setTypeFilter, loading, error, refresh };
+	return {
+		filtered,
+		grouped,
+		stats,
+		search,
+		setSearch,
+		typeFilter,
+		setTypeFilter,
+		loading,
+		error,
+		refresh,
+	};
 }
 
 export function getTimeAgo(date: Date): string {

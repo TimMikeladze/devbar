@@ -22,7 +22,12 @@ function useReveal() {
 		const el = ref.current;
 		if (!el) return;
 		const observer = new IntersectionObserver(
-			([entry]) => { if (entry.isIntersecting) { el.classList.add("visible"); observer.disconnect(); } },
+			([entry]) => {
+				if (entry.isIntersecting) {
+					el.classList.add("visible");
+					observer.disconnect();
+				}
+			},
 			{ threshold: 0.1 },
 		);
 		observer.observe(el);
@@ -64,7 +69,9 @@ function Header() {
 
 	useEffect(() => {
 		if (!open) return;
-		const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === "Escape") setOpen(false);
+		};
 		document.addEventListener("keydown", handler);
 		return () => document.removeEventListener("keydown", handler);
 	}, [open]);
@@ -86,10 +93,24 @@ function Header() {
 				{/* Desktop nav */}
 				<nav className="hidden sm:flex items-center gap-5 text-[13px]">
 					{links.map((l) => (
-						<a key={l.href} href={l.href} {...("external" in l ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="text-muted hover:text-fg transition-colors">{l.label}</a>
+						<a
+							key={l.href}
+							href={l.href}
+							{...("external" in l ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+							className="text-muted hover:text-fg transition-colors"
+						>
+							{l.label}
+						</a>
 					))}
-					<a href="/login" className="text-fg hover:text-fg/80 transition-colors font-medium">Sign In</a>
-					<a href="/login?signup=1" className="text-bg bg-fg rounded-md px-3 py-1 font-medium hover:bg-fg/85 transition-colors">Sign Up</a>
+					<a href="/login" className="text-fg hover:text-fg/80 transition-colors font-medium">
+						Sign In
+					</a>
+					<a
+						href="/login?signup=1"
+						className="text-bg bg-fg rounded-md px-3 py-1 font-medium hover:bg-fg/85 transition-colors"
+					>
+						Sign Up
+					</a>
 				</nav>
 
 				{/* Mobile hamburger */}
@@ -99,9 +120,13 @@ function Header() {
 					className="sm:hidden flex flex-col gap-[5px] p-2 -mr-2 cursor-pointer"
 					aria-label="Toggle menu"
 				>
-					<span className={`block w-4 h-[1.5px] bg-fg transition-all ${open ? "rotate-45 translate-y-[6.5px]" : ""}`} />
+					<span
+						className={`block w-4 h-[1.5px] bg-fg transition-all ${open ? "rotate-45 translate-y-[6.5px]" : ""}`}
+					/>
 					<span className={`block w-4 h-[1.5px] bg-fg transition-all ${open ? "opacity-0" : ""}`} />
-					<span className={`block w-4 h-[1.5px] bg-fg transition-all ${open ? "-rotate-45 -translate-y-[6.5px]" : ""}`} />
+					<span
+						className={`block w-4 h-[1.5px] bg-fg transition-all ${open ? "-rotate-45 -translate-y-[6.5px]" : ""}`}
+					/>
 				</button>
 			</div>
 
@@ -109,11 +134,26 @@ function Header() {
 			{open && (
 				<nav className="mobile-menu sm:hidden border-t border-border/50 bg-bg/95 backdrop-blur-xl px-5 py-4 space-y-1">
 					{links.map((l) => (
-						<a key={l.href} href={l.href} onClick={() => setOpen(false)} {...("external" in l ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="block py-2 text-[14px] text-muted hover:text-fg transition-colors">{l.label}</a>
+						<a
+							key={l.href}
+							href={l.href}
+							onClick={() => setOpen(false)}
+							{...("external" in l ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+							className="block py-2 text-[14px] text-muted hover:text-fg transition-colors"
+						>
+							{l.label}
+						</a>
 					))}
 					<div className="border-t border-border/50 pt-3 mt-3 flex items-center gap-3">
-						<a href="/login" className="text-[14px] text-fg font-medium">Sign In</a>
-						<a href="/login?signup=1" className="text-[13px] text-bg bg-fg rounded-md px-3 py-1.5 font-medium hover:bg-fg/85 transition-colors">Sign Up</a>
+						<a href="/login" className="text-[14px] text-fg font-medium">
+							Sign In
+						</a>
+						<a
+							href="/login?signup=1"
+							className="text-[13px] text-bg bg-fg rounded-md px-3 py-1.5 font-medium hover:bg-fg/85 transition-colors"
+						>
+							Sign Up
+						</a>
 					</div>
 				</nav>
 			)}
@@ -131,10 +171,9 @@ function Hero() {
 				<span className="gradient-agent">prompt any LLM.</span>
 			</h1>
 			<p className="text-dim text-[15px] sm:text-base leading-[1.7] mb-6 max-w-xl">
-				Drop-in toolbar that turns visual feedback into AI-ready context.
-				Select elements, draw, screenshot, and export structured prompts with
-				XPaths, styles, and React component trees — feed directly to your AI agent
-				or paste into any LLM for instant fixes.
+				Drop-in toolbar that turns visual feedback into AI-ready context. Select elements, draw,
+				screenshot, and export structured prompts with XPaths, styles, and React component trees —
+				feed directly to your AI agent or paste into any LLM for instant fixes.
 			</p>
 			<CodeBlock lang="bash" code={`bun add deloop.dev`} />
 		</section>
@@ -384,21 +423,20 @@ function TheProblem() {
 		<section ref={ref} className="mb-14 sm:mb-18 reveal">
 			<h2 className="text-lg font-semibold text-fg mb-1">Close the feedback loop</h2>
 			<p className="text-[13px] text-muted leading-relaxed max-w-2xl mb-4">
-				Bug reports today are broken. A screenshot in Slack, a vague ticket, three
-				follow-ups to reproduce. By the time someone has enough context, the
-				feedback is stale and the fix takes longer than it should.
+				Bug reports today are broken. A screenshot in Slack, a vague ticket, three follow-ups to
+				reproduce. By the time someone has enough context, the feedback is stale and the fix takes
+				longer than it should.
 			</p>
 			<p className="text-[13px] text-muted leading-relaxed max-w-2xl mb-4">
-				deloop captures everything in one interaction — the exact element, its
-				selectors, computed styles, React component tree with source file
-				locations, and a screenshot of the surrounding area. No context lost,
-				no ambiguity left.
+				deloop captures everything in one interaction — the exact element, its selectors, computed
+				styles, React component tree with source file locations, and a screenshot of the surrounding
+				area. No context lost, no ambiguity left.
 			</p>
 			<p className="text-[13px] text-muted leading-relaxed max-w-2xl">
-				Use it in your local dev flow and the report goes directly to your AI agent
-				via webhook or onSubmit — no copy-paste needed. Or use it across your team
-				so designers, QA, and PMs can file structured reports that developers (or LLMs)
-				can act on immediately. Either way, spot it, annotate it, fix it.
+				Use it in your local dev flow and the report goes directly to your AI agent via webhook or
+				onSubmit — no copy-paste needed. Or use it across your team so designers, QA, and PMs can
+				file structured reports that developers (or LLMs) can act on immediately. Either way, spot
+				it, annotate it, fix it.
 			</p>
 		</section>
 	);
@@ -420,7 +458,7 @@ function UseCases() {
 		{
 			color: "bg-cyan",
 			role: "QA & Reviewers",
-			desc: "Annotate bugs with markers, drawings, and screenshots in context. Every report is structured and reproducible — no more guesswork, no more \"works on my machine.\"",
+			desc: 'Annotate bugs with markers, drawings, and screenshots in context. Every report is structured and reproducible — no more guesswork, no more "works on my machine."',
 		},
 		{
 			color: "bg-amber",
@@ -431,11 +469,13 @@ function UseCases() {
 
 	return (
 		<section ref={ref} className="mb-14 sm:mb-18 reveal">
-			<h2 className="text-lg font-semibold text-fg mb-1">Built for every role in the iteration loop</h2>
+			<h2 className="text-lg font-semibold text-fg mb-1">
+				Built for every role in the iteration loop
+			</h2>
 			<p className="text-[13px] text-muted mb-5 max-w-2xl">
 				Whether you&apos;re a solo developer feeding annotations to your AI agent or a team
-				coordinating across design, QA, and engineering — deloop captures the context
-				that closes the gap between spotting a bug and shipping the fix.
+				coordinating across design, QA, and engineering — deloop captures the context that closes
+				the gap between spotting a bug and shipping the fix.
 			</p>
 			<div className="grid sm:grid-cols-2 gap-x-12 gap-y-4">
 				{roles.map((r) => (
@@ -531,8 +571,9 @@ function Features() {
 		<section ref={ref} className="mb-14 sm:mb-18 reveal">
 			<h2 className="text-lg font-semibold text-fg mb-1">Everything captured, nothing lost</h2>
 			<p className="text-[13px] text-muted mb-5 max-w-2xl">
-				Every annotation automatically captures the surrounding context — selectors, styles, components,
-				screenshots — so the person fixing the bug has everything they need without asking.
+				Every annotation automatically captures the surrounding context — selectors, styles,
+				components, screenshots — so the person fixing the bug has everything they need without
+				asking.
 			</p>
 			<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-4">
 				{features.map((f) => (
@@ -555,7 +596,8 @@ function Pricing() {
 		<section ref={ref} id="pricing" className="mb-14 sm:mb-18 scroll-mt-20 reveal">
 			<h2 className="text-lg font-semibold text-fg mb-1">Pricing</h2>
 			<p className="text-[13px] text-muted mb-5 max-w-2xl">
-				Self-host for free with every feature included. Or use the hosted version for team dashboards and report history.
+				Self-host for free with every feature included. Or use the hosted version for team
+				dashboards and report history.
 			</p>
 			<PricingCards />
 		</section>
@@ -589,12 +631,35 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 			<button type="button" onClick={handleCopy} className="code-copy-btn" aria-label="Copy code">
 				{copied ? (
 					<>
-						<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 7.5L6 10.5L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+						<svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+							<path
+								d="M3 7.5L6 10.5L11 4"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
 						Copied
 					</>
 				) : (
 					<>
-						<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><rect x="5" y="5" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2" /><path d="M9 5V3.5A1.5 1.5 0 007.5 2H3.5A1.5 1.5 0 002 3.5V7.5A1.5 1.5 0 003.5 9H5" stroke="currentColor" strokeWidth="1.2" /></svg>
+						<svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+							<rect
+								x="5"
+								y="5"
+								width="7"
+								height="7"
+								rx="1.5"
+								stroke="currentColor"
+								strokeWidth="1.2"
+							/>
+							<path
+								d="M9 5V3.5A1.5 1.5 0 007.5 2H3.5A1.5 1.5 0 002 3.5V7.5A1.5 1.5 0 003.5 9H5"
+								stroke="currentColor"
+								strokeWidth="1.2"
+							/>
+						</svg>
 						Copy
 					</>
 				)}
@@ -742,26 +807,70 @@ function Footer() {
 		<footer className="border-t border-border pt-8 mt-4">
 			<div className="flex flex-wrap items-center justify-between gap-4 text-[13px] text-muted">
 				<div className="flex items-center gap-5">
-					<a href="https://github.com/TimMikeladze/deloop" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-fg transition-colors">
-						<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
+					<a
+						href="https://github.com/TimMikeladze/deloop"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
+					>
+						<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+							<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
+						</svg>
 						GitHub
 					</a>
-					<a href="https://www.npmjs.com/package/deloop.dev" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-fg transition-colors">
-						<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0v16h16V0H0zm13 13H8V5h2.5v5.5H13V5h-1.5V3H3v10h10v-3z" /></svg>
+					<a
+						href="https://www.npmjs.com/package/deloop.dev"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
+					>
+						<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+							<path d="M0 0v16h16V0H0zm13 13H8V5h2.5v5.5H13V5h-1.5V3H3v10h10v-3z" />
+						</svg>
 						npm
 					</a>
-					<a href="https://github.com/TimMikeladze/deloop/releases" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-fg transition-colors">
-						<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5V13a1 1 0 001 1h8a1 1 0 001-1V8.5M8 2v8M5 5l3-3 3 3" /></svg>
+					<a
+						href="https://github.com/TimMikeladze/deloop/releases"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
+					>
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 16 16"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="1.3"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="M3 8.5V13a1 1 0 001 1h8a1 1 0 001-1V8.5M8 2v8M5 5l3-3 3 3" />
+						</svg>
 						Releases
 					</a>
 				</div>
 				<div className="flex items-center gap-5">
-					<a href="https://x.com/linesofcode" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-fg transition-colors">
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+					<a
+						href="https://x.com/linesofcode"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
+					>
+						<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+						</svg>
 						X
 					</a>
-					<a href="https://bsky.app/profile/linesofcode.bsky.social" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-fg transition-colors">
-						<svg width="14" height="14" viewBox="0 0 568 501" fill="currentColor"><path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-201.21C491.866-1.611 568-28.906 568 57.947c0 17.346-9.945 145.713-15.778 166.555-20.275 72.453-94.155 90.933-159.875 79.748C507.222 323.8 536.444 388.56 473.333 453.32 353.473 576.312 301.061 422.461 287.631 383.039c-2.458-7.22-3.503-10.581-3.631-7.734-.128-2.847-1.173.514-3.631 7.734-13.43 39.422-65.842 193.273-185.702 70.281-63.111-64.76-33.89-129.52 80.986-149.071-65.72 11.185-139.6-7.295-159.875-79.748C9.945 203.659 0 75.291 0 57.946 0-28.906 76.135-1.612 123.121 33.664z" /></svg>
+					<a
+						href="https://bsky.app/profile/linesofcode.bsky.social"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
+					>
+						<svg width="14" height="14" viewBox="0 0 568 501" fill="currentColor">
+							<path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-201.21C491.866-1.611 568-28.906 568 57.947c0 17.346-9.945 145.713-15.778 166.555-20.275 72.453-94.155 90.933-159.875 79.748C507.222 323.8 536.444 388.56 473.333 453.32 353.473 576.312 301.061 422.461 287.631 383.039c-2.458-7.22-3.503-10.581-3.631-7.734-.128-2.847-1.173.514-3.631 7.734-13.43 39.422-65.842 193.273-185.702 70.281-63.111-64.76-33.89-129.52 80.986-149.071-65.72 11.185-139.6-7.295-159.875-79.748C9.945 203.659 0 75.291 0 57.946 0-28.906 76.135-1.612 123.121 33.664z" />
+						</svg>
 						Bluesky
 					</a>
 				</div>

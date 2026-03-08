@@ -12,10 +12,7 @@ export default defineConfig({
 		{
 			name: "strip-optional-env",
 			transformIndexHtml(html) {
-				return html.replace(
-					/<script[^>]*%VITE_UMAMI_[^>]*<\/script>/g,
-					"",
-				);
+				return html.replace(/<script[^>]*%VITE_UMAMI_[^>]*<\/script>/g, "");
 			},
 		},
 	],

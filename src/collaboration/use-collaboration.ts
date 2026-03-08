@@ -112,9 +112,7 @@ export function useCollaboration(
 
 					case "cursor":
 						setPeers((prev) =>
-							prev.map((p) =>
-								p.id === msg.peerId ? { ...p, cursor: msg.position } : p,
-							),
+							prev.map((p) => (p.id === msg.peerId ? { ...p, cursor: msg.position } : p)),
 						);
 						break;
 
@@ -140,9 +138,7 @@ export function useCollaboration(
 
 					case "tool:change":
 						setPeers((prev) =>
-							prev.map((p) =>
-								p.id === msg.peerId ? { ...p, tool: msg.tool } : p,
-							),
+							prev.map((p) => (p.id === msg.peerId ? { ...p, tool: msg.tool } : p)),
 						);
 						break;
 
@@ -226,10 +222,7 @@ export function useCollaboration(
 		[send],
 	);
 
-	const sendClear = useCallback(
-		() => send({ type: "annotations:clear" }),
-		[send],
-	);
+	const sendClear = useCallback(() => send({ type: "annotations:clear" }), [send]);
 
 	return {
 		connected,

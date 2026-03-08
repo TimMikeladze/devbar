@@ -4,7 +4,9 @@ import { auth } from "../lib/auth";
 
 export function LoginPage() {
 	const [searchParams] = useSearchParams();
-	const [mode, setMode] = useState<"signin" | "signup">(searchParams.get("signup") === "1" ? "signup" : "signin");
+	const [mode, setMode] = useState<"signin" | "signup">(
+		searchParams.get("signup") === "1" ? "signup" : "signin",
+	);
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [name, setName] = useState("");
@@ -31,10 +33,16 @@ export function LoginPage() {
 			try {
 				if (mode === "signin") {
 					const result = await auth.signIn.email({ email, password });
-					if (result.error) { setError(result.error.message ?? "Sign in failed"); return; }
+					if (result.error) {
+						setError(result.error.message ?? "Sign in failed");
+						return;
+					}
 				} else {
 					const result = await auth.signUp.email({ email, password, name });
-					if (result.error) { setError(result.error.message ?? "Sign up failed"); return; }
+					if (result.error) {
+						setError(result.error.message ?? "Sign up failed");
+						return;
+					}
 				}
 				navigate("/dashboard");
 			} catch (err) {
@@ -69,16 +77,38 @@ export function LoginPage() {
 						{mode === "signup" && (
 							<div>
 								<label className="text-[13px] font-medium text-dim block mb-1.5">Name</label>
-								<input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="input-field" placeholder="Your name" />
+								<input
+									type="text"
+									value={name}
+									onChange={(e) => setName(e.target.value)}
+									required
+									className="input-field"
+									placeholder="Your name"
+								/>
 							</div>
 						)}
 						<div>
 							<label className="text-[13px] font-medium text-dim block mb-1.5">Email</label>
-							<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="input-field" placeholder="you@company.com" />
+							<input
+								type="email"
+								value={email}
+								onChange={(e) => setEmail(e.target.value)}
+								required
+								className="input-field"
+								placeholder="you@company.com"
+							/>
 						</div>
 						<div>
 							<label className="text-[13px] font-medium text-dim block mb-1.5">Password</label>
-							<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="input-field" placeholder="Min. 8 characters" />
+							<input
+								type="password"
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								required
+								minLength={8}
+								className="input-field"
+								placeholder="Min. 8 characters"
+							/>
 						</div>
 
 						{error && (
@@ -93,7 +123,11 @@ export function LoginPage() {
 									<span className="w-3.5 h-3.5 border-2 border-bg/30 border-t-bg rounded-full animate-spin" />
 									{mode === "signin" ? "Signing in..." : "Creating..."}
 								</span>
-							) : mode === "signin" ? "Sign In" : "Create Account"}
+							) : mode === "signin" ? (
+								"Sign In"
+							) : (
+								"Create Account"
+							)}
 						</button>
 					</form>
 				</div>
@@ -102,12 +136,30 @@ export function LoginPage() {
 					{mode === "signin" ? (
 						<>
 							Don&apos;t have an account?{" "}
-							<button type="button" onClick={() => { setMode("signup"); setError(null); }} className="text-accent hover:underline cursor-pointer font-medium">Sign Up</button>
+							<button
+								type="button"
+								onClick={() => {
+									setMode("signup");
+									setError(null);
+								}}
+								className="text-accent hover:underline cursor-pointer font-medium"
+							>
+								Sign Up
+							</button>
 						</>
 					) : (
 						<>
 							Already have an account?{" "}
-							<button type="button" onClick={() => { setMode("signin"); setError(null); }} className="text-accent hover:underline cursor-pointer font-medium">Sign In</button>
+							<button
+								type="button"
+								onClick={() => {
+									setMode("signin");
+									setError(null);
+								}}
+								className="text-accent hover:underline cursor-pointer font-medium"
+							>
+								Sign In
+							</button>
 						</>
 					)}
 				</p>

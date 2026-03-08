@@ -14,12 +14,36 @@ import { ClipboardOnlyPage } from "./pages/clipboard-only";
 
 const routes: Record<string, { label: string; group: string; component: () => React.ReactNode }> = {
 	"/": { label: "Default (no server, no auth)", group: "Auth Variations", component: DefaultPage },
-	"/server-no-auth": { label: "Server (no auth)", group: "Auth Variations", component: ServerNoAuthPage },
-	"/server-injected-user": { label: "Server + Injected User", group: "Auth Variations", component: ServerInjectedUserPage },
-	"/server-auth-proxy": { label: "Server + Auth Proxy", group: "Auth Variations", component: ServerAuthProxyPage },
-	"/server-user-and-auth-proxy": { label: "Server + User + Auth Proxy", group: "Auth Variations", component: ServerUserAndAuthProxyPage },
-	"/clipboard-only": { label: "Clipboard Only", group: "Output Modes", component: ClipboardOnlyPage },
-	"/custom-tools": { label: "Custom Tools (select + marker)", group: "Configuration", component: CustomToolsPage },
+	"/server-no-auth": {
+		label: "Server (no auth)",
+		group: "Auth Variations",
+		component: ServerNoAuthPage,
+	},
+	"/server-injected-user": {
+		label: "Server + Injected User",
+		group: "Auth Variations",
+		component: ServerInjectedUserPage,
+	},
+	"/server-auth-proxy": {
+		label: "Server + Auth Proxy",
+		group: "Auth Variations",
+		component: ServerAuthProxyPage,
+	},
+	"/server-user-and-auth-proxy": {
+		label: "Server + User + Auth Proxy",
+		group: "Auth Variations",
+		component: ServerUserAndAuthProxyPage,
+	},
+	"/clipboard-only": {
+		label: "Clipboard Only",
+		group: "Output Modes",
+		component: ClipboardOnlyPage,
+	},
+	"/custom-tools": {
+		label: "Custom Tools (select + marker)",
+		group: "Configuration",
+		component: CustomToolsPage,
+	},
 	"/light-theme": { label: "Light Theme", group: "Themes", component: LightThemePage },
 	"/dark-theme": { label: "Dark Theme", group: "Themes", component: DarkThemePage },
 	"/auto-theme": { label: "Auto Theme", group: "Themes", component: AutoThemePage },

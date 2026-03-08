@@ -120,7 +120,9 @@ export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
 		// Fly.io instance affinity — route to the deterministic owner before auth/upgrade
 		async (c, next) => {
 			const flyMachineId = process.env.FLY_MACHINE_ID;
-			const flyInstances = process.env.DELOOP_FLY_INSTANCES?.split(",").map((s) => s.trim()).filter(Boolean);
+			const flyInstances = process.env.DELOOP_FLY_INSTANCES?.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean);
 
 			if (flyMachineId && flyInstances && flyInstances.length > 1) {
 				const rk = c.req.param("roomKey");
@@ -183,8 +185,7 @@ export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
 			const authorName = c.req.query("author");
 			if (authorName) {
 				const allowAnonymous = process.env.DELOOP_ALLOW_ANONYMOUS !== "false";
-				if (!allowAnonymous)
-					return c.json({ error: "Anonymous connections disabled" }, 401);
+				if (!allowAnonymous) return c.json({ error: "Anonymous connections disabled" }, 401);
 				pendingUsers.set(c.req.raw, {
 					id: null,
 					name: authorName,
@@ -277,10 +278,7 @@ export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
 
 					switch (msg.type) {
 						case "cursor":
-							if (
-								typeof msg.position?.x !== "number" ||
-								typeof msg.position?.y !== "number"
-							)
+							if (typeof msg.position?.x !== "number" || typeof msg.position?.y !== "number")
 								return;
 							conn.peer.cursor = msg.position;
 							broadcast(
@@ -321,11 +319,7 @@ export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
 							break;
 
 						case "comment:add":
-							if (
-								typeof msg.annotationId !== "string" ||
-								!msg.comment?.id ||
-								!msg.comment?.text
-							)
+							if (typeof msg.annotationId !== "string" || !msg.comment?.id || !msg.comment?.text)
 								return;
 							broadcast(
 								conn.roomKey,
@@ -340,11 +334,7 @@ export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
 							break;
 
 						case "comment:remove":
-							if (
-								typeof msg.annotationId !== "string" ||
-								typeof msg.commentId !== "string"
-							)
-								return;
+							if (typeof msg.annotationId !== "string" || typeof msg.commentId !== "string") return;
 							broadcast(
 								conn.roomKey,
 								{
@@ -371,11 +361,7 @@ export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
 							break;
 
 						case "viewport":
-							if (
-								typeof msg.scrollX !== "number" ||
-								typeof msg.scrollY !== "number"
-							)
-								return;
+							if (typeof msg.scrollX !== "number" || typeof msg.scrollY !== "number") return;
 							conn.peer.viewport = {
 								scrollX: msg.scrollX,
 								scrollY: msg.scrollY,

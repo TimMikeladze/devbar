@@ -40,24 +40,21 @@ export function SelectOverlay({
 	onFocusAnnotationRef.current = onFocusAnnotation;
 
 	// Find if an element already has an annotation by matching its bounding rect
-	const findExistingAnnotation = useCallback(
-		(el: Element): Annotation | null => {
-			const rect = el.getBoundingClientRect();
-			return (
-				annotationsRef.current.find((a) => {
-					if (a.type !== "element") return false;
-					const d = a.data as ElementData;
-					return (
-						Math.abs(d.boundingRect.x - rect.x) < 2 &&
-						Math.abs(d.boundingRect.y - rect.y) < 2 &&
-						Math.abs(d.boundingRect.width - rect.width) < 2 &&
-						Math.abs(d.boundingRect.height - rect.height) < 2
-					);
-				}) ?? null
-			);
-		},
-		[],
-	);
+	const findExistingAnnotation = useCallback((el: Element): Annotation | null => {
+		const rect = el.getBoundingClientRect();
+		return (
+			annotationsRef.current.find((a) => {
+				if (a.type !== "element") return false;
+				const d = a.data as ElementData;
+				return (
+					Math.abs(d.boundingRect.x - rect.x) < 2 &&
+					Math.abs(d.boundingRect.y - rect.y) < 2 &&
+					Math.abs(d.boundingRect.width - rect.width) < 2 &&
+					Math.abs(d.boundingRect.height - rect.height) < 2
+				);
+			}) ?? null
+		);
+	}, []);
 
 	useEffect(() => {
 		const onMouseMove = (e: MouseEvent) => {

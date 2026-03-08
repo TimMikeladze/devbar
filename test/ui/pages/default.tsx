@@ -8,9 +8,7 @@ export function DefaultPage() {
 				title="Default (no server, no auth)"
 				description="Local-only mode. Clipboard and file export only. No server submission, no sign-in button."
 			/>
-			<Deloop
-				onSubmit={(payload) => console.log("Deloop payload:", payload)}
-			/>
+			<Deloop onSubmit={(payload) => console.log("Deloop payload:", payload)} />
 		</main>
 	);
 }

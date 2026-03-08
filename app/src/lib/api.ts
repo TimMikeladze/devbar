@@ -4,10 +4,7 @@ export function setActiveOrgId(orgId: string | null) {
 	_activeOrgId = orgId;
 }
 
-export async function api<T = unknown>(
-	path: string,
-	opts?: RequestInit,
-): Promise<T> {
+export async function api<T = unknown>(path: string, opts?: RequestInit): Promise<T> {
 	const headers: Record<string, string> = {};
 	if (_activeOrgId) {
 		headers["X-Deloop-Org"] = _activeOrgId;

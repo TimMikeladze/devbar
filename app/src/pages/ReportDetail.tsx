@@ -42,12 +42,17 @@ export function ReportDetailPage() {
 			if (!commentText.trim() || !id) return;
 			setSubmitting(true);
 			try {
-				await api(`/reports/${id}/comments`, { method: "POST", body: JSON.stringify({ text: commentText.trim() }) });
+				await api(`/reports/${id}/comments`, {
+					method: "POST",
+					body: JSON.stringify({ text: commentText.trim() }),
+				});
 				setCommentText("");
 				refresh();
 			} catch (err) {
 				showToast(err instanceof Error ? err.message : "Failed to add comment");
-			} finally { setSubmitting(false); }
+			} finally {
+				setSubmitting(false);
+			}
 		},
 		[commentText, id, refresh, showToast],
 	);
@@ -55,7 +60,12 @@ export function ReportDetailPage() {
 	const deleteReport = useCallback(async () => {
 		if (!id) return;
 		setDeleting(true);
-		try { await api(`/reports/${id}`, { method: "DELETE" }); navigate("/dashboard"); } finally { setDeleting(false); }
+		try {
+			await api(`/reports/${id}`, { method: "DELETE" });
+			navigate("/dashboard");
+		} finally {
+			setDeleting(false);
+		}
 	}, [id, navigate]);
 
 	const copyPrompt = useCallback(() => {
@@ -65,18 +75,23 @@ export function ReportDetailPage() {
 	}, [report, showToast]);
 
 	const copyReportUrl = useCallback(() => {
-		navigator.clipboard.writeText(window.location.href).then(() => showToast("Link copied to clipboard"));
+		navigator.clipboard
+			.writeText(window.location.href)
+			.then(() => showToast("Link copied to clipboard"));
 	}, [showToast]);
 
-	const deleteComment = useCallback(async (commentId: string) => {
-		try {
-			await api(`/comments/${commentId}`, { method: "DELETE" });
-			setConfirmDeleteComment(null);
-			refresh();
-		} catch (err) {
-			showToast(err instanceof Error ? err.message : "Failed to delete comment");
-		}
-	}, [refresh, showToast]);
+	const deleteComment = useCallback(
+		async (commentId: string) => {
+			try {
+				await api(`/comments/${commentId}`, { method: "DELETE" });
+				setConfirmDeleteComment(null);
+				refresh();
+			} catch (err) {
+				showToast(err instanceof Error ? err.message : "Failed to delete comment");
+			}
+		},
+		[refresh, showToast],
+	);
 
 	// Document title
 	useEffect(() => {
@@ -128,12 +143,19 @@ export function ReportDetailPage() {
 					<div className="w-12 h-12 rounded-full bg-rose/10 flex items-center justify-center mx-auto mb-4">
 						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-rose">
 							<circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" />
-							<path d="M10 6.5v4M10 13.5v.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+							<path
+								d="M10 6.5v4M10 13.5v.01"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+							/>
 						</svg>
 					</div>
 					<p className="text-[15px] font-medium text-fg mb-1">Failed to load report</p>
 					<p className="text-[14px] text-muted mb-4">{error}</p>
-					<button onClick={refresh} className="btn-secondary">Try again</button>
+					<button onClick={refresh} className="btn-secondary">
+						Try again
+					</button>
 				</div>
 			</div>
 		);
@@ -145,7 +167,12 @@ export function ReportDetailPage() {
 	const annotations = payload?.annotations ?? [];
 
 	let path: string;
-	try { const u = new URL(report.url); path = u.pathname + u.search; } catch { path = report.url; }
+	try {
+		const u = new URL(report.url);
+		path = u.pathname + u.search;
+	} catch {
+		path = report.url;
+	}
 
 	const createdDate = new Date(report.createdAt);
 
@@ -153,16 +180,29 @@ export function ReportDetailPage() {
 		<div className="h-full flex flex-col">
 			{/* Lightbox */}
 			{lightboxSrc && (
-				<div className="lightbox-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6 sm:p-10" onClick={() => setLightboxSrc(null)}>
+				<div
+					className="lightbox-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6 sm:p-10"
+					onClick={() => setLightboxSrc(null)}
+				>
 					<button
 						onClick={() => setLightboxSrc(null)}
 						className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
 					>
 						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-							<path d="M4 4l6 6M10 4l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+							<path
+								d="M4 4l6 6M10 4l-6 6"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+							/>
 						</svg>
 					</button>
-					<img src={lightboxSrc} alt="" className="lightbox-image max-w-full max-h-full rounded-lg shadow-2xl cursor-default" onClick={(e) => e.stopPropagation()} />
+					<img
+						src={lightboxSrc}
+						alt=""
+						className="lightbox-image max-w-full max-h-full rounded-lg shadow-2xl cursor-default"
+						onClick={(e) => e.stopPropagation()}
+					/>
 				</div>
 			)}
 
@@ -172,9 +212,18 @@ export function ReportDetailPage() {
 			{/* Header */}
 			<div className="px-6 sm:px-10 py-5 border-b border-border shrink-0 bg-bg-card fade-up">
 				<div className="flex items-center gap-2 text-[14px] mb-2">
-					<Link to="/dashboard" className="text-muted hover:text-fg transition-colors flex items-center gap-1.5">
+					<Link
+						to="/dashboard"
+						className="text-muted hover:text-fg transition-colors flex items-center gap-1.5"
+					>
 						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-							<path d="M8.5 3.5L5 7l3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+							<path
+								d="M8.5 3.5L5 7l3.5 3.5"
+								stroke="currentColor"
+								strokeWidth="1.3"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
 						</svg>
 						Reports
 					</Link>
@@ -184,9 +233,14 @@ export function ReportDetailPage() {
 				<div className="flex items-center gap-4 flex-wrap">
 					<span className="text-[13px] text-muted font-mono truncate max-w-xs">{path}</span>
 					{payload?.label && (
-						<span className="text-[12px] px-2 py-0.5 rounded-full bg-accent-dim text-accent font-medium">{payload.label}</span>
+						<span className="text-[12px] px-2 py-0.5 rounded-full bg-accent-dim text-accent font-medium">
+							{payload.label}
+						</span>
 					)}
-					<span className="text-[13px] text-muted tabular-nums" title={createdDate.toLocaleString()}>
+					<span
+						className="text-[13px] text-muted tabular-nums"
+						title={createdDate.toLocaleString()}
+					>
 						{getTimeAgo(createdDate)}
 					</span>
 					{report.authorName && (
@@ -202,27 +256,54 @@ export function ReportDetailPage() {
 						</span>
 					)}
 					<div className="ml-auto flex items-center gap-2">
-						<a href={report.url} target="_blank" rel="noopener noreferrer" className="btn-secondary text-[13px]" title="Open original page">
+						<a
+							href={report.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="btn-secondary text-[13px]"
+							title="Open original page"
+						>
 							<ExternalIcon /> <span className="hidden sm:inline">Open URL</span>
 						</a>
-						<button onClick={copyReportUrl} className="btn-secondary text-[13px]" title="Copy link to this report">
+						<button
+							onClick={copyReportUrl}
+							className="btn-secondary text-[13px]"
+							title="Copy link to this report"
+						>
 							<LinkIcon /> <span className="hidden sm:inline">Share</span>
 						</button>
 						{payload?.prompt && (
-							<button onClick={copyPrompt} className="btn-secondary text-[13px]" title="Copy prompt">
+							<button
+								onClick={copyPrompt}
+								className="btn-secondary text-[13px]"
+								title="Copy prompt"
+							>
 								<CopyIcon /> <span className="hidden sm:inline">Copy prompt</span>
 							</button>
 						)}
 						{confirmDeleteReport ? (
 							<span className="inline-flex items-center gap-1.5 text-[13px]">
 								<span className="text-rose font-medium">Delete?</span>
-								<button onClick={deleteReport} disabled={deleting} className="btn-secondary text-[13px] text-rose border-rose/30 bg-rose/5 hover:bg-rose/10">
+								<button
+									onClick={deleteReport}
+									disabled={deleting}
+									className="btn-secondary text-[13px] text-rose border-rose/30 bg-rose/5 hover:bg-rose/10"
+								>
 									{deleting ? "..." : "Yes"}
 								</button>
-								<button onClick={() => setConfirmDeleteReport(false)} className="btn-secondary text-[13px]">No</button>
+								<button
+									onClick={() => setConfirmDeleteReport(false)}
+									className="btn-secondary text-[13px]"
+								>
+									No
+								</button>
 							</span>
 						) : (
-							<button onClick={() => setConfirmDeleteReport(true)} className="btn-secondary text-[13px] text-rose border-border hover:border-rose/30 hover:bg-rose/5" title="Delete report">
+							<button
+								onClick={() => setConfirmDeleteReport(true)}
+								className="btn-secondary text-[13px] text-rose border-border hover:border-rose/30 hover:bg-rose/5"
+								title="Delete report"
+							>
 								<TrashIcon /> <span className="hidden sm:inline">Delete</span>
 							</button>
 						)}
@@ -245,7 +326,12 @@ export function ReportDetailPage() {
 						</div>
 					) : (
 						annotations.map((ann: any, i: number) => (
-							<AnnotationCard key={ann.id ?? i} annotation={ann} index={i} onImageClick={setLightboxSrc} />
+							<AnnotationCard
+								key={ann.id ?? i}
+								annotation={ann}
+								index={i}
+								onImageClick={setLightboxSrc}
+							/>
 						))
 					)}
 				</div>
@@ -254,16 +340,26 @@ export function ReportDetailPage() {
 				<div className="lg:w-[380px] shrink-0 overflow-y-auto flex flex-col border-t lg:border-t-0 lg:border-l border-border bg-bg-card fade-up fade-up-2">
 					{/* Metadata */}
 					<div className="p-6 border-b border-border">
-						<h3 className="text-[12px] font-semibold text-muted uppercase tracking-wider mb-4">Page Info</h3>
+						<h3 className="text-[12px] font-semibold text-muted uppercase tracking-wider mb-4">
+							Page Info
+						</h3>
 						<div className="space-y-3">
 							<MetaRow label="URL" value={report.url} mono />
 							<MetaRow label="Title" value={report.title} />
-							{payload?.viewport && <MetaRow label="Viewport" value={`${payload.viewport.width} x ${payload.viewport.height}`} mono />}
+							{payload?.viewport && (
+								<MetaRow
+									label="Viewport"
+									value={`${payload.viewport.width} x ${payload.viewport.height}`}
+									mono
+								/>
+							)}
 							{payload?.userAgent && <MetaRow label="User Agent" value={payload.userAgent} mono />}
 							{payload?.route && (
 								<>
 									<MetaRow label="Pathname" value={payload.route.pathname} mono />
-									{payload.route.search && <MetaRow label="Search" value={payload.route.search} mono />}
+									{payload.route.search && (
+										<MetaRow label="Search" value={payload.route.search} mono />
+									)}
 								</>
 							)}
 							{payload?.label && <MetaRow label="Label" value={payload.label} />}
@@ -280,14 +376,29 @@ export function ReportDetailPage() {
 							{report.comments.map((c) => (
 								<div key={c.id} className="group">
 									<div className="flex items-center gap-2 mb-1">
-										<span className="text-[14px] font-medium text-fg">{c.authorName ?? "Anonymous"}</span>
-										<span className="text-[12px] text-muted tabular-nums" title={new Date(c.createdAt).toLocaleString()}>
+										<span className="text-[14px] font-medium text-fg">
+											{c.authorName ?? "Anonymous"}
+										</span>
+										<span
+											className="text-[12px] text-muted tabular-nums"
+											title={new Date(c.createdAt).toLocaleString()}
+										>
 											{getTimeAgo(new Date(c.createdAt))}
 										</span>
 										{confirmDeleteComment === c.id ? (
 											<span className="ml-auto flex items-center gap-1.5 text-[12px]">
-												<button onClick={() => deleteComment(c.id)} className="text-rose font-medium hover:underline cursor-pointer">Delete</button>
-												<button onClick={() => setConfirmDeleteComment(null)} className="text-muted hover:text-fg cursor-pointer">Cancel</button>
+												<button
+													onClick={() => deleteComment(c.id)}
+													className="text-rose font-medium hover:underline cursor-pointer"
+												>
+													Delete
+												</button>
+												<button
+													onClick={() => setConfirmDeleteComment(null)}
+													className="text-muted hover:text-fg cursor-pointer"
+												>
+													Cancel
+												</button>
 											</span>
 										) : (
 											<button
@@ -296,7 +407,12 @@ export function ReportDetailPage() {
 												title="Delete comment"
 											>
 												<svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-													<path d="M4 4l6 6M10 4l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+													<path
+														d="M4 4l6 6M10 4l-6 6"
+														stroke="currentColor"
+														strokeWidth="1.3"
+														strokeLinecap="round"
+													/>
 												</svg>
 											</button>
 										)}
@@ -316,7 +432,11 @@ export function ReportDetailPage() {
 								placeholder="Add a comment..."
 								className="input-field flex-1"
 							/>
-							<button type="submit" disabled={submitting || !commentText.trim()} className="btn-primary !px-4 shrink-0">
+							<button
+								type="submit"
+								disabled={submitting || !commentText.trim()}
+								className="btn-primary !px-4 shrink-0"
+							>
 								Send
 							</button>
 						</form>
@@ -327,7 +447,15 @@ export function ReportDetailPage() {
 	);
 }
 
-function AnnotationCard({ annotation, index, onImageClick }: { annotation: any; index: number; onImageClick: (src: string) => void }) {
+function AnnotationCard({
+	annotation,
+	index,
+	onImageClick,
+}: {
+	annotation: any;
+	index: number;
+	onImageClick: (src: string) => void;
+}) {
 	const { type, data, comments: annComments } = annotation;
 	const [expanded, setExpanded] = useState(true);
 	const colors = TYPE_COLORS[type] ?? { dot: "bg-muted", text: "text-muted" };
@@ -344,10 +472,24 @@ function AnnotationCard({ annotation, index, onImageClick }: { annotation: any; 
 				<span className={`text-[13px] font-semibold ${colors.text}`}>{label}</span>
 				<span className="text-[13px] text-muted font-mono">#{index + 1}</span>
 				{annComments?.length > 0 && (
-					<span className="text-[13px] text-muted italic truncate ml-1 flex-1 text-left">"{annComments[0].text}"</span>
+					<span className="text-[13px] text-muted italic truncate ml-1 flex-1 text-left">
+						"{annComments[0].text}"
+					</span>
 				)}
-				<svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={`text-muted transition-transform shrink-0 ${expanded ? "rotate-180" : ""}`}>
-					<path d="M4 5.5L7 8.5L10 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+				<svg
+					width="14"
+					height="14"
+					viewBox="0 0 14 14"
+					fill="none"
+					className={`text-muted transition-transform shrink-0 ${expanded ? "rotate-180" : ""}`}
+				>
+					<path
+						d="M4 5.5L7 8.5L10 5.5"
+						stroke="currentColor"
+						strokeWidth="1.3"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
 				</svg>
 			</button>
 
@@ -356,13 +498,23 @@ function AnnotationCard({ annotation, index, onImageClick }: { annotation: any; 
 					{/* Visual */}
 					{(type === "screenshot" || type === "drawing") && data?.imageDataUri && (
 						<div className="bg-bg p-3 border-t border-border">
-							<img src={data.imageDataUri} alt={type} className="max-w-full rounded-lg img-zoom border border-border" onClick={() => onImageClick(data.imageDataUri)} />
+							<img
+								src={data.imageDataUri}
+								alt={type}
+								className="max-w-full rounded-lg img-zoom border border-border"
+								onClick={() => onImageClick(data.imageDataUri)}
+							/>
 						</div>
 					)}
 					{type === "drawing" && data?.screenshotDataUri && (
 						<div className="bg-bg p-3 border-t border-border">
 							<p className="text-[12px] text-muted mb-2 font-medium">Context screenshot</p>
-							<img src={data.screenshotDataUri} alt="context" className="max-w-full rounded-lg opacity-70 img-zoom border border-border" onClick={() => onImageClick(data.screenshotDataUri)} />
+							<img
+								src={data.screenshotDataUri}
+								alt="context"
+								className="max-w-full rounded-lg opacity-70 img-zoom border border-border"
+								onClick={() => onImageClick(data.screenshotDataUri)}
+							/>
 						</div>
 					)}
 
@@ -373,7 +525,11 @@ function AnnotationCard({ annotation, index, onImageClick }: { annotation: any; 
 						{type === "text" && data && <TextData data={data} />}
 						{type === "screenshot" && data && <ScreenshotData data={data} />}
 						{type === "drawing" && data && (
-							<MetaRow label="Dimensions" value={`${data.dimensions?.width ?? "?"}x${data.dimensions?.height ?? "?"}`} mono />
+							<MetaRow
+								label="Dimensions"
+								value={`${data.dimensions?.width ?? "?"}x${data.dimensions?.height ?? "?"}`}
+								mono
+							/>
 						)}
 					</div>
 
@@ -382,7 +538,9 @@ function AnnotationCard({ annotation, index, onImageClick }: { annotation: any; 
 						<div className="px-5 py-3 border-t border-border bg-bg">
 							{annComments.map((c: any, ci: number) => (
 								<div key={ci} className="flex items-start gap-2 py-1">
-									<span className="text-[12px] font-semibold text-dim shrink-0 mt-px">{c.author ?? "Note"}:</span>
+									<span className="text-[12px] font-semibold text-dim shrink-0 mt-px">
+										{c.author ?? "Note"}:
+									</span>
 									<span className="text-[14px] text-dim leading-relaxed">{c.text}</span>
 								</div>
 							))}
@@ -400,23 +558,49 @@ function ElementData({ data }: { data: any }) {
 
 	return (
 		<>
-			{data.tagName && <MetaRow label="Element" value={`<${data.tagName}${data.id ? ` id="${data.id}"` : ""}>`} mono />}
+			{data.tagName && (
+				<MetaRow
+					label="Element"
+					value={`<${data.tagName}${data.id ? ` id="${data.id}"` : ""}>`}
+					mono
+				/>
+			)}
 			{data.xpath && <MetaRow label="XPath" value={data.xpath} mono copyable />}
 			{data.cssSelector && <MetaRow label="CSS Selector" value={data.cssSelector} mono copyable />}
 			{data.classes?.length > 0 && <MetaRow label="Classes" value={data.classes.join(" ")} mono />}
-			{data.innerText && <MetaRow label="Text" value={data.innerText.length > 120 ? data.innerText.slice(0, 120) + "..." : data.innerText} />}
-			{data.boundingRect && <MetaRow label="Rect" value={`${data.boundingRect.width}x${data.boundingRect.height} at (${Math.round(data.boundingRect.x)}, ${Math.round(data.boundingRect.y)})`} mono />}
+			{data.innerText && (
+				<MetaRow
+					label="Text"
+					value={
+						data.innerText.length > 120 ? data.innerText.slice(0, 120) + "..." : data.innerText
+					}
+				/>
+			)}
+			{data.boundingRect && (
+				<MetaRow
+					label="Rect"
+					value={`${data.boundingRect.width}x${data.boundingRect.height} at (${Math.round(data.boundingRect.x)}, ${Math.round(data.boundingRect.y)})`}
+					mono
+				/>
+			)}
 
 			{data.computedStyles && (
 				<div>
-					<button onClick={() => setShowStyles(!showStyles)} className="flex items-center gap-1.5 text-[13px] text-muted hover:text-fg transition-colors cursor-pointer py-1">
+					<button
+						onClick={() => setShowStyles(!showStyles)}
+						className="flex items-center gap-1.5 text-[13px] text-muted hover:text-fg transition-colors cursor-pointer py-1"
+					>
 						<TriangleIcon open={showStyles} />
 						Computed Styles ({Object.keys(data.computedStyles).length})
 					</button>
 					{showStyles && (
 						<div className="expand-content bg-bg-code rounded-lg p-3 font-mono text-[12px] text-dim leading-[1.9] max-h-48 overflow-y-auto mt-1 border border-border">
 							{Object.entries(data.computedStyles).map(([k, v]) => (
-								<div key={k}><span className="text-accent">{k}</span><span className="text-muted">: </span><span>{String(v)}</span></div>
+								<div key={k}>
+									<span className="text-accent">{k}</span>
+									<span className="text-muted">: </span>
+									<span>{String(v)}</span>
+								</div>
 							))}
 						</div>
 					)}
@@ -430,10 +614,26 @@ function ElementData({ data }: { data: any }) {
 						<p className="text-emerald mb-1">{data.reactContext.componentPath}</p>
 						{data.reactContext.components?.map((comp: any, ci: number) => (
 							<div key={ci} className="ml-3 border-l-2 border-border pl-3 mt-1">
-								<span className="text-accent">{"<"}{comp.name}{">"}</span>
-								{comp.source && <span className="text-muted ml-2 text-[11px]">{comp.source.fileName}:{comp.source.lineNumber}</span>}
+								<span className="text-accent">
+									{"<"}
+									{comp.name}
+									{">"}
+								</span>
+								{comp.source && (
+									<span className="text-muted ml-2 text-[11px]">
+										{comp.source.fileName}:{comp.source.lineNumber}
+									</span>
+								)}
 								{comp.props && (
-									<div className="text-muted ml-2">{Object.entries(comp.props).slice(0, 5).map(([k, v]) => <span key={k} className="mr-2">{k}={JSON.stringify(v)}</span>)}</div>
+									<div className="text-muted ml-2">
+										{Object.entries(comp.props)
+											.slice(0, 5)
+											.map(([k, v]) => (
+												<span key={k} className="mr-2">
+													{k}={JSON.stringify(v)}
+												</span>
+											))}
+									</div>
 								)}
 							</div>
 						))}
@@ -443,12 +643,17 @@ function ElementData({ data }: { data: any }) {
 
 			{data.outerHTML && (
 				<div>
-					<button onClick={() => setShowHTML(!showHTML)} className="flex items-center gap-1.5 text-[13px] text-muted hover:text-fg transition-colors cursor-pointer py-1">
+					<button
+						onClick={() => setShowHTML(!showHTML)}
+						className="flex items-center gap-1.5 text-[13px] text-muted hover:text-fg transition-colors cursor-pointer py-1"
+					>
 						<TriangleIcon open={showHTML} />
 						HTML
 					</button>
 					{showHTML && (
-						<div className="expand-content bg-bg-code rounded-lg p-3 font-mono text-[12px] text-dim leading-[1.7] max-h-40 overflow-y-auto mt-1 break-all border border-border">{data.outerHTML}</div>
+						<div className="expand-content bg-bg-code rounded-lg p-3 font-mono text-[12px] text-dim leading-[1.7] max-h-40 overflow-y-auto mt-1 break-all border border-border">
+							{data.outerHTML}
+						</div>
 					)}
 				</div>
 			)}
@@ -460,13 +665,30 @@ function MarkerData({ data }: { data: any }) {
 	return (
 		<>
 			<div className="flex items-center gap-2.5">
-				<span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white" style={{ backgroundColor: data.color ?? "#e11d48" }}>{data.number}</span>
+				<span
+					className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white"
+					style={{ backgroundColor: data.color ?? "#e11d48" }}
+				>
+					{data.number}
+				</span>
 				<span className="text-[14px] text-fg font-medium">Marker #{data.number}</span>
 			</div>
-			{data.position && <MetaRow label="Position" value={`(${Math.round(data.position.x)}, ${Math.round(data.position.y)})`} mono />}
-			{data.nearestElementXPath && <MetaRow label="Nearest XPath" value={data.nearestElementXPath} mono copyable />}
-			{data.nearestElementCssSelector && <MetaRow label="Nearest Selector" value={data.nearestElementCssSelector} mono copyable />}
-			{data.nearestReactContext && <MetaRow label="React Path" value={data.nearestReactContext.componentPath} mono />}
+			{data.position && (
+				<MetaRow
+					label="Position"
+					value={`(${Math.round(data.position.x)}, ${Math.round(data.position.y)})`}
+					mono
+				/>
+			)}
+			{data.nearestElementXPath && (
+				<MetaRow label="Nearest XPath" value={data.nearestElementXPath} mono copyable />
+			)}
+			{data.nearestElementCssSelector && (
+				<MetaRow label="Nearest Selector" value={data.nearestElementCssSelector} mono copyable />
+			)}
+			{data.nearestReactContext && (
+				<MetaRow label="React Path" value={data.nearestReactContext.componentPath} mono />
+			)}
 		</>
 	);
 }
@@ -475,10 +697,22 @@ function TextData({ data }: { data: any }) {
 	return (
 		<>
 			<MetaRow label="Text" value={data.text} />
-			{data.position && <MetaRow label="Position" value={`(${Math.round(data.position.x)}, ${Math.round(data.position.y)})`} mono />}
-			{data.nearestElementXPath && <MetaRow label="Near XPath" value={data.nearestElementXPath} mono />}
-			{data.nearestElementCssSelector && <MetaRow label="Near Selector" value={data.nearestElementCssSelector} mono />}
-			{data.nearestReactContext && <MetaRow label="React Path" value={data.nearestReactContext.componentPath} mono />}
+			{data.position && (
+				<MetaRow
+					label="Position"
+					value={`(${Math.round(data.position.x)}, ${Math.round(data.position.y)})`}
+					mono
+				/>
+			)}
+			{data.nearestElementXPath && (
+				<MetaRow label="Near XPath" value={data.nearestElementXPath} mono />
+			)}
+			{data.nearestElementCssSelector && (
+				<MetaRow label="Near Selector" value={data.nearestElementCssSelector} mono />
+			)}
+			{data.nearestReactContext && (
+				<MetaRow label="React Path" value={data.nearestReactContext.componentPath} mono />
+			)}
 		</>
 	);
 }
@@ -486,22 +720,51 @@ function TextData({ data }: { data: any }) {
 function ScreenshotData({ data }: { data: any }) {
 	return (
 		<>
-			{data.region && <MetaRow label="Region" value={`${data.region.width}x${data.region.height} at (${data.region.x}, ${data.region.y})`} mono />}
+			{data.region && (
+				<MetaRow
+					label="Region"
+					value={`${data.region.width}x${data.region.height} at (${data.region.x}, ${data.region.y})`}
+					mono
+				/>
+			)}
 			<MetaRow label="Full Page" value={data.fullPage ? "Yes" : "No"} />
 		</>
 	);
 }
 
-function MetaRow({ label, value, mono, copyable }: { label: string; value: string; mono?: boolean; copyable?: boolean }) {
+function MetaRow({
+	label,
+	value,
+	mono,
+	copyable,
+}: {
+	label: string;
+	value: string;
+	mono?: boolean;
+	copyable?: boolean;
+}) {
 	const [copied, setCopied] = useState(false);
-	const handleCopy = () => { navigator.clipboard.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); };
+	const handleCopy = () => {
+		navigator.clipboard.writeText(value).then(() => {
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		});
+	};
 
 	return (
 		<div className="flex items-start gap-4 group/meta">
 			<span className="text-[13px] text-muted shrink-0 w-28">{label}</span>
-			<span className={`text-[13px] text-fg break-all leading-relaxed flex-1 ${mono ? "font-mono text-[12px]" : ""}`}>{value}</span>
+			<span
+				className={`text-[13px] text-fg break-all leading-relaxed flex-1 ${mono ? "font-mono text-[12px]" : ""}`}
+			>
+				{value}
+			</span>
 			{copyable && (
-				<button onClick={handleCopy} className="opacity-0 group-hover/meta:opacity-100 text-muted hover:text-accent transition-all cursor-pointer shrink-0 mt-0.5" title="Copy">
+				<button
+					onClick={handleCopy}
+					className="opacity-0 group-hover/meta:opacity-100 text-muted hover:text-accent transition-all cursor-pointer shrink-0 mt-0.5"
+					title="Copy"
+				>
 					{copied ? <CheckIcon /> : <CopyIcon />}
 				</button>
 			)}
@@ -511,8 +774,20 @@ function MetaRow({ label, value, mono, copyable }: { label: string; value: strin
 
 function TriangleIcon({ open }: { open: boolean }) {
 	return (
-		<svg width="10" height="10" viewBox="0 0 10 10" fill="none" className={`transition-transform ${open ? "rotate-90" : ""}`}>
-			<path d="M3.5 2L7 5L3.5 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+		<svg
+			width="10"
+			height="10"
+			viewBox="0 0 10 10"
+			fill="none"
+			className={`transition-transform ${open ? "rotate-90" : ""}`}
+		>
+			<path
+				d="M3.5 2L7 5L3.5 8"
+				stroke="currentColor"
+				strokeWidth="1.2"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
 		</svg>
 	);
 }
@@ -521,7 +796,11 @@ function CopyIcon() {
 	return (
 		<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
 			<rect x="5" y="5" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-			<path d="M9 5V3.5A1.5 1.5 0 007.5 2H3.5A1.5 1.5 0 002 3.5V7.5A1.5 1.5 0 003.5 9H5" stroke="currentColor" strokeWidth="1.2" />
+			<path
+				d="M9 5V3.5A1.5 1.5 0 007.5 2H3.5A1.5 1.5 0 002 3.5V7.5A1.5 1.5 0 003.5 9H5"
+				stroke="currentColor"
+				strokeWidth="1.2"
+			/>
 		</svg>
 	);
 }
@@ -529,7 +808,13 @@ function CopyIcon() {
 function CheckIcon() {
 	return (
 		<svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-emerald">
-			<path d="M3 7.5L6 10.5L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+			<path
+				d="M3 7.5L6 10.5L11 4"
+				stroke="currentColor"
+				strokeWidth="1.5"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
 		</svg>
 	);
 }
@@ -537,7 +822,13 @@ function CheckIcon() {
 function TrashIcon() {
 	return (
 		<svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-			<path d="M2.5 4h9M5.5 4V2.5a1 1 0 011-1h1a1 1 0 011 1V4M6 6.5v3.5M8 6.5v3.5M3.5 4l.5 7.5a1 1 0 001 1h4a1 1 0 001-1L10.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+			<path
+				d="M2.5 4h9M5.5 4V2.5a1 1 0 011-1h1a1 1 0 011 1V4M6 6.5v3.5M8 6.5v3.5M3.5 4l.5 7.5a1 1 0 001 1h4a1 1 0 001-1L10.5 4"
+				stroke="currentColor"
+				strokeWidth="1.2"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
 		</svg>
 	);
 }
@@ -545,7 +836,13 @@ function TrashIcon() {
 function LinkIcon() {
 	return (
 		<svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-			<path d="M6 8l2-2M5.5 9.5l-1 1a2.12 2.12 0 01-3-3l1-1M8.5 4.5l1-1a2.12 2.12 0 013 3l-1 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+			<path
+				d="M6 8l2-2M5.5 9.5l-1 1a2.12 2.12 0 01-3-3l1-1M8.5 4.5l1-1a2.12 2.12 0 013 3l-1 1"
+				stroke="currentColor"
+				strokeWidth="1.2"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
 		</svg>
 	);
 }
@@ -553,7 +850,13 @@ function LinkIcon() {
 function ExternalIcon() {
 	return (
 		<svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-			<path d="M11 7.5V11a1.5 1.5 0 01-1.5 1.5H3A1.5 1.5 0 011.5 11V4.5A1.5 1.5 0 013 3h3.5M8.5 1.5H12.5V5.5M6 8l6.5-6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+			<path
+				d="M11 7.5V11a1.5 1.5 0 01-1.5 1.5H3A1.5 1.5 0 011.5 11V4.5A1.5 1.5 0 013 3h3.5M8.5 1.5H12.5V5.5M6 8l6.5-6.5"
+				stroke="currentColor"
+				strokeWidth="1.2"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
 		</svg>
 	);
 }

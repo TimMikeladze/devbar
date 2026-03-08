@@ -12,8 +12,18 @@ const TYPE_META: Record<string, { label: string; color: string; dotColor: string
 
 export function ReportsPage() {
 	const { activeOrg } = useOutletContext<DashboardContext>();
-	const { filtered, grouped, stats, search, setSearch, typeFilter, setTypeFilter, loading, error, refresh } =
-		useFilteredReports(activeOrg?.id);
+	const {
+		filtered,
+		grouped,
+		stats,
+		search,
+		setSearch,
+		typeFilter,
+		setTypeFilter,
+		loading,
+		error,
+		refresh,
+	} = useFilteredReports(activeOrg?.id);
 	const searchRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -23,7 +33,12 @@ export function ReportsPage() {
 	// "/" keyboard shortcut to focus search
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
-			if (e.key === "/" && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== "INPUT") {
+			if (
+				e.key === "/" &&
+				!e.ctrlKey &&
+				!e.metaKey &&
+				document.activeElement?.tagName !== "INPUT"
+			) {
 				e.preventDefault();
 				searchRef.current?.focus();
 			}
@@ -38,7 +53,12 @@ export function ReportsPage() {
 				<div className="text-center py-20 fade-up">
 					<div className="w-12 h-12 rounded-full bg-bg-hover flex items-center justify-center mx-auto mb-4">
 						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-muted">
-							<path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+							<path
+								d="M10 3v14M3 10h14"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								strokeLinecap="round"
+							/>
 						</svg>
 					</div>
 					<p className="text-[15px] font-medium text-fg">No organization selected</p>
@@ -81,8 +101,8 @@ export function ReportsPage() {
 			<div className="mb-8">
 				<h1 className="text-[24px] font-semibold tracking-tight text-fg">Reports</h1>
 				<p className="text-[15px] text-muted mt-1">
-					{stats.totalReports} report{stats.totalReports !== 1 ? "s" : ""} across{" "}
-					{stats.domains} domain{stats.domains !== 1 ? "s" : ""}
+					{stats.totalReports} report{stats.totalReports !== 1 ? "s" : ""} across {stats.domains}{" "}
+					domain{stats.domains !== 1 ? "s" : ""}
 				</p>
 			</div>
 
@@ -91,7 +111,12 @@ export function ReportsPage() {
 				<div className="error-banner mb-6">
 					<svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
 						<circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
-						<path d="M7 4.5v3M7 9.5v.01" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+						<path
+							d="M7 4.5v3M7 9.5v.01"
+							stroke="currentColor"
+							strokeWidth="1.2"
+							strokeLinecap="round"
+						/>
 					</svg>
 					<span>Failed to load reports: {error}</span>
 					<button onClick={refresh}>Retry</button>
@@ -116,7 +141,9 @@ export function ReportsPage() {
 									key={type}
 									onClick={() => setTypeFilter(typeFilter === type ? null : type)}
 									className={`flex items-center gap-2 text-[14px] transition-colors cursor-pointer rounded-lg px-2.5 py-1 ${
-										typeFilter === type ? "bg-bg-hover text-fg font-medium shadow-sm" : "text-muted hover:text-fg"
+										typeFilter === type
+											? "bg-bg-hover text-fg font-medium shadow-sm"
+											: "text-muted hover:text-fg"
 									}`}
 								>
 									<span className={`w-2 h-2 rounded-full ${meta.dotColor}`} />
@@ -126,7 +153,10 @@ export function ReportsPage() {
 							);
 						})}
 					{typeFilter && (
-						<button onClick={() => setTypeFilter(null)} className="text-[13px] text-accent hover:underline cursor-pointer ml-auto">
+						<button
+							onClick={() => setTypeFilter(null)}
+							className="text-[13px] text-accent hover:underline cursor-pointer ml-auto"
+						>
 							Clear filter
 						</button>
 					)}
@@ -151,7 +181,12 @@ export function ReportsPage() {
 							className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-fg transition-colors cursor-pointer"
 						>
 							<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-								<path d="M4 4l6 6M10 4l-6 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+								<path
+									d="M4 4l6 6M10 4l-6 6"
+									stroke="currentColor"
+									strokeWidth="1.3"
+									strokeLinecap="round"
+								/>
 							</svg>
 						</button>
 					)}
@@ -164,7 +199,13 @@ export function ReportsPage() {
 			) : filtered.length === 0 ? (
 				<div className="border border-border border-dashed rounded-xl py-14 text-center">
 					<p className="text-[15px] text-muted">No reports match your search</p>
-					<button onClick={() => { setSearch(""); setTypeFilter(null); }} className="text-[14px] text-accent mt-2 hover:underline cursor-pointer">
+					<button
+						onClick={() => {
+							setSearch("");
+							setTypeFilter(null);
+						}}
+						className="text-[14px] text-accent mt-2 hover:underline cursor-pointer"
+					>
 						Clear filters
 					</button>
 				</div>
@@ -179,9 +220,21 @@ export function ReportsPage() {
 	);
 }
 
-function DomainGroup({ domain, reports, delay }: { domain: string; reports: Report[]; delay: number }) {
+function DomainGroup({
+	domain,
+	reports,
+	delay,
+}: {
+	domain: string;
+	reports: Report[];
+	delay: number;
+}) {
 	let hostname: string;
-	try { hostname = new URL(domain).hostname; } catch { hostname = domain; }
+	try {
+		hostname = new URL(domain).hostname;
+	} catch {
+		hostname = domain;
+	}
 
 	return (
 		<div className={`fade-up fade-up-${Math.min(delay + 1, 5)}`}>
@@ -208,7 +261,12 @@ function ReportRow({ report, isLast }: { report: Report; isLast: boolean }) {
 	const timeAgo = getTimeAgo(createdDate);
 
 	let path: string;
-	try { const u = new URL(report.url); path = u.pathname + u.search; } catch { path = report.url; }
+	try {
+		const u = new URL(report.url);
+		path = u.pathname + u.search;
+	} catch {
+		path = report.url;
+	}
 
 	const typesPresent = [...new Set(annotations.map((a: any) => a.type as string))];
 
@@ -222,7 +280,9 @@ function ReportRow({ report, isLast }: { report: Report; isLast: boolean }) {
 					{report.title || path}
 				</p>
 				<div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-1.5">
-					<span className="text-[12px] sm:text-[13px] text-muted font-mono truncate max-w-[180px] sm:max-w-[260px]">{path}</span>
+					<span className="text-[12px] sm:text-[13px] text-muted font-mono truncate max-w-[180px] sm:max-w-[260px]">
+						{path}
+					</span>
 					{payload?.label && (
 						<span className="text-[11px] sm:text-[12px] px-2 py-0.5 rounded-full bg-accent-dim text-accent font-medium">
 							{payload.label}
@@ -236,7 +296,13 @@ function ReportRow({ report, isLast }: { report: Report; isLast: boolean }) {
 				{typesPresent.map((type) => {
 					const meta = TYPE_META[type];
 					if (!meta) return null;
-					return <span key={type} title={meta.label} className={`w-2 h-2 rounded-full ${meta.dotColor}`} />;
+					return (
+						<span
+							key={type}
+							title={meta.label}
+							className={`w-2 h-2 rounded-full ${meta.dotColor}`}
+						/>
+					);
 				})}
 			</div>
 
@@ -256,10 +322,27 @@ function ReportRow({ report, isLast }: { report: Report; isLast: boolean }) {
 				</div>
 			)}
 
-			<span className="text-[12px] sm:text-[13px] text-muted tabular-nums shrink-0 sm:w-16 text-right" title={createdDate.toLocaleString()}>{timeAgo}</span>
+			<span
+				className="text-[12px] sm:text-[13px] text-muted tabular-nums shrink-0 sm:w-16 text-right"
+				title={createdDate.toLocaleString()}
+			>
+				{timeAgo}
+			</span>
 
-			<svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-border group-hover:text-muted transition-colors shrink-0 hidden sm:block">
-				<path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+			<svg
+				width="16"
+				height="16"
+				viewBox="0 0 16 16"
+				fill="none"
+				className="text-border group-hover:text-muted transition-colors shrink-0 hidden sm:block"
+			>
+				<path
+					d="M6 4l4 4-4 4"
+					stroke="currentColor"
+					strokeWidth="1.3"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				/>
 			</svg>
 		</Link>
 	);
@@ -270,8 +353,17 @@ function EmptyState() {
 		<div className="border border-border border-dashed rounded-xl py-20 text-center fade-up">
 			<div className="w-14 h-14 rounded-full bg-bg-hover flex items-center justify-center mx-auto mb-5">
 				<svg width="24" height="24" viewBox="0 0 20 20" fill="none" className="text-muted">
-					<path d="M3 4.5A1.5 1.5 0 014.5 3h11A1.5 1.5 0 0117 4.5v11a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 013 15.5v-11z" stroke="currentColor" strokeWidth="1.2" />
-					<path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+					<path
+						d="M3 4.5A1.5 1.5 0 014.5 3h11A1.5 1.5 0 0117 4.5v11a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 013 15.5v-11z"
+						stroke="currentColor"
+						strokeWidth="1.2"
+					/>
+					<path
+						d="M7 7h6M7 10h6M7 13h4"
+						stroke="currentColor"
+						strokeWidth="1.2"
+						strokeLinecap="round"
+					/>
 				</svg>
 			</div>
 			<p className="text-[16px] font-medium text-fg">No reports yet</p>
@@ -284,7 +376,13 @@ function EmptyState() {
 
 function SearchIcon() {
 	return (
-		<svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 16 16"
+			fill="none"
+			className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
+		>
 			<circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3" />
 			<path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
 		</svg>

@@ -92,7 +92,10 @@ export function DashboardLayout() {
 					<div className="relative mr-4">
 						<button
 							type="button"
-							onClick={() => { setShowUserMenu(false); setShowOrgDropdown(!showOrgDropdown); }}
+							onClick={() => {
+								setShowUserMenu(false);
+								setShowOrgDropdown(!showOrgDropdown);
+							}}
 							className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-bg-hover border border-transparent hover:border-border transition-all text-left cursor-pointer"
 						>
 							<div className="w-5 h-5 rounded bg-fg text-bg-card flex items-center justify-center text-[10px] font-bold shrink-0">
@@ -121,7 +124,10 @@ export function DashboardLayout() {
 								<div className="border-t border-border mt-1 pt-1">
 									<button
 										type="button"
-										onClick={() => { setShowOrgDropdown(false); navigate("/dashboard/settings/org?create=1"); }}
+										onClick={() => {
+											setShowOrgDropdown(false);
+											navigate("/dashboard/settings/org?create=1");
+										}}
 										className="w-full text-left px-3 py-2 text-[14px] text-muted hover:text-fg hover:bg-bg-hover rounded-md transition-colors cursor-pointer"
 									>
 										+ New organization
@@ -137,7 +143,10 @@ export function DashboardLayout() {
 					<div className="relative">
 						<button
 							type="button"
-							onClick={() => { setShowOrgDropdown(false); setShowUserMenu(!showUserMenu); }}
+							onClick={() => {
+								setShowOrgDropdown(false);
+								setShowUserMenu(!showUserMenu);
+							}}
 							className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-bg-hover transition-colors cursor-pointer"
 						>
 							{session.data.user.image ? (
@@ -188,14 +197,17 @@ export function DashboardLayout() {
 					{nav.map((item) => {
 						const active =
 							item.to === "/dashboard"
-								? location.pathname === "/dashboard" || location.pathname.startsWith("/dashboard/reports")
+								? location.pathname === "/dashboard" ||
+									location.pathname.startsWith("/dashboard/reports")
 								: location.pathname.startsWith(item.to);
 						return (
 							<Link
 								key={item.to}
 								to={item.to}
 								className={`px-3 py-1.5 rounded-md text-[13px] whitespace-nowrap transition-colors ${
-									active ? "font-medium text-fg dash-nav-active" : "text-muted hover:text-fg hover:bg-bg-hover"
+									active
+										? "font-medium text-fg dash-nav-active"
+										: "text-muted hover:text-fg hover:bg-bg-hover"
 								}`}
 							>
 								{item.label}
@@ -233,7 +245,13 @@ function Dropdown({ children, align }: { children: React.ReactNode; align?: "rig
 function ChevronDown() {
 	return (
 		<svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-muted shrink-0">
-			<path d="M3.5 5L6 7.5L8.5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+			<path
+				d="M3.5 5L6 7.5L8.5 5"
+				stroke="currentColor"
+				strokeWidth="1.3"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
 		</svg>
 	);
 }
@@ -269,7 +287,16 @@ function ThemeToggle() {
 
 function SunIcon() {
 	return (
-		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+		<svg
+			width="14"
+			height="14"
+			viewBox="0 0 16 16"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.3"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
 			<circle cx="8" cy="8" r="3" />
 			<path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.06 1.06M11.54 11.54l1.06 1.06M3.4 12.6l1.06-1.06M11.54 4.46l1.06-1.06" />
 		</svg>
@@ -278,7 +305,16 @@ function SunIcon() {
 
 function MoonIcon() {
 	return (
-		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+		<svg
+			width="14"
+			height="14"
+			viewBox="0 0 16 16"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.3"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
 			<path d="M13.5 8.5a5.5 5.5 0 0 1-7-7 5.5 5.5 0 1 0 7 7z" />
 		</svg>
 	);
@@ -286,7 +322,16 @@ function MoonIcon() {
 
 function MonitorIcon() {
 	return (
-		<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+		<svg
+			width="14"
+			height="14"
+			viewBox="0 0 16 16"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.3"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
 			<rect x="1.5" y="2.5" width="13" height="9" rx="1.5" />
 			<path d="M5.5 14h5M8 11.5V14" />
 		</svg>

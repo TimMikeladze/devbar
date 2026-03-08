@@ -62,12 +62,25 @@ function ChangePassword() {
 	const handleSubmit = useCallback(
 		async (e: React.FormEvent) => {
 			e.preventDefault();
-			setLoading(true); setMessage(null);
+			setLoading(true);
+			setMessage(null);
 			try {
 				const result = await auth.changePassword({ currentPassword, newPassword });
-				if (result.error) { setMessage({ type: "error", text: result.error.message ?? "Failed to change password" }); return; }
-				setMessage({ type: "success", text: "Password changed successfully" }); setCurrentPassword(""); setNewPassword("");
-			} catch (err) { setMessage({ type: "error", text: err instanceof Error ? err.message : "Something went wrong" }); } finally { setLoading(false); }
+				if (result.error) {
+					setMessage({ type: "error", text: result.error.message ?? "Failed to change password" });
+					return;
+				}
+				setMessage({ type: "success", text: "Password changed successfully" });
+				setCurrentPassword("");
+				setNewPassword("");
+			} catch (err) {
+				setMessage({
+					type: "error",
+					text: err instanceof Error ? err.message : "Something went wrong",
+				});
+			} finally {
+				setLoading(false);
+			}
 		},
 		[currentPassword, newPassword],
 	);
@@ -78,16 +91,39 @@ function ChangePassword() {
 			<div className="bg-bg-card border border-border rounded-xl p-6">
 				<form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
 					<div>
-						<label className="text-[13px] font-medium text-dim block mb-1.5">Current password</label>
-						<input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required className="input-field" placeholder="Enter current password" />
+						<label className="text-[13px] font-medium text-dim block mb-1.5">
+							Current password
+						</label>
+						<input
+							type="password"
+							value={currentPassword}
+							onChange={(e) => setCurrentPassword(e.target.value)}
+							required
+							className="input-field"
+							placeholder="Enter current password"
+						/>
 					</div>
 					<div>
 						<label className="text-[13px] font-medium text-dim block mb-1.5">New password</label>
-						<input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} className="input-field" placeholder="Min. 8 characters" />
+						<input
+							type="password"
+							value={newPassword}
+							onChange={(e) => setNewPassword(e.target.value)}
+							required
+							minLength={8}
+							className="input-field"
+							placeholder="Min. 8 characters"
+						/>
 					</div>
 					{message && (
-						<div className={`px-3 py-2.5 rounded-lg border ${message.type === "error" ? "bg-rose/5 border-rose/15" : "bg-emerald/5 border-emerald/15"}`}>
-							<p className={`text-[13px] ${message.type === "error" ? "text-rose" : "text-emerald"}`}>{message.text}</p>
+						<div
+							className={`px-3 py-2.5 rounded-lg border ${message.type === "error" ? "bg-rose/5 border-rose/15" : "bg-emerald/5 border-emerald/15"}`}
+						>
+							<p
+								className={`text-[13px] ${message.type === "error" ? "text-rose" : "text-emerald"}`}
+							>
+								{message.text}
+							</p>
 						</div>
 					)}
 					<button type="submit" disabled={loading} className="btn-primary !px-5">

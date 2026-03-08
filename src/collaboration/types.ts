@@ -2,8 +2,16 @@ import type { Annotation, Comment, ToolMode } from "@/session/types";
 
 // Peer colors assigned server-side
 const PEER_COLORS = [
-	"#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6",
-	"#ec4899", "#14b8a6", "#f97316", "#6366f1", "#06b6d4",
+	"#ef4444",
+	"#3b82f6",
+	"#22c55e",
+	"#f59e0b",
+	"#8b5cf6",
+	"#ec4899",
+	"#14b8a6",
+	"#f97316",
+	"#6366f1",
+	"#06b6d4",
 ] as const;
 
 export function getPeerColor(index: number): string {

@@ -56,24 +56,21 @@ export function BillingPage() {
 		refresh();
 	}, [refresh]);
 
-	const handleCheckout = useCallback(
-		async (priceId: string) => {
-			setActionError(null);
-			setActionLoading(true);
-			try {
-				const { url } = await api<{ url: string }>("/stripe/checkout", {
-					method: "POST",
-					body: JSON.stringify({ priceId }),
-				});
-				if (url) window.location.href = url;
-			} catch (err) {
-				setActionError(err instanceof Error ? err.message : "Failed to start checkout");
-			} finally {
-				setActionLoading(false);
-			}
-		},
-		[],
-	);
+	const handleCheckout = useCallback(async (priceId: string) => {
+		setActionError(null);
+		setActionLoading(true);
+		try {
+			const { url } = await api<{ url: string }>("/stripe/checkout", {
+				method: "POST",
+				body: JSON.stringify({ priceId }),
+			});
+			if (url) window.location.href = url;
+		} catch (err) {
+			setActionError(err instanceof Error ? err.message : "Failed to start checkout");
+		} finally {
+			setActionLoading(false);
+		}
+	}, []);
 
 	const handlePortal = useCallback(async () => {
 		setActionError(null);
@@ -151,7 +148,9 @@ export function BillingPage() {
 					<>
 						{needsAttention && (
 							<div className="px-3 py-2.5 bg-rose/5 border border-rose/15 rounded-lg mb-3">
-								<p className="text-[13px] text-rose">Payment issue — please update your payment method.</p>
+								<p className="text-[13px] text-rose">
+									Payment issue — please update your payment method.
+								</p>
 							</div>
 						)}
 						<button
@@ -189,4 +188,3 @@ export function BillingPage() {
 		</div>
 	);
 }
-

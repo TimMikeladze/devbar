@@ -154,29 +154,35 @@ export function useDeloopState(): DeloopState {
 		dbDelete(id).catch((e) => console.warn("[deloop] delete error:", e));
 	}, []);
 
-	const addComment = useCallback((annotationId: string, comment: Comment, _remote?: boolean): void => {
-		setAnnotations((prev) => {
-			const updated = prev.map((a) =>
-				a.id === annotationId ? { ...a, comments: [...a.comments, comment] } : a,
-			);
-			const annotation = updated.find((a) => a.id === annotationId);
-			if (annotation) dbPut(annotation).catch((e) => console.warn("[deloop] save error:", e));
-			return updated;
-		});
-	}, []);
+	const addComment = useCallback(
+		(annotationId: string, comment: Comment, _remote?: boolean): void => {
+			setAnnotations((prev) => {
+				const updated = prev.map((a) =>
+					a.id === annotationId ? { ...a, comments: [...a.comments, comment] } : a,
+				);
+				const annotation = updated.find((a) => a.id === annotationId);
+				if (annotation) dbPut(annotation).catch((e) => console.warn("[deloop] save error:", e));
+				return updated;
+			});
+		},
+		[],
+	);
 
-	const removeComment = useCallback((annotationId: string, commentId: string, _remote?: boolean): void => {
-		setAnnotations((prev) => {
-			const updated = prev.map((a) =>
-				a.id === annotationId
-					? { ...a, comments: a.comments.filter((c) => c.id !== commentId) }
-					: a,
-			);
-			const annotation = updated.find((a) => a.id === annotationId);
-			if (annotation) dbPut(annotation).catch((e) => console.warn("[deloop] save error:", e));
-			return updated;
-		});
-	}, []);
+	const removeComment = useCallback(
+		(annotationId: string, commentId: string, _remote?: boolean): void => {
+			setAnnotations((prev) => {
+				const updated = prev.map((a) =>
+					a.id === annotationId
+						? { ...a, comments: a.comments.filter((c) => c.id !== commentId) }
+						: a,
+				);
+				const annotation = updated.find((a) => a.id === annotationId);
+				if (annotation) dbPut(annotation).catch((e) => console.warn("[deloop] save error:", e));
+				return updated;
+			});
+		},
+		[],
+	);
 
 	const clearAnnotations = useCallback((): void => {
 		setAnnotations([]);

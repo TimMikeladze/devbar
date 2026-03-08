@@ -91,14 +91,28 @@ export function AuthModal({ client, onSuccess, onClose }: AuthModalProps): React
 					{mode === "signin" ? (
 						<>
 							Don&apos;t have an account?{" "}
-							<button type="button" className="deloop-auth-link" onClick={() => { setMode("signup"); setError(null); }}>
+							<button
+								type="button"
+								className="deloop-auth-link"
+								onClick={() => {
+									setMode("signup");
+									setError(null);
+								}}
+							>
 								Sign Up
 							</button>
 						</>
 					) : (
 						<>
 							Already have an account?{" "}
-							<button type="button" className="deloop-auth-link" onClick={() => { setMode("signin"); setError(null); }}>
+							<button
+								type="button"
+								className="deloop-auth-link"
+								onClick={() => {
+									setMode("signin");
+									setError(null);
+								}}
+							>
 								Sign In
 							</button>
 						</>

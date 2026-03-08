@@ -37,10 +37,12 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () 
 });
 
 export function useTheme() {
-	const theme = useSyncExternalStore(
-		(cb) => { listeners.push(cb); return () => { listeners = listeners.filter((l) => l !== cb); }; },
-		getTheme,
-	);
+	const theme = useSyncExternalStore((cb) => {
+		listeners.push(cb);
+		return () => {
+			listeners = listeners.filter((l) => l !== cb);
+		};
+	}, getTheme);
 
 	const resolved = getResolved(theme);
 
@@ -51,7 +53,9 @@ export function useTheme() {
 	}, []);
 
 	// Keep DOM in sync on mount
-	useEffect(() => { apply(theme); }, [theme]);
+	useEffect(() => {
+		apply(theme);
+	}, [theme]);
 
 	return { theme, resolved, setTheme } as const;
 }

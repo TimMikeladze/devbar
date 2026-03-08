@@ -62,7 +62,11 @@ const TOOL_ICONS: Record<DrawTool, () => React.ReactNode> = {
 	),
 };
 
-export function DrawOverlay({ onCapture, onDone, enableScreenshots = true }: DrawOverlayProps): React.ReactNode {
+export function DrawOverlay({
+	onCapture,
+	onDone,
+	enableScreenshots = true,
+}: DrawOverlayProps): React.ReactNode {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [activeTool, setActiveTool] = useState<DrawTool>("pen");
 	const [activeColor, setActiveColor] = useState("#ff3b30");

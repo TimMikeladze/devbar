@@ -40,7 +40,12 @@ function CreateOrg({ onDone }: { onDone: () => void }) {
 			setLoading(true);
 			setError(null);
 			try {
-				const computedSlug = slug.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+				const computedSlug =
+					slug.trim() ||
+					name
+						.toLowerCase()
+						.replace(/[^a-z0-9]+/g, "-")
+						.replace(/^-|-$/g, "");
 				const result = await auth.organization.create({
 					name: name.trim(),
 					slug: computedSlug,
@@ -70,7 +75,14 @@ function CreateOrg({ onDone }: { onDone: () => void }) {
 				<form onSubmit={handleCreate} className="space-y-5">
 					<div>
 						<label className="text-[13px] font-medium text-dim block mb-1.5">Name</label>
-						<input type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="My Team" className="input-field" />
+						<input
+							type="text"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							required
+							placeholder="My Team"
+							className="input-field"
+						/>
 					</div>
 					<div>
 						<label className="text-[13px] font-medium text-dim block mb-1.5">Slug (optional)</label>
@@ -78,13 +90,30 @@ function CreateOrg({ onDone }: { onDone: () => void }) {
 							type="text"
 							value={slug}
 							onChange={(e) => setSlug(e.target.value)}
-							placeholder={name ? name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "my-team"}
+							placeholder={
+								name
+									? name
+											.toLowerCase()
+											.replace(/[^a-z0-9]+/g, "-")
+											.replace(/^-|-$/g, "")
+									: "my-team"
+							}
 							className="input-field"
 						/>
-						<p className="text-[12px] text-muted mt-1">URL-friendly identifier. Auto-generated from name if left blank.</p>
+						<p className="text-[12px] text-muted mt-1">
+							URL-friendly identifier. Auto-generated from name if left blank.
+						</p>
 					</div>
-					{error && <div className="px-3 py-2.5 bg-rose/5 border border-rose/15 rounded-lg"><p className="text-[13px] text-rose">{error}</p></div>}
-					<button type="submit" disabled={loading || !name.trim()} className="btn-primary w-full !py-2.5">
+					{error && (
+						<div className="px-3 py-2.5 bg-rose/5 border border-rose/15 rounded-lg">
+							<p className="text-[13px] text-rose">{error}</p>
+						</div>
+					)}
+					<button
+						type="submit"
+						disabled={loading || !name.trim()}
+						className="btn-primary w-full !py-2.5"
+					>
 						{loading ? "Creating..." : "Create Organization"}
 					</button>
 				</form>
@@ -130,7 +159,9 @@ function Members({ orgId }: { orgId: string }) {
 
 	return (
 		<div className="mb-8">
-			<h2 className="text-[15px] font-semibold mb-3">Members ({loading ? "..." : members.length})</h2>
+			<h2 className="text-[15px] font-semibold mb-3">
+				Members ({loading ? "..." : members.length})
+			</h2>
 			{error && (
 				<div className="error-banner mb-3">
 					<span>{error}</span>
@@ -155,7 +186,10 @@ function Members({ orgId }: { orgId: string }) {
 			) : (
 				<div className="bg-bg-card border border-border rounded-xl overflow-hidden">
 					{members.map((m: any, i: number) => (
-						<div key={m.id} className={`flex items-center gap-3.5 px-5 py-3.5 ${i < members.length - 1 ? "border-b border-border" : ""}`}>
+						<div
+							key={m.id}
+							className={`flex items-center gap-3.5 px-5 py-3.5 ${i < members.length - 1 ? "border-b border-border" : ""}`}
+						>
 							{m.user?.image ? (
 								<img src={m.user.image} alt="" className="w-8 h-8 rounded-full" />
 							) : (
@@ -167,7 +201,9 @@ function Members({ orgId }: { orgId: string }) {
 								<p className="text-[14px] font-medium truncate">{m.user?.name ?? m.user?.email}</p>
 								<p className="text-[13px] text-muted truncate">{m.user?.email}</p>
 							</div>
-							<span className="text-[12px] text-muted capitalize px-2.5 py-1 bg-bg rounded-full font-medium border border-border">{m.role}</span>
+							<span className="text-[12px] text-muted capitalize px-2.5 py-1 bg-bg rounded-full font-medium border border-border">
+								{m.role}
+							</span>
 						</div>
 					))}
 				</div>
@@ -215,8 +251,16 @@ function InviteMember({ orgId }: { orgId: string }) {
 		<div>
 			<h2 className="text-[15px] font-semibold mb-3">Invite Member</h2>
 			<form onSubmit={handleInvite} className="flex gap-2">
-				<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="colleague@company.com" className="input-field flex-1" />
-				<button type="submit" disabled={loading || !email.trim()} className="btn-primary shrink-0">{loading ? "..." : "Invite"}</button>
+				<input
+					type="email"
+					value={email}
+					onChange={(e) => setEmail(e.target.value)}
+					placeholder="colleague@company.com"
+					className="input-field flex-1"
+				/>
+				<button type="submit" disabled={loading || !email.trim()} className="btn-primary shrink-0">
+					{loading ? "..." : "Invite"}
+				</button>
 			</form>
 			{error && <p className="text-[13px] text-rose mt-2">{error}</p>}
 			{success && <p className="text-[13px] text-emerald mt-2">Invitation sent!</p>}

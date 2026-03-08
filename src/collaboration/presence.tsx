@@ -24,10 +24,7 @@ function PeerCursor({ peer }: { peer: Peer }) {
 				fill="none"
 				style={{ display: "block", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }}
 			>
-				<path
-					d="M0 0L16 12H6L3 20L0 0Z"
-					fill={peer.color}
-				/>
+				<path d="M0 0L16 12H6L3 20L0 0Z" fill={peer.color} />
 			</svg>
 			<span
 				style={{
@@ -65,7 +62,10 @@ export function PeerAvatars({ peers }: { peers: Peer[] }): React.ReactNode {
 	if (peers.length === 0) return null;
 
 	return (
-		<div className="deloop-peer-avatars" style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+		<div
+			className="deloop-peer-avatars"
+			style={{ display: "flex", gap: "2px", alignItems: "center" }}
+		>
 			{peers.map((peer) => (
 				<div
 					key={peer.id}

@@ -11,6 +11,9 @@
 		"type": "git",
 		"url": "git+https://github.com/TimMikeladze/deloop.git"
 	},
+	"bin": {
+		"deloop.dev": "./dist/server/cli.js"
+	},
 	"workspaces": [
 		"test/**"
 	],
@@ -21,9 +24,6 @@
 	"type": "module",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"bin": {
-		"deloop.dev": "./dist/server/cli.js"
-	},
 	"exports": {
 		".": {
 			"import": {

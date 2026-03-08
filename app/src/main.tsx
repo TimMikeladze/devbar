@@ -16,12 +16,22 @@ function NotFound() {
 	return (
 		<div className="h-screen flex items-center justify-center bg-bg text-fg login-glow">
 			<div className="text-center fade-up">
-				<p className="text-[96px] sm:text-[120px] font-bold tracking-[-0.05em] leading-none text-border select-none">404</p>
+				<p className="text-[96px] sm:text-[120px] font-bold tracking-[-0.05em] leading-none text-border select-none">
+					404
+				</p>
 				<p className="text-[18px] font-semibold mt-4">Nothing here</p>
-				<p className="text-[14px] text-muted mt-1.5 mb-6">The page you're looking for doesn't exist or was moved.</p>
+				<p className="text-[14px] text-muted mt-1.5 mb-6">
+					The page you're looking for doesn't exist or was moved.
+				</p>
 				<Link to="/" className="btn-primary inline-flex !px-5 !py-2.5 text-[14px]">
 					<svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1.5">
-						<path d="M8.5 3.5L5 7l3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+						<path
+							d="M8.5 3.5L5 7l3.5 3.5"
+							stroke="currentColor"
+							strokeWidth="1.3"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						/>
 					</svg>
 					Back to home
 				</Link>
