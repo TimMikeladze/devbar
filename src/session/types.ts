@@ -58,6 +58,7 @@ export type Annotation = {
 	timestamp: number;
 	data: ElementData | DrawingData | TextData | ScreenshotData | MarkerData;
 	comments: Comment[];
+	label?: string;
 };
 
 export type ToolMode = "select" | "draw" | "capture" | "marker" | null;
@@ -81,11 +82,23 @@ export type PromptTemplate = (context: {
 }) => string;
 
 export type SidePanelMode = "overlay" | "push";
+export type SidePanelSide = "left" | "right";
+
+export type ToolbarOrientation = "horizontal" | "vertical";
 
 export type DeloopSettings = {
 	includeImages: boolean;
 	imageExportMode: "base64" | "files";
 	sidePanelMode: SidePanelMode;
+	sidePanelSide: SidePanelSide;
+	enableScreenshots: boolean;
+	toolbarOrientation: ToolbarOrientation;
+};
+
+export type DeloopUser = {
+	name: string;
+	email: string;
+	avatar?: string;
 };
 
 export type DeloopPayload = {
@@ -100,5 +113,6 @@ export type DeloopPayload = {
 	userAgent: string;
 	timestamp: number;
 	annotations: Annotation[];
+	label?: string;
 	prompt: string;
 };

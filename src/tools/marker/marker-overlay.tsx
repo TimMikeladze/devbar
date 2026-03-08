@@ -136,9 +136,7 @@ export function MarkerOverlay({
 							background: d.color,
 							boxShadow: `0 2px 8px ${d.color}66, 0 1px 3px rgba(0,0,0,0.3)`,
 						}}
-						title={
-							a.comments.length > 0 ? a.comments[0]!.text : `Marker #${d.number}`
-						}
+						title={a.comments.length > 0 ? a.comments[0]!.text : `Marker #${d.number}`}
 						onClick={(e) => {
 							e.stopPropagation();
 							if (onFocusAnnotation) onFocusAnnotation(a.id);

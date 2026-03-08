@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
 	Annotation,
 	Comment,
@@ -6,6 +7,7 @@ import type {
 	DeloopPosition,
 	DeloopSettings,
 	DeloopTheme,
+	DeloopUser,
 	ElementData,
 	MarkerData,
 	PromptTemplate,
@@ -19,6 +21,9 @@ import { SelectOverlay } from "@/tools/select/select-overlay";
 import { DrawOverlay } from "@/tools/draw/draw-overlay";
 import { CaptureOverlay } from "@/tools/capture/capture-overlay";
 import { MarkerOverlay } from "@/tools/marker/marker-overlay";
+import { AuthModal } from "@/server/auth-modal";
+import { useCollaboration, type CollaborationCallbacks } from "@/collaboration/use-collaboration";
+import { PeerCursors, PeerAvatars, useCursorTracker, useViewportTracker } from "@/collaboration/presence";
 import { useDeloopState } from "./state";
 import {
 	SelectIcon,
@@ -39,9 +44,14 @@ import {
 	SaveFileIcon,
 	SidePanelIcon,
 	ChevronRightIcon,
+	ChevronDownIcon,
+	ChevronUpIcon,
 	ToolbarModeIcon,
 	PreviewIcon,
 	SettingsIcon,
+	UserIcon,
+	SendIcon,
+	LabelIcon,
 } from "./icons";
 
 export type DeloopPlugin = {
@@ -64,6 +74,11 @@ export type DeloopProps = {
 	theme?: DeloopTheme;
 	tools?: ToolMode[];
 	plugins?: DeloopPlugin[];
+	server?: string;
+	user?: DeloopUser;
+	authProxy?: string;
+	labels?: string[];
+	orgId?: string;
 };
 
 type ToolDef = {
@@ -74,10 +89,10 @@ type ToolDef = {
 };
 
 const TOOLS: ToolDef[] = [
-	{ key: "select", icon: SelectIcon, label: "Select", shortcut: "S" },
-	{ key: "draw", icon: DrawIcon, label: "Draw", shortcut: "D" },
-	{ key: "marker", icon: MarkerIcon, label: "Marker", shortcut: "M" },
-	{ key: "capture", icon: CaptureIcon, label: "Capture", shortcut: "C" },
+	{ key: "select", icon: SelectIcon, label: "Select", shortcut: "Alt+S" },
+	{ key: "marker", icon: MarkerIcon, label: "Marker", shortcut: "Alt+M" },
+	{ key: "draw", icon: DrawIcon, label: "Draw", shortcut: "Alt+D" },
+	{ key: "capture", icon: CaptureIcon, label: "Capture", shortcut: "Alt+C" },
 ];
 
 const ITEM_ICONS: Record<string, () => React.ReactNode> = {
@@ -111,7 +126,7 @@ function annotationLabel(a: Annotation): string {
 	}
 }
 
-const ALL_TOOLS: ToolMode[] = ["select", "draw", "marker", "capture"];
+const ALL_TOOLS: ToolMode[] = ["select", "marker", "draw", "capture"];
 
 function timeAgo(ts: number): string {
 	const sec = Math.floor((Date.now() - ts) / 1000);
@@ -230,17 +245,129 @@ function useBarDrag() {
 	return { offset, onMouseDown };
 }
 
+function useDeloopAuth(server?: string, user?: DeloopUser, authEnabled?: boolean) {
+	const [authUser, setAuthUser] = useState<DeloopUser | null>(user ?? null);
+	const [showAuthModal, setShowAuthModal] = useState(false);
+	const clientRef = useRef<import("@/server/client").DeloopAuthClient | null>(null);
+
+	// Update when user prop changes
+	useEffect(() => {
+		if (user) setAuthUser(user);
+	}, [user]);
+
+	// Check session on mount if server is set, auth is enabled, and no user prop
+	useEffect(() => {
+		if (!server || user || !authEnabled) return;
+		let cancelled = false;
+		(async () => {
+			try {
+				const { getAuthClient } = await import("@/server/client");
+				const client = getAuthClient(server);
+				clientRef.current = client;
+				const session = await client.getSession();
+				if (!cancelled && session.data?.user) {
+					setAuthUser({
+						name: session.data.user.name,
+						email: session.data.user.email,
+						avatar: session.data.user.image ?? undefined,
+					});
+				}
+			} catch {
+				// Server unreachable — silently ignore, user can login manually
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [server, user, authEnabled]);
+
+	const openLogin = useCallback(() => setShowAuthModal(true), []);
+	const closeLogin = useCallback(() => setShowAuthModal(false), []);
+
+	const onLoginSuccess = useCallback(async () => {
+		if (!clientRef.current) return;
+		const session = await clientRef.current.getSession();
+		if (session.data?.user) {
+			setAuthUser({
+				name: session.data.user.name,
+				email: session.data.user.email,
+				avatar: session.data.user.image ?? undefined,
+			});
+		}
+		setShowAuthModal(false);
+	}, []);
+
+	const signOut = useCallback(async () => {
+		if (!clientRef.current) return;
+		await clientRef.current.signOut();
+		setAuthUser(null);
+	}, []);
+
+	return { authUser, showAuthModal, openLogin, closeLogin, onLoginSuccess, signOut, client: clientRef };
+}
+
 export function Deloop({
 	onSubmit,
 	promptTemplate,
 	tools: enabledTools,
 	theme: initialTheme = "dark",
 	plugins = [],
+	server,
+	user,
+	authProxy,
+	labels: propLabels = [],
+	orgId,
 }: DeloopProps): React.ReactNode {
 	const state = useDeloopState();
+	const authEnabled = !!(authProxy || user);
+	const auth = useDeloopAuth(server, user, authEnabled);
+
+	// Collaboration
+	const collabCallbacks: CollaborationCallbacks = useMemo(() => ({
+		onAnnotationAdd: (annotation) => {
+			state.addAnnotation(annotation, true);
+		},
+		onAnnotationRemove: (annotationId) => {
+			state.removeAnnotation(annotationId, true);
+		},
+		onCommentAdd: (annotationId, comment) => {
+			state.addComment(annotationId, comment, true);
+		},
+		onCommentRemove: (annotationId, commentId) => {
+			state.removeComment(annotationId, commentId, true);
+		},
+		onClear: () => {
+			state.clearAnnotations();
+		},
+	}), [state.addAnnotation, state.removeAnnotation, state.addComment, state.removeComment, state.clearAnnotations]);
+
+	const collab = useCollaboration(server, auth.authUser ?? user, orgId, collabCallbacks);
+	useCursorTracker(collab.sendCursor, collab.connected);
+	useViewportTracker(collab.sendViewport, collab.connected);
+
+	// Wrappers that broadcast local mutations to peers
+	const localRemoveAnnotation = useCallback((id: string) => {
+		state.removeAnnotation(id);
+		collab.sendAnnotationRemove(id);
+	}, [state.removeAnnotation, collab.sendAnnotationRemove]);
+
+	const localAddComment = useCallback((annotationId: string, comment: Comment) => {
+		state.addComment(annotationId, comment);
+		collab.sendCommentAdd(annotationId, comment);
+	}, [state.addComment, collab.sendCommentAdd]);
+
+	const localRemoveComment = useCallback((annotationId: string, commentId: string) => {
+		state.removeComment(annotationId, commentId);
+		collab.sendCommentRemove(annotationId, commentId);
+	}, [state.removeComment, collab.sendCommentRemove]);
+
+	const localClearAnnotations = useCallback(() => {
+		state.clearAnnotations();
+		collab.sendClear();
+	}, [state.clearAnnotations, collab.sendClear]);
+
 	const [uiMode, setUiMode] = useState<"toolbar" | "panel">("toolbar");
 	const [panelOpen, setPanelOpen] = useState(false);
 	const [sidePanelOpen, setSidePanelOpen] = useState(false);
+	const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
 	const [toast, setToast] = useState<string | null>(null);
 	const [theme, setTheme] = useState<DeloopTheme>(initialTheme);
 	const [collapsed, setCollapsed] = useState(false);
@@ -254,14 +381,58 @@ export function Deloop({
 	const [showHelp, setShowHelp] = useState(false);
 	const [clearConfirm, setClearConfirm] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
+	const panelOpenAboveRef = useRef(true);
 	const [previewMode, setPreviewMode] = useState<"off" | "md" | "json">("off");
 	const [settings, setSettings] = useState<DeloopSettings>(() => {
 		try {
 			const saved = localStorage.getItem("deloop-settings");
 			if (saved) return JSON.parse(saved) as DeloopSettings;
 		} catch {}
-		return { includeImages: true, imageExportMode: "base64", sidePanelMode: "overlay" };
+		return { includeImages: true, imageExportMode: "base64", sidePanelMode: "overlay", sidePanelSide: "right", enableScreenshots: true, toolbarOrientation: "horizontal" };
 	});
+	const [labelDraft, setLabelDraft] = useState(state.activeLabel ?? "");
+	const [showLabels, setShowLabels] = useState(false);
+	const [showExportMenu, setShowExportMenu] = useState(false);
+	const exportMenuRef = useRef<HTMLDivElement>(null);
+	const [savedLabels, setSavedLabels] = useState<string[]>(() => {
+		try {
+			const stored = localStorage.getItem("deloop-labels");
+			if (stored) return JSON.parse(stored) as string[];
+		} catch {}
+		return [];
+	});
+	const allLabels = Array.from(new Set([...propLabels, ...savedLabels]));
+
+	const persistLabels = useCallback((labels: string[]) => {
+		setSavedLabels(labels);
+		try {
+			localStorage.setItem("deloop-labels", JSON.stringify(labels));
+		} catch {}
+	}, []);
+
+	const addLabel = useCallback(
+		(label: string) => {
+			const trimmed = label.trim();
+			if (!trimmed) return;
+			if (!savedLabels.includes(trimmed)) {
+				persistLabels([...savedLabels, trimmed]);
+			}
+			state.setActiveLabel(trimmed);
+			setLabelDraft("");
+		},
+		[savedLabels, persistLabels, state.setActiveLabel],
+	);
+
+	const removeLabel = useCallback(
+		(label: string) => {
+			persistLabels(savedLabels.filter((l) => l !== label));
+			if (state.activeLabel === label) {
+				state.setActiveLabel(null);
+			}
+		},
+		[savedLabels, persistLabels, state.activeLabel, state.setActiveLabel],
+	);
+
 	const prevAnnotationCount = useRef(0);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const drag = useBarDrag();
@@ -281,26 +452,53 @@ export function Deloop({
 		prevAnnotationCount.current = state.annotations.length;
 	}, [state.annotations.length]);
 
-	// Push body when side panel is in push mode
+	// Push mode: portal container lives as a sibling of <body> on <html>.
+	// <html> becomes a flex container so body naturally shrinks — no margin
+	// or transform hacks that break position:fixed elements on the host page.
+	const pushPortalContainer = useMemo(() => {
+		const el = document.createElement("div");
+		el.setAttribute("data-deloop", "push-panel");
+		return el;
+	}, []);
+
 	useEffect(() => {
-		if (sidePanelOpen && settings.sidePanelMode === "push") {
-			document.body.style.transition = "margin-right 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
-			document.body.style.marginRight = "340px";
+		const isPush = sidePanelOpen && settings.sidePanelMode === "push";
+		const html = document.documentElement;
+		if (isPush) {
+			html.style.display = "flex";
+			html.style.height = "100vh";
+			html.style.overflow = "hidden";
+			document.body.style.flex = "1";
 			document.body.style.overflow = "auto";
-		} else {
-			document.body.style.transition = "margin-right 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
-			document.body.style.marginRight = "";
-			// Clean up transition after it completes
-			const timer = setTimeout(() => {
-				document.body.style.transition = "";
-			}, 300);
-			return () => clearTimeout(timer);
+			document.body.style.minWidth = "0";
+			document.body.style.height = "100vh";
+			// Hide the body scrollbar gutter so it doesn't show a light strip
+			// between the page content and the push panel
+			const style = document.createElement("style");
+			style.setAttribute("data-deloop", "push-scrollbar");
+			style.textContent = "body::-webkit-scrollbar { width: 0; background: transparent; } body { scrollbar-width: none; -ms-overflow-style: none; }";
+			document.head.appendChild(style);
+			if (settings.sidePanelSide === "left") {
+				html.insertBefore(pushPortalContainer, document.body);
+			} else {
+				html.appendChild(pushPortalContainer);
+			}
 		}
 		return () => {
-			document.body.style.marginRight = "";
-			document.body.style.transition = "";
+			html.style.display = "";
+			html.style.height = "";
+			html.style.overflow = "";
+			document.body.style.flex = "";
+			document.body.style.overflow = "";
+			document.body.style.minWidth = "";
+			document.body.style.height = "";
+			const style = document.querySelector('style[data-deloop="push-scrollbar"]');
+			if (style) style.remove();
+			if (pushPortalContainer.parentNode) {
+				pushPortalContainer.parentNode.removeChild(pushPortalContainer);
+			}
 		};
-	}, [sidePanelOpen, settings.sidePanelMode]);
+	}, [sidePanelOpen, settings.sidePanelMode, settings.sidePanelSide, pushPortalContainer]);
 
 	// Close panel on outside click
 	useEffect(() => {
@@ -331,6 +529,17 @@ export function Deloop({
 		return () => window.removeEventListener("mousedown", onClick);
 	}, [focusedAnnotation]);
 
+	// Close export menu on outside click
+	useEffect(() => {
+		if (!showExportMenu) return;
+		const onClick = (e: MouseEvent) => {
+			if (exportMenuRef.current?.contains(e.target as Node)) return;
+			setShowExportMenu(false);
+		};
+		window.addEventListener("mousedown", onClick);
+		return () => window.removeEventListener("mousedown", onClick);
+	}, [showExportMenu]);
+
 	// Keyboard shortcuts
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
@@ -340,7 +549,7 @@ export function Deloop({
 			if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
 				if (state.annotations.length > 0) {
 					e.preventDefault();
-					state.removeAnnotation(state.annotations[state.annotations.length - 1]!.id);
+					localRemoveAnnotation(state.annotations[state.annotations.length - 1]!.id);
 					showToast("Undid last annotation");
 					return;
 				}
@@ -362,35 +571,11 @@ export function Deloop({
 
 			const key = e.key.toLowerCase();
 
-			// Toggle annotations panel: A
-			if (key === "a") {
-				e.preventDefault();
-				setPanelOpen((v) => !v);
-				setShowSettings(false);
-				setShowHelp(false);
-				return;
-			}
-
-			// Toggle side panel: P
-			if (key === "p") {
-				e.preventDefault();
-				setSidePanelOpen((v) => !v);
-				setPanelOpen(false);
-				return;
-			}
-
-			// Help: ?
-			if (e.key === "?") {
-				e.preventDefault();
-				setShowHelp((v) => !v);
-				setShowSettings(false);
-				setPanelOpen(false);
-				return;
-			}
-
-			// Toggle collapse: Escape
+			// Toggle collapse: Escape (no modifier needed)
 			if (key === "escape") {
-				if (showSettings) {
+				if (showLabels) {
+					setShowLabels(false);
+				} else if (showSettings) {
 					setShowSettings(false);
 				} else if (showHelp) {
 					setShowHelp(false);
@@ -404,8 +589,63 @@ export function Deloop({
 				return;
 			}
 
+			// All remaining shortcuts require Alt modifier
+			if (!e.altKey) return;
+
+			// Toggle annotations panel: Alt+A
+			if (key === "a") {
+				e.preventDefault();
+				setPanelOpen((v) => {
+					if (!v) {
+						panelOpenAboveRef.current = drag.offset ? drag.offset.y >= window.innerHeight / 2 : true;
+					}
+					return !v;
+				});
+				setShowSettings(false);
+				setShowHelp(false);
+				setShowLabels(false);
+				return;
+			}
+
+			// Toggle side panel: Alt+P
+			if (key === "p") {
+				e.preventDefault();
+				setSidePanelOpen((v) => !v);
+				setPanelOpen(false);
+				return;
+			}
+
+			// Toggle labels: Alt+L
+			if (key === "l") {
+				e.preventDefault();
+				setShowLabels((v) => {
+					if (!v) {
+						panelOpenAboveRef.current = drag.offset ? drag.offset.y >= window.innerHeight / 2 : true;
+					}
+					return !v;
+				});
+				setShowSettings(false);
+				setPanelOpen(false);
+				return;
+			}
+
+			// Help: Alt+?
+			if (e.key === "?" || key === "/") {
+				e.preventDefault();
+				setShowHelp((v) => {
+					if (!v) {
+						panelOpenAboveRef.current = drag.offset ? drag.offset.y >= window.innerHeight / 2 : true;
+					}
+					return !v;
+				});
+				setShowSettings(false);
+				setShowLabels(false);
+				setPanelOpen(false);
+				return;
+			}
+
 			for (const tool of toolDefs) {
-				if (key === tool.shortcut.toLowerCase()) {
+				if (key === tool.shortcut.replace("Alt+", "").toLowerCase()) {
 					e.preventDefault();
 					state.activateTool(tool.key);
 					setPanelOpen(false);
@@ -420,11 +660,12 @@ export function Deloop({
 		toolDefs,
 		state.activateTool,
 		state.annotations,
-		state.removeAnnotation,
+		localRemoveAnnotation,
 		panelOpen,
 		sidePanelOpen,
 		showHelp,
 		showSettings,
+		showLabels,
 	]);
 
 	const showToast = useCallback((msg: string) => {
@@ -433,53 +674,104 @@ export function Deloop({
 	}, []);
 
 	const handleCopy = useCallback(async () => {
-		const payload = buildPayload(state.annotations, promptTemplate, settings);
+		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
 		await copyToClipboard(payload);
 		setCopied(true);
 		showToast("Copied to clipboard!");
 		setTimeout(() => setCopied(false), 1500);
 		onSubmit?.(payload);
 		if (!onSubmit) {
-			state.clearAnnotations();
+			localClearAnnotations();
 			setPanelOpen(false);
 			setSidePanelOpen(false);
 		}
-	}, [state.annotations, promptTemplate, settings, onSubmit, showToast, state.clearAnnotations]);
+	}, [state.annotations, promptTemplate, settings, state.activeLabel, onSubmit, showToast, localClearAnnotations]);
 
 	const handleExport = useCallback(
 		(format: "json" | "md" = "md") => {
-			const payload = buildPayload(state.annotations, promptTemplate, settings);
+			const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
 			exportToFile(payload, format, settings);
 			showToast(format === "md" ? "Saved markdown!" : "Saved JSON!");
 			onSubmit?.(payload);
 			if (!onSubmit) {
-				state.clearAnnotations();
+				localClearAnnotations();
 				setPanelOpen(false);
 				setSidePanelOpen(false);
 			}
 		},
-		[state.annotations, promptTemplate, settings, onSubmit, showToast, state.clearAnnotations],
+		[state.annotations, promptTemplate, settings, state.activeLabel, onSubmit, showToast, localClearAnnotations],
 	);
+
+	const handleServerSubmit = useCallback(async () => {
+		if (!server) return;
+		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
+		const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+		if (authProxy && auth.authUser) {
+			// Mode C: get signed token from auth proxy
+			try {
+				const res = await fetch(authProxy, { method: "POST", credentials: "include" });
+				if (res.ok) {
+					const data = await res.json();
+					if (data.token) headers["X-Deloop-Token"] = data.token;
+				}
+			} catch {}
+		} else if (user) {
+			// Mode A: injected identity headers
+			headers["X-Deloop-Author"] = user.name;
+			if (user.email) headers["X-Deloop-Email"] = user.email;
+			if (user.avatar) headers["X-Deloop-Avatar"] = user.avatar;
+		}
+		// Mode B: session cookie sent automatically via credentials: "include"
+
+		try {
+			const res = await fetch(`${server}/api/reports`, {
+				method: "POST",
+				headers,
+				credentials: "include",
+				body: JSON.stringify({
+					payload,
+					url: payload.url,
+					title: payload.title,
+				}),
+			});
+			if (res.ok) {
+				showToast("Submitted to server!");
+				onSubmit?.(payload);
+				localClearAnnotations();
+				setPanelOpen(false);
+				setSidePanelOpen(false);
+			} else {
+				showToast("Submit failed");
+			}
+		} catch {
+			showToast("Submit failed");
+		}
+	}, [server, state.annotations, promptTemplate, settings, state.activeLabel, authProxy, auth.authUser, user, onSubmit, showToast, localClearAnnotations]);
 
 	const handleToolClick = useCallback(
 		(tool: ToolMode) => {
 			if (state.activeMode === tool) {
 				state.deactivateTool();
+				collab.sendToolChange(null);
 			} else {
 				state.activateTool(tool);
+				collab.sendToolChange(tool);
 				setPanelOpen(false);
 				setShowSettings(false);
 				setShowHelp(false);
 			}
 		},
-		[state.activeMode, state.activateTool, state.deactivateTool],
+		[state.activeMode, state.activateTool, state.deactivateTool, collab.sendToolChange],
 	);
 
 	const handleCapture = useCallback(
 		(annotation: Annotation) => {
-			state.addAnnotation(annotation);
+			const a = state.activeLabel ? { ...annotation, label: state.activeLabel } : annotation;
+			state.addAnnotation(a);
+			collab.sendAnnotationAdd(a);
 		},
-		[state.addAnnotation],
+		[state.addAnnotation, state.activeLabel, collab.sendAnnotationAdd],
 	);
 
 	// Rapid mode: stay in tool after capture for supported tools
@@ -489,17 +781,33 @@ export function Deloop({
 
 	const handleRapidCapture = useCallback(
 		(annotation: Annotation) => {
-			state.addAnnotation(annotation);
+			const a = state.activeLabel ? { ...annotation, label: state.activeLabel } : annotation;
+			state.addAnnotation(a);
+			collab.sendAnnotationAdd(a);
 			// Don't deactivate - stay in tool mode
 		},
-		[state.addAnnotation],
+		[state.addAnnotation, state.activeLabel, collab.sendAnnotationAdd],
+	);
+
+	const handleFocusAnnotation = useCallback(
+		(id: string) => {
+			state.deactivateTool();
+			setFocusedAnnotation(id);
+		},
+		[state.deactivateTool],
 	);
 
 	const togglePanel = useCallback(() => {
-		setPanelOpen((v) => !v);
+		setPanelOpen((v) => {
+			if (!v) {
+				panelOpenAboveRef.current = drag.offset ? drag.offset.y >= window.innerHeight / 2 : true;
+			}
+			return !v;
+		});
 		setShowSettings(false);
 		setShowHelp(false);
-	}, []);
+		setShowLabels(false);
+	}, [drag.offset]);
 
 	const toggleSidePanel = useCallback(() => {
 		setSidePanelOpen((v) => !v);
@@ -521,6 +829,24 @@ export function Deloop({
 		setNewCommentText("");
 	}, []);
 
+	// Deterministic avatar color from author name
+	const authorColor = useCallback((name: string) => {
+		const colors = [
+			"#6e8efb", "#e879a8", "#f5a623", "#4ade80",
+			"#a78bfa", "#f472b6", "#fb923c", "#34d399",
+			"#60a5fa", "#fbbf24", "#c084fc", "#f87171",
+		];
+		let h = 0;
+		for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+		return colors[Math.abs(h) % colors.length];
+	}, []);
+
+	const authorInitials = useCallback((name: string) => {
+		const parts = name.trim().split(/\s+/);
+		if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
+		return name.slice(0, 2).toUpperCase();
+	}, []);
+
 	const submitComment = useCallback(
 		(annotationId: string) => {
 			if (!newCommentText.trim()) return;
@@ -534,42 +860,129 @@ export function Deloop({
 				text: newCommentText.trim(),
 				timestamp: Date.now(),
 			};
-			state.addComment(annotationId, comment);
+			localAddComment(annotationId, comment);
 			setNewCommentText("");
 		},
-		[newCommentText, authorName, state.addComment],
+		[newCommentText, authorName, localAddComment],
 	);
 
-	// Panel positioning: follow drag offset
-	const panelStyle: React.CSSProperties = drag.offset
-		? {
-				left: drag.offset.x + 180, // center above bar roughly
-				bottom: "auto",
-				top: drag.offset.y - 10,
-				transform: "translateX(-50%) translateY(-100%)",
-			}
-		: {};
+	// Floating settings/help panel positioning (toolbar mode only)
+	// Direction is locked when the panel opens via panelOpenAboveRef
+	const floatingPanelAnim = panelOpenAboveRef.current
+		? "deloop-floating-panel-above"
+		: "deloop-floating-panel-below";
+	const isVertical = settings.toolbarOrientation === "vertical";
+	const floatingPanelStyle: React.CSSProperties = drag.offset
+		? isVertical
+			? {
+					left: drag.offset.x + 56,
+					bottom: "auto",
+					top: drag.offset.y,
+					transform: "none",
+					animation: `${floatingPanelAnim} 0.15s cubic-bezier(0.16, 1, 0.3, 1)`,
+				}
+			: panelOpenAboveRef.current
+				? {
+						left: drag.offset.x + 180,
+						bottom: "auto",
+						top: drag.offset.y - 10,
+						transform: "translateX(-50%) translateY(-100%)",
+						animation: `${floatingPanelAnim} 0.15s cubic-bezier(0.16, 1, 0.3, 1)`,
+					}
+				: {
+						left: drag.offset.x + 180,
+						bottom: "auto",
+						top: drag.offset.y + 56,
+						transform: "translateX(-50%)",
+						animation: `${floatingPanelAnim} 0.15s cubic-bezier(0.16, 1, 0.3, 1)`,
+					}
+		: isVertical
+			? {
+					left: 80,
+					top: "50%",
+					bottom: "auto",
+					transform: "translateY(-50%)",
+					animation: `${floatingPanelAnim} 0.15s cubic-bezier(0.16, 1, 0.3, 1)`,
+				}
+			: {
+					animation: `${floatingPanelAnim} 0.15s cubic-bezier(0.16, 1, 0.3, 1)`,
+				};
 
-	// Toast positioning: follow drag offset
-	const toastStyle: React.CSSProperties = drag.offset
-		? {
-				left: drag.offset.x + 180,
-				bottom: "auto",
-				top: drag.offset.y - 10,
-				transform: "translateX(-50%) translateY(-100%)",
-			}
-		: {};
+	// Shared auth buttons — used in both toolbar bar and side panel header
+	const renderAuthButtons = (btnClass: string, withTooltip: boolean) => (
+		<>
+			{server && authEnabled && !user && !auth.authUser && (
+				<button
+					type="button"
+					className={btnClass}
+					onClick={auth.openLogin}
+					title="Sign in"
+				>
+					<UserIcon />
+					{withTooltip && <span className="deloop-tooltip">Sign In</span>}
+				</button>
+			)}
+			{auth.authUser && (
+				<button
+					type="button"
+					className={`${btnClass}${btnClass === "deloop-bar-btn" ? " deloop-bar-btn-user" : ""}`}
+					title={`${auth.authUser.name} (${auth.authUser.email})${server && !user ? " — click to sign out" : ""}`}
+					onClick={server && !user ? auth.signOut : undefined}
+				>
+					{auth.authUser.avatar ? (
+						<img
+							src={auth.authUser.avatar}
+							alt=""
+							style={{ width: 18, height: 18, borderRadius: "50%" }}
+						/>
+					) : (
+						<UserIcon />
+					)}
+					{withTooltip && (
+						<span className="deloop-tooltip">
+							{auth.authUser.name}
+							{server && !user ? " (click to sign out)" : ""}
+						</span>
+					)}
+				</button>
+			)}
+		</>
+	);
+
+	// Shared settings button — used in both toolbar bar and side panel header
+	const renderSettingsButton = (btnClass: string, activeClass: string, withTooltip: boolean, tooltipBelow?: boolean) => (
+		<button
+			type="button"
+			className={`${btnClass} ${showSettings ? activeClass : ""}`}
+			onClick={() => {
+				setShowSettings((v) => {
+					if (!v) {
+						// Lock panel direction when opening
+						panelOpenAboveRef.current = drag.offset ? drag.offset.y >= window.innerHeight / 2 : true;
+					}
+					return !v;
+				});
+				setPanelOpen(false);
+				setShowHelp(false);
+				setShowLabels(false);
+			}}
+			title="Settings"
+		>
+			<SettingsIcon />
+			{withTooltip && <span className="deloop-tooltip" style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}>Settings</span>}
+		</button>
+	);
 
 	// Preview content generator
 	const getPreviewContent = useCallback(
 		(format: "md" | "json"): string => {
-			const payload = buildPayload(state.annotations, promptTemplate, settings);
+			const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
 			if (format === "json") {
 				return JSON.stringify(payload, null, 2);
 			}
 			return payload.prompt;
 		},
-		[state.annotations, promptTemplate, settings],
+		[state.annotations, promptTemplate, settings, state.activeLabel],
 	);
 
 	// Settings content renderer
@@ -595,6 +1008,28 @@ export function Deloop({
 							</button>
 						);
 					})}
+				</div>
+			</div>
+			<div className="deloop-settings-row">
+				<div className="deloop-settings-label">
+					<div className="deloop-settings-title">Toolbar orientation</div>
+					<div className="deloop-settings-desc">Display the toolbar horizontally or vertically</div>
+				</div>
+				<div className="deloop-settings-segmented">
+					<button
+						type="button"
+						className={`deloop-settings-seg-btn ${settings.toolbarOrientation === "horizontal" ? "deloop-settings-seg-btn-active" : ""}`}
+						onClick={() => updateSettings({ toolbarOrientation: "horizontal" })}
+					>
+						Horizontal
+					</button>
+					<button
+						type="button"
+						className={`deloop-settings-seg-btn ${settings.toolbarOrientation === "vertical" ? "deloop-settings-seg-btn-active" : ""}`}
+						onClick={() => updateSettings({ toolbarOrientation: "vertical" })}
+					>
+						Vertical
+					</button>
 				</div>
 			</div>
 			<div className="deloop-settings-row">
@@ -657,6 +1092,147 @@ export function Deloop({
 					</button>
 				</div>
 			</div>
+			<div className="deloop-settings-row">
+				<div className="deloop-settings-label">
+					<div className="deloop-settings-title">Side panel position</div>
+					<div className="deloop-settings-desc">Which side of the screen the panel opens on</div>
+				</div>
+				<div className="deloop-settings-segmented">
+					<button
+						type="button"
+						className={`deloop-settings-seg-btn ${settings.sidePanelSide === "left" ? "deloop-settings-seg-btn-active" : ""}`}
+						onClick={() => updateSettings({ sidePanelSide: "left" })}
+					>
+						Left
+					</button>
+					<button
+						type="button"
+						className={`deloop-settings-seg-btn ${settings.sidePanelSide === "right" ? "deloop-settings-seg-btn-active" : ""}`}
+						onClick={() => updateSettings({ sidePanelSide: "right" })}
+					>
+						Right
+					</button>
+				</div>
+			</div>
+			<div className="deloop-settings-row">
+				<div className="deloop-settings-label">
+					<div className="deloop-settings-title">Screenshots</div>
+					<div className="deloop-settings-desc">
+						Capture page screenshots with annotations
+					</div>
+				</div>
+				<button
+					type="button"
+					className={`deloop-toggle ${settings.enableScreenshots ? "deloop-toggle-on" : ""}`}
+					onClick={() => updateSettings({ enableScreenshots: !settings.enableScreenshots })}
+					title={settings.enableScreenshots ? "Disable screenshots" : "Enable screenshots"}
+				>
+					<div className="deloop-toggle-thumb" />
+				</button>
+			</div>
+			</div>
+	);
+
+	// Labels panel content renderer
+	const renderLabelsContent = () => (
+		<div className="deloop-panel-body" style={{ padding: 12 }}>
+			<div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+				<input
+					className="deloop-thread-input"
+					type="text"
+					placeholder="Add a new label…"
+					value={labelDraft}
+					onChange={(e) => setLabelDraft(e.target.value)}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" && labelDraft.trim()) {
+							addLabel(labelDraft.trim());
+						}
+					}}
+					style={{ flex: 1 }}
+				/>
+				<button
+					type="button"
+					className="deloop-settings-seg-btn"
+					onClick={() => {
+						if (labelDraft.trim()) {
+							addLabel(labelDraft.trim());
+						}
+					}}
+					disabled={!labelDraft.trim()}
+					style={{ whiteSpace: "nowrap", fontSize: 11, padding: "4px 8px" }}
+				>
+					Add
+				</button>
+			</div>
+			{allLabels.length === 0 && (
+				<div style={{ fontSize: 11, opacity: 0.5, textAlign: "center", padding: "8px 0" }}>
+					No labels yet. Add one above.
+				</div>
+			)}
+			{allLabels.map((label) => {
+				const isActive = state.activeLabel === label;
+				const isProp = propLabels.includes(label);
+				return (
+					<div
+						key={label}
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: 6,
+							padding: "5px 6px",
+							borderRadius: 6,
+							cursor: "pointer",
+							background: isActive ? "var(--deloop-accent)" : "transparent",
+							color: isActive ? "#fff" : "inherit",
+							fontSize: 12,
+							transition: "background 0.1s",
+						}}
+						onClick={() => {
+							if (isActive) {
+								state.setActiveLabel(null);
+							} else {
+								state.setActiveLabel(label);
+							}
+						}}
+					>
+						<span style={{ width: 16, height: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+							{isActive && <CheckIcon />}
+						</span>
+						<span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+							{label}
+						</span>
+						{!isProp && (
+							<button
+								type="button"
+								className="deloop-panel-close"
+								onClick={(e) => {
+									e.stopPropagation();
+									removeLabel(label);
+								}}
+								style={{ width: 18, height: 18, fontSize: 10, flexShrink: 0 }}
+								title="Remove label"
+							>
+								✕
+							</button>
+						)}
+					</div>
+				);
+			})}
+			{state.activeLabel && (
+				<div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--deloop-border)", display: "flex", alignItems: "center", gap: 4 }}>
+					<button
+						type="button"
+						className="deloop-settings-seg-btn"
+						onClick={() => {
+							state.setActiveLabel(null);
+							setLabelDraft("");
+						}}
+						style={{ whiteSpace: "nowrap", fontSize: 11, padding: "4px 8px", width: "100%" }}
+					>
+						Clear active label
+					</button>
+				</div>
+			)}
 		</div>
 	);
 
@@ -664,13 +1240,14 @@ export function Deloop({
 	const renderHelpContent = () => (
 		<div className="deloop-panel-body" style={{ padding: 12 }}>
 			{[
-				["S", "Select tool"],
-				["D", "Draw tool"],
-				["M", "Marker tool"],
-				["C", "Capture tool"],
-				["A", "Toggle annotations"],
-				["P", "Toggle side panel"],
-				["?", "This help"],
+				["Alt+S", "Select tool"],
+				["Alt+D", "Draw tool"],
+				["Alt+M", "Marker tool"],
+				["Alt+C", "Capture tool"],
+				["Alt+A", "Toggle annotations"],
+				["Alt+P", "Toggle side panel"],
+				["Alt+L", "Labels"],
+				["Alt+/", "This help"],
 				["Esc", "Close / Minimize"],
 				["⌘Z", "Undo last annotation"],
 				["⌘↵", "Copy to clipboard"],
@@ -790,8 +1367,9 @@ export function Deloop({
 					const ItemIcon = ITEM_ICONS[a.type];
 					const isExpanded = expandedThreadId === a.id;
 					const commentCount = a.comments.length;
+					const lastComment = commentCount > 0 ? a.comments[commentCount - 1] : null;
 					return (
-						<div key={a.id} className="deloop-annotation-item-wrapper">
+						<div key={a.id} className={`deloop-annotation-item-wrapper${isExpanded ? " deloop-thread-expanded" : ""}`}>
 							<div
 								className="deloop-annotation-item"
 								onMouseEnter={() => setHoveredAnnotation(a.id)}
@@ -807,15 +1385,42 @@ export function Deloop({
 										className="deloop-annotation-thread-toggle"
 										onClick={() => toggleThread(a.id)}
 									>
-										{commentCount > 0
-											? `${commentCount} comment${commentCount !== 1 ? "s" : ""}`
-											: "Add comment..."}
+										{commentCount > 0 ? (
+											<span className="deloop-thread-preview">
+												<span className="deloop-thread-avatar-stack">
+													{[...new Map(a.comments.map((c) => [c.author, c])).values()]
+														.slice(0, 3)
+														.map((c) => (
+															<span
+																key={c.author}
+																className="deloop-thread-avatar-mini"
+																style={{ background: authorColor(c.author) }}
+																title={c.author}
+															>
+																{c.author[0]?.toUpperCase()}
+															</span>
+														))}
+												</span>
+												<span className="deloop-thread-count-pill">
+													{commentCount}
+												</span>
+												{lastComment && (
+													<span className="deloop-thread-last-text">
+														{lastComment.text.length > 28
+															? lastComment.text.slice(0, 28) + "…"
+															: lastComment.text}
+													</span>
+												)}
+											</span>
+										) : (
+											"Add comment…"
+										)}
 									</div>
 								</div>
 								<button
 									type="button"
 									className="deloop-annotation-remove"
-									onClick={() => state.removeAnnotation(a.id)}
+									onClick={() => localRemoveAnnotation(a.id)}
 									title="Remove"
 								>
 									&times;
@@ -825,56 +1430,76 @@ export function Deloop({
 								<div className="deloop-thread">
 									{a.comments.map((c) => (
 										<div key={c.id} className="deloop-thread-comment">
-											<div className="deloop-thread-comment-header">
-												<span className="deloop-thread-author">{c.author}</span>
-												<span className="deloop-thread-time">
-													{new Date(c.timestamp).toLocaleTimeString([], {
-														hour: "2-digit",
-														minute: "2-digit",
-													})}
-												</span>
-												<button
-													type="button"
-													className="deloop-thread-delete"
-													onClick={() => state.removeComment(a.id, c.id)}
-													title="Delete comment"
+											<div className="deloop-thread-comment-row">
+												<span
+													className="deloop-thread-avatar"
+													style={{ background: authorColor(c.author) }}
 												>
-													&times;
-												</button>
+													{authorInitials(c.author)}
+												</span>
+												<div className="deloop-thread-comment-body">
+													<div className="deloop-thread-comment-header">
+														<span className="deloop-thread-author">{c.author}</span>
+														<span className="deloop-thread-time">
+															{new Date(c.timestamp).toLocaleTimeString([], {
+																hour: "2-digit",
+																minute: "2-digit",
+															})}
+														</span>
+														<button
+															type="button"
+															className="deloop-thread-delete"
+															onClick={() => localRemoveComment(a.id, c.id)}
+															title="Delete comment"
+														>
+															&times;
+														</button>
+													</div>
+													<div className="deloop-thread-comment-text">{c.text}</div>
+												</div>
 											</div>
-											<div className="deloop-thread-comment-text">{c.text}</div>
 										</div>
 									))}
 									<div className="deloop-thread-input-row">
-										{!authorName && (
-											<input
-												className="deloop-thread-author-input"
-												type="text"
-												placeholder="Name"
-												value={authorName}
-												onChange={(e) => setAuthorName(e.target.value)}
-											/>
-										)}
-										<input
-											className="deloop-thread-input"
-											type="text"
-											placeholder="Add a comment..."
-											value={newCommentText}
-											onChange={(e) => setNewCommentText(e.target.value)}
-											onKeyDown={(e) => {
-												if (e.key === "Enter") submitComment(a.id);
-											}}
-											autoFocus
-										/>
-										<button
-											type="button"
-											className="deloop-thread-send"
-											title="Send comment"
-											onClick={() => submitComment(a.id)}
-											disabled={!newCommentText.trim()}
+										<span
+											className="deloop-thread-avatar deloop-thread-avatar-input"
+											style={{ background: authorColor(authorName || "Anonymous") }}
 										>
-											↵
-										</button>
+											{authorInitials(authorName || "Anonymous")}
+										</span>
+										<div className="deloop-thread-input-group">
+											{!authorName && (
+												<input
+													className="deloop-thread-author-input"
+													type="text"
+													placeholder="Your name"
+													value={authorName}
+													onChange={(e) => setAuthorName(e.target.value)}
+												/>
+											)}
+											<div className="deloop-thread-input-wrap">
+												<input
+													className="deloop-thread-input"
+													type="text"
+													placeholder="Write a comment…"
+													value={newCommentText}
+													onChange={(e) => setNewCommentText(e.target.value)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter") submitComment(a.id);
+													}}
+													autoFocus
+												/>
+												<button
+													type="button"
+													className="deloop-thread-send"
+													title="Send comment"
+													onClick={() => submitComment(a.id)}
+													disabled={!newCommentText.trim()}
+												>
+													<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+												</button>
+											</div>
+										</div>
 									</div>
 								</div>
 							)}
@@ -924,6 +1549,17 @@ export function Deloop({
 				>
 					.json
 				</button>
+				{server && (
+					<button
+						type="button"
+						className="deloop-submit-btn"
+						onClick={handleServerSubmit}
+						title="Submit to server"
+					>
+						<SendIcon />
+						Submit
+					</button>
+				)}
 				<button
 					type="button"
 					className="deloop-clear-btn"
@@ -934,7 +1570,7 @@ export function Deloop({
 							setTimeout(() => setClearConfirm(false), 2000);
 							return;
 						}
-						state.clearAnnotations();
+						localClearAnnotations();
 						setPanelOpen(false);
 						setSidePanelOpen(false);
 						setClearConfirm(false);
@@ -954,7 +1590,7 @@ export function Deloop({
 		<div data-deloop="toolbar" className="deloop-toolbar">
 			{/* Annotations popup panel (toolbar mode only) */}
 			{uiMode === "toolbar" && panelOpen && !state.activeMode && !sidePanelOpen && (
-				<div className="deloop-panel" style={panelStyle} ref={panelRef}>
+				<div className={`deloop-panel deloop-theme-${theme}`} style={floatingPanelStyle} ref={panelRef}>
 					<div className="deloop-panel-header">
 						<span className="deloop-panel-title">
 							Annotations{state.annotations.length > 0 ? ` (${state.annotations.length})` : ""}
@@ -978,130 +1614,169 @@ export function Deloop({
 				<div className="deloop-side-panel-backdrop" onClick={() => setSidePanelOpen(false)} />
 			)}
 
-			{/* Side panel drawer */}
-			{sidePanelOpen && (
-				<div className={`deloop-side-panel deloop-theme-${theme}`}>
-					<div className="deloop-side-panel-header">
-						<span className="deloop-panel-title">Deloop</span>
-						<div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-							<button
-								type="button"
-								className={`deloop-panel-close ${showHelp ? "deloop-panel-close-active" : ""}`}
-								onClick={() => {
-									setShowHelp((v) => !v);
-									setShowSettings(false);
-								}}
-								title="Keyboard shortcuts"
-							>
-								?
-							</button>
-							<button
-								type="button"
-								className={`deloop-panel-close ${showSettings ? "deloop-panel-close-active" : ""}`}
-								onClick={() => {
-									setShowSettings((v) => !v);
-									setShowHelp(false);
-								}}
-								title="Settings"
-							>
-								<SettingsIcon />
-							</button>
-							<button
-								type="button"
-								className="deloop-panel-close"
-								onClick={() => {
-									setUiMode((m) => (m === "toolbar" ? "panel" : "toolbar"));
-									setSidePanelOpen(false);
-								}}
-								title={uiMode === "toolbar" ? "Switch to panel mode" : "Switch to toolbar mode"}
-							>
-								<ToolbarModeIcon />
-							</button>
-							<button
-								type="button"
-								className="deloop-panel-close"
-								onClick={() => setSidePanelOpen(false)}
-								title="Close panel (Esc)"
-							>
-								<ChevronRightIcon />
-							</button>
-						</div>
-					</div>
-
-					{/* Tools section */}
-					<div className="deloop-side-panel-tools">
-						<div className="deloop-side-panel-section-label">Tools</div>
-						<div className="deloop-side-panel-tool-row">
+			{/* Side panel drawer — portaled outside <body> in push mode */}
+			{sidePanelOpen && (() => {
+				const isPush = settings.sidePanelMode === "push";
+				const isLeft = settings.sidePanelSide === "left";
+				const panel = (
+					<div className={`deloop-side-panel ${isPush ? "deloop-side-panel-push" : ""} ${isLeft ? "deloop-side-panel-left" : ""} deloop-theme-${theme}`}>
+						{/* Compact icon bar matching toolbar layout */}
+						<div className="deloop-side-panel-bar">
 							{toolDefs.map((tool) => {
 								const Icon = tool.icon;
 								return (
 									<button
 										key={tool.key}
 										type="button"
-										className={`deloop-side-panel-tool-btn ${state.activeMode === tool.key ? "deloop-side-panel-tool-btn-active" : ""}`}
+										className={`deloop-bar-btn ${state.activeMode === tool.key ? "deloop-bar-btn-active" : ""}`}
 										onClick={() => handleToolClick(tool.key)}
-										title={`${tool.label} (${tool.shortcut})`}
 									>
 										<Icon />
-										<span className="deloop-side-panel-tool-label">{tool.label}</span>
+										<span className="deloop-tooltip" style={{ bottom: "auto", top: "calc(100% + 10px)" }}>
+											{tool.label}
+											<span className="deloop-tooltip-key">{tool.shortcut}</span>
+										</span>
 									</button>
 								);
 							})}
-						</div>
-					</div>
-
-					{/* Inline settings in side panel */}
-					{showSettings && (
-						<div className="deloop-side-panel-section">
-							<div className="deloop-side-panel-section-label">Settings</div>
-							{renderSettingsContent()}
-						</div>
-					)}
-
-					{/* Inline help in side panel */}
-					{showHelp && (
-						<div className="deloop-side-panel-section">
-							<div className="deloop-side-panel-section-label">Keyboard Shortcuts</div>
-							{renderHelpContent()}
-						</div>
-					)}
-
-					{/* Annotations / Preview section (hidden when settings or help is open) */}
-					{!showSettings &&
-						!showHelp &&
-						(previewMode !== "off" ? (
-							<div className="deloop-side-panel-section" style={{ flex: 1, minHeight: 0 }}>
-								<div className="deloop-side-panel-section-label">Preview</div>
-								{renderPreview("none")}
-							</div>
-						) : (
-							<>
-								<div className="deloop-side-panel-section">
-									<div className="deloop-side-panel-section-label">
-										Annotations
-										{state.annotations.length > 0 ? ` (${state.annotations.length})` : ""}
+							<button
+								type="button"
+								className="deloop-bar-btn"
+								onClick={() => setShowLabels((v) => { if (!v) { setShowSettings(false); setShowHelp(false); } return !v; })}
+							>
+								<LabelIcon />
+								<span className="deloop-tooltip" style={{ bottom: "auto", top: "calc(100% + 10px)" }}>
+									{state.activeLabel ?? "Labels"}
+									<span className="deloop-tooltip-key">L</span>
+								</span>
+							</button>
+							<div className="deloop-bar-export-wrap" ref={exportMenuRef}>
+								<button
+									type="button"
+									className={`deloop-bar-btn ${showExportMenu ? "deloop-bar-btn-active" : ""}`}
+									onClick={() => setShowExportMenu((v) => !v)}
+									style={
+										copied
+											? { color: "var(--deloop-green, #4ade80)" }
+											: state.annotations.length > 0
+												? { color: "var(--deloop-text)" }
+												: undefined
+									}
+								>
+									{copied ? <CheckIcon /> : <SubmitIcon />}
+									<span className="deloop-tooltip" style={{ bottom: "auto", top: "calc(100% + 10px)" }}>
+										{copied ? "Copied!" : "Export"}
+										{!copied && <span className="deloop-tooltip-key">⌘↵</span>}
+									</span>
+								</button>
+								{showExportMenu && (
+									<div className={`deloop-export-menu deloop-theme-${theme}`} style={{ bottom: "auto", top: "100%", marginTop: 8 }}>
+										<button type="button" className="deloop-export-menu-item" onClick={() => { handleCopy(); setShowExportMenu(false); }}>
+											<CopyIcon /> Copy <span className="deloop-export-menu-key">⌘↵</span>
+										</button>
+										<button type="button" className="deloop-export-menu-item" onClick={() => { handleExport("md"); setShowExportMenu(false); }}>
+											<SaveFileIcon /> .md
+										</button>
+										<button type="button" className="deloop-export-menu-item" onClick={() => { handleExport("json"); setShowExportMenu(false); }}>
+											<SaveFileIcon /> .json
+										</button>
+										{server && (
+											<button type="button" className="deloop-export-menu-item" onClick={() => { handleServerSubmit(); setShowExportMenu(false); }}>
+												<SendIcon /> Submit
+											</button>
+										)}
+										<div className="deloop-export-menu-divider" />
+										<button
+											type="button"
+											className="deloop-export-menu-item deloop-export-menu-item-danger"
+											onClick={() => {
+												if (!clearConfirm) { setClearConfirm(true); setTimeout(() => setClearConfirm(false), 2000); return; }
+												localClearAnnotations(); setShowExportMenu(false); setClearConfirm(false);
+											}}
+										>
+											{clearConfirm ? "Confirm clear?" : "Clear all"}
+										</button>
 									</div>
-									{renderAnnotationList("none")}
+								)}
+							</div>
+							{renderSettingsButton("deloop-bar-btn", "deloop-bar-btn-active", true, true)}
+							<button
+								type="button"
+								className="deloop-bar-btn"
+								onClick={() => setSidePanelCollapsed((v) => !v)}
+							>
+								{sidePanelCollapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}
+								<span className="deloop-tooltip" style={{ bottom: "auto", top: "calc(100% + 10px)" }}>{sidePanelCollapsed ? "Expand" : "Collapse"}</span>
+							</button>
+							<button
+								type="button"
+								className="deloop-bar-btn"
+								onClick={() => setSidePanelOpen(false)}
+							>
+								<ChevronRightIcon />
+								<span className="deloop-tooltip" style={{ bottom: "auto", top: "calc(100% + 10px)" }}>Close<span className="deloop-tooltip-key">Esc</span></span>
+							</button>
+						</div>
+
+						{/* Inline labels in side panel */}
+						{!sidePanelCollapsed && showLabels && (
+							<div className="deloop-side-panel-section">
+								<div className="deloop-side-panel-section-label">Labels</div>
+								{renderLabelsContent()}
+							</div>
+						)}
+
+						{/* Inline settings in side panel */}
+						{!sidePanelCollapsed && showSettings && (
+							<div className="deloop-side-panel-section">
+								<div className="deloop-side-panel-section-label">Settings</div>
+								{renderSettingsContent()}
+							</div>
+						)}
+
+						{/* Inline help in side panel */}
+						{!sidePanelCollapsed && showHelp && (
+							<div className="deloop-side-panel-section">
+								<div className="deloop-side-panel-section-label">Keyboard Shortcuts</div>
+								{renderHelpContent()}
+							</div>
+						)}
+
+						{/* Annotations / Preview section */}
+						{!sidePanelCollapsed && !showLabels && !showSettings &&
+							!showHelp &&
+							(previewMode !== "off" ? (
+								<div className="deloop-side-panel-section" style={{ flex: 1, minHeight: 0 }}>
+									<div className="deloop-side-panel-section-label">Preview</div>
+									{renderPreview("none")}
 								</div>
-
-								{/* Plugin panels */}
-								{plugins
-									.filter((p) => p.panel)
-									.map((plugin) => (
-										<div key={plugin.key} className="deloop-side-panel-section">
-											<div className="deloop-side-panel-section-label">{plugin.label}</div>
-											<div className="deloop-panel-body" style={{ maxHeight: "none" }}>
-												{plugin.panel!()}
-											</div>
+							) : (
+								<>
+									<div className="deloop-side-panel-section">
+										<div className="deloop-side-panel-section-label">
+											Annotations
+											{state.annotations.length > 0 ? ` (${state.annotations.length})` : ""}
 										</div>
-									))}
-							</>
-						))}
+										{renderAnnotationList("none")}
+									</div>
 
-					{/* Footer */}
-					{renderFooter()}
-				</div>
-			)}
+									{/* Plugin panels */}
+									{plugins
+										.filter((p) => p.panel)
+										.map((plugin) => (
+											<div key={plugin.key} className="deloop-side-panel-section">
+												<div className="deloop-side-panel-section-label">{plugin.label}</div>
+												<div className="deloop-panel-body" style={{ maxHeight: "none" }}>
+													{plugin.panel!()}
+												</div>
+											</div>
+										))}
+								</>
+							))}
+					</div>
+				);
+				return isPush ? createPortal(panel, pushPortalContainer) : panel;
+			})()}
 
 			{/* Panel mode: floating icon to toggle side panel */}
 			{uiMode === "panel" && !state.activeMode && !sidePanelOpen && (
@@ -1187,7 +1862,7 @@ export function Deloop({
 			{/* Bottom bar — only in toolbar mode, hidden when side panel is open */}
 			{uiMode === "toolbar" && !state.activeMode && !collapsed && !sidePanelOpen && (
 				<div
-					className={`deloop-bar deloop-theme-${theme}`}
+					className={`deloop-bar deloop-theme-${theme}${showSettings || showHelp || showLabels ? " deloop-bar-panel-open" : ""}${settings.toolbarOrientation === "vertical" ? " deloop-bar-vertical" : ""}`}
 					style={
 						drag.offset
 							? {
@@ -1248,39 +1923,6 @@ export function Deloop({
 					<div className="deloop-bar-divider" />
 					<button
 						type="button"
-						className={`deloop-bar-btn ${showSettings ? "deloop-bar-btn-active" : ""}`}
-						onClick={() => {
-							setShowSettings((v) => !v);
-							setPanelOpen(false);
-							setShowHelp(false);
-						}}
-					>
-						<SettingsIcon />
-						<span className="deloop-tooltip">Settings</span>
-					</button>
-					<button
-						type="button"
-						className="deloop-bar-btn"
-						onClick={() => setCollapsed(true)}
-						title="Minimize"
-					>
-						<MinimizeIcon />
-						<span className="deloop-tooltip">Minimize</span>
-					</button>
-					<div className="deloop-bar-divider" />
-					<button
-						type="button"
-						className={`deloop-bar-btn ${sidePanelOpen ? "deloop-bar-btn-active" : ""}`}
-						onClick={toggleSidePanel}
-					>
-						<SidePanelIcon />
-						<span className="deloop-tooltip">
-							Panel
-							<span className="deloop-tooltip-key">P</span>
-						</span>
-					</button>
-					<button
-						type="button"
 						className={`deloop-bar-btn ${panelOpen ? "deloop-bar-btn-active" : ""}`}
 						onClick={togglePanel}
 					>
@@ -1297,21 +1939,131 @@ export function Deloop({
 					</button>
 					<button
 						type="button"
-						className="deloop-bar-btn"
-						onClick={handleCopy}
-						style={
-							copied
-								? { color: "var(--deloop-green, #4ade80)" }
-								: state.annotations.length > 0
-									? { color: "var(--deloop-text)" }
-									: undefined
-						}
+						className={`deloop-bar-btn ${showLabels || state.activeLabel ? "deloop-bar-btn-active" : ""}`}
+						onClick={() => {
+							setShowLabels((v) => {
+								if (!v) {
+									panelOpenAboveRef.current = drag.offset ? drag.offset.y >= window.innerHeight / 2 : true;
+								}
+								return !v;
+							});
+							setShowSettings(false);
+							setPanelOpen(false);
+							setShowHelp(false);
+						}}
+						title={state.activeLabel ? `Label: ${state.activeLabel}` : "Labels"}
 					>
-						{copied ? <CheckIcon /> : <SubmitIcon />}
+						<LabelIcon />
 						<span className="deloop-tooltip">
-							{copied ? "Copied!" : "Copy"}
-							{!copied && <span className="deloop-tooltip-key">⌘↵</span>}
+							{state.activeLabel ?? "Labels"}
+							<span className="deloop-tooltip-key">L</span>
 						</span>
+					</button>
+					<div className="deloop-bar-divider" />
+					<div className="deloop-bar-export-wrap" ref={exportMenuRef}>
+						<button
+							type="button"
+							className={`deloop-bar-btn ${showExportMenu ? "deloop-bar-btn-active" : ""}`}
+							onClick={() => setShowExportMenu((v) => !v)}
+							style={
+								copied
+									? { color: "var(--deloop-green, #4ade80)" }
+									: state.annotations.length > 0
+										? { color: "var(--deloop-text)" }
+										: undefined
+							}
+						>
+							{copied ? <CheckIcon /> : <SubmitIcon />}
+							<span className="deloop-tooltip">
+								{copied ? "Copied!" : "Export"}
+								{!copied && <span className="deloop-tooltip-key">⌘↵</span>}
+							</span>
+						</button>
+						{showExportMenu && (
+							<div className={`deloop-export-menu deloop-theme-${theme}`} style={isVertical ? { left: "100%", marginLeft: 8, bottom: 0 } : drag.offset && drag.offset.y < window.innerHeight / 2 ? { top: "100%", marginTop: 8 } : { bottom: "100%", marginBottom: 8 }}>
+								<button
+									type="button"
+									className="deloop-export-menu-item"
+									onClick={() => { handleCopy(); setShowExportMenu(false); }}
+								>
+									<CopyIcon />
+									Copy
+									<span className="deloop-export-menu-key">⌘↵</span>
+								</button>
+								<button
+									type="button"
+									className="deloop-export-menu-item"
+									onClick={() => { handleExport("md"); setShowExportMenu(false); }}
+								>
+									<SaveFileIcon />
+									.md
+								</button>
+								<button
+									type="button"
+									className="deloop-export-menu-item"
+									onClick={() => { handleExport("json"); setShowExportMenu(false); }}
+								>
+									<SaveFileIcon />
+									.json
+								</button>
+								{server && (
+									<button
+										type="button"
+										className="deloop-export-menu-item"
+										onClick={() => { handleServerSubmit(); setShowExportMenu(false); }}
+									>
+										<SendIcon />
+										Submit
+									</button>
+								)}
+								<div className="deloop-export-menu-divider" />
+								<button
+									type="button"
+									className="deloop-export-menu-item deloop-export-menu-item-danger"
+									onClick={() => {
+										if (!clearConfirm) {
+											setClearConfirm(true);
+											setTimeout(() => setClearConfirm(false), 2000);
+											return;
+										}
+										localClearAnnotations();
+										setShowExportMenu(false);
+										setClearConfirm(false);
+									}}
+								>
+									{clearConfirm ? "Confirm clear?" : "Clear all"}
+								</button>
+							</div>
+						)}
+					</div>
+					<div className="deloop-bar-divider" />
+					<button
+						type="button"
+						className={`deloop-bar-btn ${sidePanelOpen ? "deloop-bar-btn-active" : ""}`}
+						onClick={toggleSidePanel}
+					>
+						<SidePanelIcon />
+						<span className="deloop-tooltip">
+							Panel
+							<span className="deloop-tooltip-key">P</span>
+						</span>
+					</button>
+					{collab.peers.length > 0 && (
+						<>
+							<div className="deloop-bar-divider" />
+							<PeerAvatars peers={collab.peers} />
+						</>
+					)}
+					{renderSettingsButton("deloop-bar-btn", "deloop-bar-btn-active", true)}
+					{renderAuthButtons("deloop-bar-btn", true)}
+					<button
+						type="button"
+						className="deloop-bar-btn"
+						onClick={() => setCollapsed(true)}
+						title="Minimize"
+					>
+						<MinimizeIcon />
+						<span className="deloop-tooltip">Minimize</span>
 					</button>
 				</div>
 			)}
@@ -1421,58 +2173,78 @@ export function Deloop({
 								)}
 								{a.comments.map((c) => (
 									<div key={c.id} className="deloop-thread-comment">
-										<div className="deloop-thread-comment-header">
-											<span className="deloop-thread-author">{c.author}</span>
-											<span className="deloop-thread-time">
-												{new Date(c.timestamp).toLocaleTimeString([], {
-													hour: "2-digit",
-													minute: "2-digit",
-												})}
-											</span>
-											<button
-												type="button"
-												className="deloop-thread-delete"
-												onClick={() => state.removeComment(a.id, c.id)}
-												title="Delete"
+										<div className="deloop-thread-comment-row">
+											<span
+												className="deloop-thread-avatar"
+												style={{ background: authorColor(c.author) }}
 											>
-												&times;
-											</button>
+												{authorInitials(c.author)}
+											</span>
+											<div className="deloop-thread-comment-body">
+												<div className="deloop-thread-comment-header">
+													<span className="deloop-thread-author">{c.author}</span>
+													<span className="deloop-thread-time">
+														{new Date(c.timestamp).toLocaleTimeString([], {
+															hour: "2-digit",
+															minute: "2-digit",
+														})}
+													</span>
+													<button
+														type="button"
+														className="deloop-thread-delete"
+														onClick={() => localRemoveComment(a.id, c.id)}
+														title="Delete"
+													>
+														&times;
+													</button>
+												</div>
+												<div className="deloop-thread-comment-text">{c.text}</div>
+											</div>
 										</div>
-										<div className="deloop-thread-comment-text">{c.text}</div>
 									</div>
 								))}
 							</div>
 							<div className="deloop-thread-input-row" style={{ padding: "8px" }}>
-								{!authorName && (
-									<input
-										className="deloop-thread-author-input"
-										type="text"
-										placeholder="Name"
-										value={authorName}
-										onChange={(e) => setAuthorName(e.target.value)}
-									/>
-								)}
-								<input
-									className="deloop-thread-input"
-									type="text"
-									placeholder="Add a comment..."
-									value={newCommentText}
-									onChange={(e) => setNewCommentText(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") submitComment(a.id);
-										if (e.key === "Escape") setFocusedAnnotation(null);
-									}}
-									autoFocus
-								/>
-								<button
-									type="button"
-									className="deloop-thread-send"
-									title="Send comment"
-									onClick={() => submitComment(a.id)}
-									disabled={!newCommentText.trim()}
+								<span
+									className="deloop-thread-avatar deloop-thread-avatar-input"
+									style={{ background: authorColor(authorName || "Anonymous") }}
 								>
-									↵
-								</button>
+									{authorInitials(authorName || "Anonymous")}
+								</span>
+								<div className="deloop-thread-input-group">
+									{!authorName && (
+										<input
+											className="deloop-thread-author-input"
+											type="text"
+											placeholder="Your name"
+											value={authorName}
+											onChange={(e) => setAuthorName(e.target.value)}
+										/>
+									)}
+									<div className="deloop-thread-input-wrap">
+										<input
+											className="deloop-thread-input"
+											type="text"
+											placeholder="Write a comment…"
+											value={newCommentText}
+											onChange={(e) => setNewCommentText(e.target.value)}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") submitComment(a.id);
+												if (e.key === "Escape") setFocusedAnnotation(null);
+											}}
+											autoFocus
+										/>
+										<button
+											type="button"
+											className="deloop-thread-send"
+											title="Send comment"
+											onClick={() => submitComment(a.id)}
+											disabled={!newCommentText.trim()}
+										>
+											<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+										</button>
+									</div>
+								</div>
 							</div>
 						</div>
 					);
@@ -1511,28 +2283,46 @@ export function Deloop({
 					onCapture={handleRapidCapture}
 					onDone={handleToolDone}
 					annotations={state.annotations}
-					onFocusAnnotation={(id) => {
-						state.deactivateTool();
-						setFocusedAnnotation(id);
-					}}
+					onFocusAnnotation={handleFocusAnnotation}
 				/>
 			)}
 			{state.activeMode === "draw" && (
-				<DrawOverlay onCapture={handleCapture} onDone={handleToolDone} />
+				<DrawOverlay onCapture={handleCapture} onDone={handleToolDone} enableScreenshots={settings.enableScreenshots} />
 			)}
 			{state.activeMode === "marker" && (
 				<MarkerOverlay
 					onCapture={handleRapidCapture}
 					onDone={handleToolDone}
 					annotations={state.annotations}
-					onFocusAnnotation={(id) => {
-						state.deactivateTool();
-						setFocusedAnnotation(id);
-					}}
+					onFocusAnnotation={handleFocusAnnotation}
 				/>
 			)}
 			{state.activeMode === "capture" && (
 				<CaptureOverlay onCapture={handleCapture} onDone={handleToolDone} />
+			)}
+
+			{/* Labels panel (floating, toolbar mode only) */}
+			{showLabels && !state.activeMode && !sidePanelOpen && (
+				<div
+					className={`deloop-panel deloop-theme-${theme}`}
+					style={{
+						...floatingPanelStyle,
+						width: 280,
+					}}
+				>
+					<div className="deloop-panel-header">
+						<span className="deloop-panel-title">Labels</span>
+						<button
+							type="button"
+							className="deloop-panel-close"
+							onClick={() => setShowLabels(false)}
+							title="Close (Esc)"
+						>
+							Esc
+						</button>
+					</div>
+					{renderLabelsContent()}
+				</div>
 			)}
 
 			{/* Settings panel (floating, toolbar mode only) */}
@@ -1540,9 +2330,8 @@ export function Deloop({
 				<div
 					className={`deloop-panel deloop-theme-${theme}`}
 					style={{
-						bottom: 80,
+						...floatingPanelStyle,
 						width: 300,
-						animation: "deloop-panel-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
 					}}
 				>
 					<div className="deloop-panel-header">
@@ -1565,9 +2354,8 @@ export function Deloop({
 				<div
 					className={`deloop-panel deloop-theme-${theme}`}
 					style={{
-						bottom: 80,
+						...floatingPanelStyle,
 						width: 300,
-						animation: "deloop-panel-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1)",
 					}}
 				>
 					<div className="deloop-panel-header">
@@ -1585,9 +2373,21 @@ export function Deloop({
 				</div>
 			)}
 
+			{/* Auth modal */}
+			{auth.showAuthModal && server && authEnabled && auth.client.current && (
+				<AuthModal
+					client={auth.client.current}
+					onSuccess={auth.onLoginSuccess}
+					onClose={auth.closeLogin}
+				/>
+			)}
+
+			{/* Peer cursors */}
+			{collab.connected && <PeerCursors peers={collab.peers} />}
+
 			{/* Toast */}
 			{toast && (
-				<div className="deloop-toast" style={toastStyle}>
+				<div className="deloop-toast" style={drag.offset ? { left: drag.offset.x + 180, bottom: "auto", top: drag.offset.y - 10, transform: "translateX(-50%) translateY(-100%)" } : undefined}>
 					{toast}
 				</div>
 			)}

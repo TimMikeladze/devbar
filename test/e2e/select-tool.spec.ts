@@ -7,7 +7,7 @@ test.describe("Select Tool", () => {
 	});
 
 	test("activating shows minibar and instruction", async ({ page }) => {
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toContainText("Select");
@@ -16,7 +16,7 @@ test.describe("Select Tool", () => {
 	});
 
 	test("clicking an element shows note input", async ({ page }) => {
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		await page.locator("h1").click();
@@ -27,7 +27,7 @@ test.describe("Select Tool", () => {
 	test("submitting note captures annotation and stays in select mode (rapid mode)", async ({
 		page,
 	}) => {
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		// Select first element
@@ -43,7 +43,7 @@ test.describe("Select Tool", () => {
 	});
 
 	test("can capture multiple elements rapidly", async ({ page }) => {
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		// First element
@@ -60,7 +60,7 @@ test.describe("Select Tool", () => {
 	});
 
 	test("Escape exits select mode", async ({ page }) => {
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await page.waitForSelector(".deloop-minibar");
 
 		await page.keyboard.press("Escape");
@@ -69,7 +69,7 @@ test.describe("Select Tool", () => {
 	});
 
 	test("Done button on minibar exits select mode", async ({ page }) => {
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await page.waitForSelector(".deloop-minibar");
 
 		// The minibar Done button deactivates the tool

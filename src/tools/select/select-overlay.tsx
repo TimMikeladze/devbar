@@ -29,12 +29,22 @@ export function SelectOverlay({
 	} | null>(null);
 	const [commentText, setCommentText] = useState("");
 
+	// Keep stable refs for callbacks/values used in the effect
+	const onCaptureRef = useRef(onCapture);
+	const onDoneRef = useRef(onDone);
+	const annotationsRef = useRef(annotations);
+	const onFocusAnnotationRef = useRef(onFocusAnnotation);
+	onCaptureRef.current = onCapture;
+	onDoneRef.current = onDone;
+	annotationsRef.current = annotations;
+	onFocusAnnotationRef.current = onFocusAnnotation;
+
 	// Find if an element already has an annotation by matching its bounding rect
 	const findExistingAnnotation = useCallback(
 		(el: Element): Annotation | null => {
 			const rect = el.getBoundingClientRect();
 			return (
-				annotations.find((a) => {
+				annotationsRef.current.find((a) => {
 					if (a.type !== "element") return false;
 					const d = a.data as ElementData;
 					return (
@@ -46,7 +56,7 @@ export function SelectOverlay({
 				}) ?? null
 			);
 		},
-		[annotations],
+		[],
 	);
 
 	useEffect(() => {
@@ -73,8 +83,8 @@ export function SelectOverlay({
 
 			// If this element already has an annotation, focus it instead
 			const existing = findExistingAnnotation(el);
-			if (existing && onFocusAnnotation) {
-				onFocusAnnotation(existing.id);
+			if (existing && onFocusAnnotationRef.current) {
+				onFocusAnnotationRef.current(existing.id);
 				return;
 			}
 
@@ -95,10 +105,10 @@ export function SelectOverlay({
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
 				if (commentInput) {
-					onCapture(commentInput.annotation);
+					onCaptureRef.current(commentInput.annotation);
 					setCommentInput(null);
 				}
-				onDone();
+				onDoneRef.current();
 			}
 		};
 
@@ -110,7 +120,7 @@ export function SelectOverlay({
 			window.removeEventListener("click", onClick, true);
 			window.removeEventListener("keydown", onKeyDown);
 		};
-	}, [commentInput, onCapture, onDone, findExistingAnnotation, onFocusAnnotation]);
+	}, [commentInput, findExistingAnnotation]);
 
 	const submitComment = useCallback(() => {
 		if (!commentInput) return;

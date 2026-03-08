@@ -5,6 +5,7 @@ export function buildPayload(
 	annotations: Annotation[],
 	promptTemplate?: PromptTemplate,
 	settings?: DeloopSettings,
+	label?: string | null,
 ): DeloopPayload {
 	const template = promptTemplate ?? defaultPromptTemplate;
 
@@ -25,6 +26,7 @@ export function buildPayload(
 	return {
 		...context,
 		timestamp: Date.now(),
+		label: label ?? undefined,
 		prompt: template(context),
 	};
 }

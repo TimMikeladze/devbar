@@ -23,7 +23,9 @@ function createPNG(size: number): Buffer {
 
 	// IDAT chunk - raw image data
 	const rawData: number[] = [];
-	const r = 0x63, g = 0x66, b = 0xf1; // #6366f1
+	const r = 0x63,
+		g = 0x66,
+		b = 0xf1; // #6366f1
 	for (let y = 0; y < height; y++) {
 		rawData.push(0); // filter byte: none
 		for (let x = 0; x < width; x++) {

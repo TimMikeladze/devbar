@@ -1,8 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 // Helper to add an annotation via select tool
-async function addAnnotation(page: import("@playwright/test").Page, target: string, comment?: string) {
-	await page.getByRole("button", { name: "Select S" }).click();
+async function addAnnotation(
+	page: import("@playwright/test").Page,
+	target: string,
+	comment?: string,
+) {
+	await page.getByRole("button", { name: /Select/ }).click();
 	await page.waitForSelector(".deloop-instruction");
 	await page.locator(target).click();
 	await page.waitForSelector("[data-deloop='note-input']");
@@ -165,7 +169,7 @@ test.describe("Undo", () => {
 		await expect(page.locator(".deloop-badge")).toHaveText("2");
 
 		// Open panel via keyboard and clear all
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-panel")).toBeVisible();
 		await page.getByRole("button", { name: "Clear" }).click();
 		await page.getByRole("button", { name: "Confirm?" }).click();

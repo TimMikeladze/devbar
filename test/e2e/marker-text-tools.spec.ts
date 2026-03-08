@@ -7,7 +7,7 @@ test.describe("Marker Tool", () => {
 	});
 
 	test("activating shows minibar and instruction", async ({ page }) => {
-		await page.getByRole("button", { name: "Marker M" }).click();
+		await page.getByRole("button", { name: /Marker/ }).click();
 
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toContainText("Marker");
@@ -15,7 +15,7 @@ test.describe("Marker Tool", () => {
 	});
 
 	test("clicking places a marker with note input", async ({ page }) => {
-		await page.getByRole("button", { name: "Marker M" }).click();
+		await page.getByRole("button", { name: /Marker/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		await page.locator("h1").click();
@@ -23,7 +23,7 @@ test.describe("Marker Tool", () => {
 	});
 
 	test("rapid mode: stays in marker tool after placing", async ({ page }) => {
-		await page.getByRole("button", { name: "Marker M" }).click();
+		await page.getByRole("button", { name: /Marker/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		await page.locator("h1").click();
@@ -39,7 +39,7 @@ test.describe("Marker Tool", () => {
 	});
 
 	test("placed markers are visible on the page", async ({ page }) => {
-		await page.getByRole("button", { name: "Marker M" }).click();
+		await page.getByRole("button", { name: /Marker/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		await page.locator("h1").click();
@@ -58,7 +58,7 @@ test.describe("Capture Tool", () => {
 	});
 
 	test("activating shows capture chooser dialog", async ({ page }) => {
-		await page.getByRole("button", { name: "Capture C" }).click();
+		await page.getByRole("button", { name: /Capture/ }).click();
 
 		const dialog = page.locator("[data-deloop-capture-toolbar]");
 		await expect(dialog).toBeVisible();
@@ -68,7 +68,7 @@ test.describe("Capture Tool", () => {
 	});
 
 	test("cancel exits capture mode", async ({ page }) => {
-		await page.getByRole("button", { name: "Capture C" }).click();
+		await page.getByRole("button", { name: /Capture/ }).click();
 		await page.waitForSelector("[data-deloop-capture-toolbar]");
 
 		await page
@@ -80,7 +80,7 @@ test.describe("Capture Tool", () => {
 	});
 
 	test("select region shows crosshair and instruction", async ({ page }) => {
-		await page.getByRole("button", { name: "Capture C" }).click();
+		await page.getByRole("button", { name: /Capture/ }).click();
 		await page.waitForSelector("[data-deloop-capture-toolbar]");
 
 		await page.getByRole("button", { name: "Select Region" }).click();

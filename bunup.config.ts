@@ -7,7 +7,28 @@ export default defineConfig([
 		entry: "src/index.tsx",
 		format: "esm",
 		dts: true,
+		target: "browser",
 		external: ["react", "react-dom"],
+	},
+	{
+		name: "server",
+		entry: [
+			"src/server/index.ts",
+			"src/server/cli.ts",
+			"src/server/vercel.ts",
+		],
+		outDir: "dist/server",
+		format: "esm",
+		dts: true,
+		external: [
+			"hono",
+			"better-auth",
+			"drizzle-orm",
+			"postgres",
+			"@libsql/client",
+			"@drizzle-team/brocli",
+			"stripe",
+		],
 	},
 	{
 		name: "cdn",

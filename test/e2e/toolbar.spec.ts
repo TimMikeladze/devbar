@@ -7,10 +7,10 @@ test.describe("Toolbar", () => {
 	});
 
 	test("renders the full toolbar with all tool buttons", async ({ page }) => {
-		await expect(page.getByRole("button", { name: "Select S" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "Draw D" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "Marker M" })).toBeVisible();
-		await expect(page.getByRole("button", { name: "Capture C" })).toBeVisible();
+		await expect(page.getByRole("button", { name: /Select/ })).toBeVisible();
+		await expect(page.getByRole("button", { name: /Draw/ })).toBeVisible();
+		await expect(page.getByRole("button", { name: /Marker/ })).toBeVisible();
+		await expect(page.getByRole("button", { name: /Capture/ })).toBeVisible();
 	});
 
 	test("renders theme, minimize, annotations, and copy buttons", async ({ page }) => {
@@ -81,7 +81,7 @@ test.describe("Minimize / Collapse", () => {
 
 	test("shows badge on dot when annotations exist", async ({ page }) => {
 		// Add an annotation first via select tool
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 		await page.locator("h1").click();
 		await page.waitForSelector("[data-deloop='note-input']");
@@ -102,34 +102,34 @@ test.describe("Keyboard Shortcuts", () => {
 		await page.waitForSelector(".deloop-bar");
 	});
 
-	test("S activates select tool", async ({ page }) => {
-		await page.keyboard.press("s");
+	test("Alt+S activates select tool", async ({ page }) => {
+		await page.keyboard.press("Alt+s");
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toContainText("Select");
 	});
 
-	test("D activates draw tool", async ({ page }) => {
-		await page.keyboard.press("d");
+	test("Alt+D activates draw tool", async ({ page }) => {
+		await page.keyboard.press("Alt+d");
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toContainText("Draw");
 	});
 
-	test("M activates marker tool", async ({ page }) => {
-		await page.keyboard.press("m");
+	test("Alt+M activates marker tool", async ({ page }) => {
+		await page.keyboard.press("Alt+m");
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toContainText("Marker");
 	});
 
-	test("A toggles annotations panel", async ({ page }) => {
-		await page.keyboard.press("a");
+	test("Alt+A toggles annotations panel", async ({ page }) => {
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-panel")).toBeVisible();
 
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-panel")).not.toBeVisible();
 	});
 
 	test("Escape closes panel", async ({ page }) => {
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-panel")).toBeVisible();
 
 		await page.keyboard.press("Escape");

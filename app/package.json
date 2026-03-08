@@ -1,0 +1,31 @@
+{
+	"name": "docs",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc -b && vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"better-auth": "^1.5.4",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"react-router": "^7.13.1",
+		"shiki": "^4.0.1"
+	},
+	"devDependencies": {
+		"@tailwindcss/vite": "^4.2.1",
+		"@types/node": "^24.10.1",
+		"@types/react": "^19.2.7",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^5.1.4",
+		"tailwindcss": "^4.2.1",
+		"typescript": "~5.9.3",
+		"vite": "^8.0.0-beta.13"
+	},
+	"overrides": {
+		"vite": "^8.0.0-beta.13"
+	}
+}

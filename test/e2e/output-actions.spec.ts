@@ -1,8 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 // Helper to add an annotation via select tool
-async function addAnnotation(page: import("@playwright/test").Page, target: string, comment?: string) {
-	await page.getByRole("button", { name: "Select S" }).click();
+async function addAnnotation(
+	page: import("@playwright/test").Page,
+	target: string,
+	comment?: string,
+) {
+	await page.getByRole("button", { name: /Select/ }).click();
 	await page.waitForSelector(".deloop-instruction");
 	await page.locator(target).click();
 	await page.waitForSelector("[data-deloop='note-input']");
@@ -38,7 +42,7 @@ test.describe("Output Actions: Copy", () => {
 	test("copy button in panel shows toast", async ({ page }) => {
 		await addAnnotation(page, "h1");
 
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await page.getByRole("button", { name: /Copy/ }).first().click();
 
 		await expect(page.locator(".deloop-toast")).toContainText("Copied to clipboard");
@@ -61,7 +65,7 @@ test.describe("Output Actions: Export", () => {
 	test("markdown export button shows toast", async ({ page }) => {
 		await addAnnotation(page, "h1");
 
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await page.getByRole("button", { name: ".md" }).click();
 
 		await expect(page.locator(".deloop-toast")).toContainText("Saved markdown");

@@ -21,11 +21,26 @@
 	"type": "module",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"bin": {
+		"deloop.dev": "./dist/server/cli.js"
+	},
 	"exports": {
 		".": {
 			"import": {
 				"types": "./dist/index.d.ts",
 				"default": "./dist/index.js"
+			}
+		},
+		"./server": {
+			"import": {
+				"types": "./dist/server/index.d.ts",
+				"default": "./dist/server/index.js"
+			}
+		},
+		"./server/vercel": {
+			"import": {
+				"types": "./dist/server/vercel.d.ts",
+				"default": "./dist/server/vercel.js"
 			}
 		},
 		"./cdn": "./dist/cdn/cdn.global.js",
@@ -34,7 +49,11 @@
 	},
 	"scripts": {
 		"build": "bunup",
-		"dev": "bun run --cwd test/ui dev",
+		"dev": "bun run dev:lib & bun run dev:ui & bun run dev:app & bun run dev:server & wait",
+		"dev:lib": "bunup --watch",
+		"dev:ui": "bun run --cwd test/ui dev",
+		"dev:app": "bun run --cwd app dev",
+		"dev:server": "bun --watch src/server/cli.ts start",
 		"format": "oxfmt",
 		"lint": "oxlint",
 		"prepare": "bun simple-git-hooks",
@@ -43,10 +62,21 @@
 		"test:e2e": "bunx playwright test",
 		"test:coverage": "bun test --coverage",
 		"test:watch": "bun test --watch",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"db:pg:generate": "drizzle-kit generate --config=drizzle.config.pg.ts",
+		"db:pg:migrate": "drizzle-kit migrate --config=drizzle.config.pg.ts",
+		"db:sqlite:generate": "drizzle-kit generate --config=drizzle.config.sqlite.ts",
+		"db:sqlite:migrate": "drizzle-kit migrate --config=drizzle.config.sqlite.ts"
 	},
 	"dependencies": {
-		"html2canvas": "^1.4.1"
+		"@drizzle-team/brocli": "^0.11.0",
+		"@libsql/client": "^0.17.0",
+		"better-auth": "^1.5.4",
+		"drizzle-orm": "^0.45.1",
+		"hono": "^4.12.5",
+		"html2canvas": "^1.4.1",
+		"postgres": "^3.4.8",
+		"stripe": "^20.4.1"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.58.2",
@@ -54,6 +84,7 @@
 		"@types/react": "^19.2.14",
 		"bumpp": "^10.4.1",
 		"bunup": "^0.16.31",
+		"drizzle-kit": "^0.31.9",
 		"oxfmt": "^0.36.0",
 		"oxlint": "^1.51.0",
 		"react": "^19.2.4",

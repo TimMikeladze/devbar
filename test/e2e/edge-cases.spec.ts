@@ -1,8 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 // Helper to add an annotation via select tool
-async function addAnnotation(page: import("@playwright/test").Page, target: string, comment?: string) {
-	await page.getByRole("button", { name: "Select S" }).click();
+async function addAnnotation(
+	page: import("@playwright/test").Page,
+	target: string,
+	comment?: string,
+) {
+	await page.getByRole("button", { name: /Select/ }).click();
 	await page.waitForSelector(".deloop-instruction");
 	await page.locator(target).click();
 	await page.waitForSelector("[data-deloop='note-input']");
@@ -22,13 +26,13 @@ test.describe("Edge Cases: Tool Switching", () => {
 
 	test("switching tools mid-use via keyboard shortcut", async ({ page }) => {
 		// Activate draw tool
-		await page.keyboard.press("d");
+		await page.keyboard.press("Alt+d");
 		await expect(page.locator(".deloop-minibar")).toContainText("Draw");
 
 		// Press Escape to exit draw, then activate select
 		await page.keyboard.press("Escape");
 		await page.waitForSelector(".deloop-bar");
-		await page.keyboard.press("s");
+		await page.keyboard.press("Alt+s");
 		await expect(page.locator(".deloop-minibar")).toContainText("Select");
 	});
 
@@ -60,7 +64,7 @@ test.describe("Edge Cases: Annotations", () => {
 		await addAnnotation(page, "table");
 
 		// Open panel and clear (double-click for confirmation)
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await page.getByRole("button", { name: "Clear" }).click();
 		await page.getByRole("button", { name: "Confirm?" }).click();
 
@@ -86,7 +90,7 @@ test.describe("Edge Cases: Annotations", () => {
 		await expect(page.locator(".deloop-badge")).toHaveText("2");
 
 		// Remove via panel × button
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await page.locator(".deloop-annotation-item").first().hover();
 		await page.locator(".deloop-annotation-remove").first().click();
 		await expect(page.locator(".deloop-annotation-item")).toHaveCount(1);
@@ -103,7 +107,7 @@ test.describe("Edge Cases: Annotations", () => {
 	test("annotation without comment shows 'Add comment...' thread toggle", async ({ page }) => {
 		await addAnnotation(page, "h1");
 
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-annotation-thread-toggle")).toContainText("Add comment...");
 	});
 });
@@ -115,31 +119,31 @@ test.describe("Edge Cases: Panel Interactions", () => {
 	});
 
 	test("panel closes when activating a tool", async ({ page }) => {
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-panel")).toBeVisible();
 
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await expect(page.locator(".deloop-panel")).not.toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 	});
 
 	test("panel not visible during tool mode", async ({ page }) => {
-		await page.keyboard.press("s");
+		await page.keyboard.press("Alt+s");
 		await expect(page.locator(".deloop-panel")).not.toBeVisible();
 	});
 
 	test("re-opening panel after adding annotation shows it", async ({ page }) => {
 		await addAnnotation(page, "h1", "First");
 
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-annotation-item")).toHaveCount(1);
 
 		// Close and add another
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await addAnnotation(page, "table", "Second");
 
 		// Re-open
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-annotation-item")).toHaveCount(2);
 	});
 
@@ -202,7 +206,7 @@ test.describe("Edge Cases: Theme", () => {
 		await page.getByRole("button", { name: "System" }).click();
 
 		// Activate tool
-		await page.keyboard.press("s");
+		await page.keyboard.press("Alt+s");
 		await expect(page.locator(".deloop-minibar")).toHaveClass(/deloop-theme-light/);
 	});
 
@@ -222,7 +226,7 @@ test.describe("Edge Cases: Select Tool Rapid Mode", () => {
 	});
 
 	test("select tool preserves all captured annotations when exiting", async ({ page }) => {
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		// Capture first element
@@ -243,12 +247,12 @@ test.describe("Edge Cases: Select Tool Rapid Mode", () => {
 		await expect(page.locator(".deloop-badge")).toHaveText("2");
 
 		// Open panel to verify
-		await page.keyboard.press("a");
+		await page.keyboard.press("Alt+a");
 		await expect(page.locator(".deloop-annotation-item")).toHaveCount(2);
 	});
 
 	test("note is optional when capturing elements", async ({ page }) => {
-		await page.getByRole("button", { name: "Select S" }).click();
+		await page.getByRole("button", { name: /Select/ }).click();
 		await page.waitForSelector(".deloop-instruction");
 
 		// Click element and submit empty note
@@ -271,7 +275,7 @@ test.describe("Edge Cases: Draw Tool", () => {
 	});
 
 	test("exiting draw with no shapes does not create annotation", async ({ page }) => {
-		await page.keyboard.press("d");
+		await page.keyboard.press("Alt+d");
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
 		// Exit without drawing
@@ -282,7 +286,7 @@ test.describe("Edge Cases: Draw Tool", () => {
 	});
 
 	test("switching between draw tools works", async ({ page }) => {
-		await page.keyboard.press("d");
+		await page.keyboard.press("Alt+d");
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
 		// Switch tools via aria-label (now icon buttons)

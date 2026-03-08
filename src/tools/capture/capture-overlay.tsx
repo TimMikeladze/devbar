@@ -142,11 +142,7 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 			{captureMode === "choose" && (
 				<div data-deloop-capture-toolbar className="deloop-capture-dialog">
 					<div className="deloop-capture-dialog-title">Screenshot</div>
-					<button
-						type="button"
-						onClick={handleFullPage}
-						className="deloop-capture-dialog-btn"
-					>
+					<button type="button" onClick={handleFullPage} className="deloop-capture-dialog-btn">
 						Full Page
 					</button>
 					<button
@@ -195,9 +191,7 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 				</div>
 			)}
 
-			{captureMode === "capturing" && (
-				<div className="deloop-capture-status">Capturing...</div>
-			)}
+			{captureMode === "capturing" && <div className="deloop-capture-status">Capturing...</div>}
 
 			{captureMode === "note" && (
 				<div data-deloop="note-input" className="deloop-capture-note">

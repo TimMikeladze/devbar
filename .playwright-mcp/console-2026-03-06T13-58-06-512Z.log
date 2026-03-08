@@ -1,0 +1,48 @@
+[ 7963122ms] [WARNING] [Bun] Hot-module-reloading socket disconnected, reconnecting... @ http://localhost:3847/_bun/client/index-000000006e39e517.js:20
+[ 8192561ms] [ERROR] The final argument passed to %s changed size between renders. The order and size of this array must remain constant.
+
+Previous: %s
+Incoming: %s useEffect [, [object Object],[object Object],[object Object],[object Object], (mode) => {
+        setActiveMode(mode);
+        if (mode !== null) {
+          setMinimized(true);
+        }
+      }, , (id) => {
+        setAnnotations((prev) => prev.filter((a) => a.id !== id));
+      }, false, false, false, false] [, [object Object],[object Object],[object Object],[object Object], (mode) => {
+        setActiveMode(mode);
+        if (mode !== null) {
+          setMinimized(true);
+        }
+      }, , (id) => {
+        setAnnotations((prev) => prev.filter((a) => a.id !== id));
+      }, false, false, false, false, false] @ http://localhost:3847/_bun/client/index-000000001ca03f92.js:22530
+[ 8371043ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ blob:http://localhost:3847/24ae3262-a9a5-4fb7-aaa2-82e4a048d41a:17218
+[ 8371045ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ blob:http://localhost:3847/24ae3262-a9a5-4fb7-aaa2-82e4a048d41a:17218
+[ 8371117ms] TypeError: Cannot read properties of null (reading 'useState')
+    at exports.useState (blob:http://localhost:3847/24ae3262-a9a5-4fb7-aaa2-82e4a048d41a:17704:35)
+    at App2 (http://localhost:3847/_bun/client/index-000000001ca03f92.js:1187:45)
+    at Object.react_stack_bottom_frame (http://localhost:3847/_bun/client/index-000000001ca03f92.js:32026:20)
+    at renderWithHooks (http://localhost:3847/_bun/client/index-000000001ca03f92.js:22553:24)
+    at updateFunctionComponent (http://localhost:3847/_bun/client/index-000000001ca03f92.js:23977:21)
+    at beginWork (http://localhost:3847/_bun/client/index-000000001ca03f92.js:24606:20)
+    at runWithFiberInDEV (http://localhost:3847/_bun/client/index-000000001ca03f92.js:18689:72)
+    at performUnitOfWork (http://localhost:3847/_bun/client/index-000000001ca03f92.js:27187:98)
+    at workLoopSync (http://localhost:3847/_bun/client/index-000000001ca03f92.js:27073:11)
+    at renderRootSync (http://localhost:3847/_bun/client/index-000000001ca03f92.js:27056:15)
+[ 8371053ms] [WARNING] %s
+
+%s
+ An error occurred in the <App2> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://localhost:3847/_bun/client/index-000000001ca03f92.js:23625
+[ 8400385ms] [WARNING] [Bun] Hot update was not accepted because it or its importers do not call `import.meta.hot.accept`. To prevent full page reloads, call `import.meta.hot.accept` in one of the following files to handle the update:
+
+Module "index.html" is a root module that does not self-accept. @ http://localhost:3847/_bun/client/index-00000000a6c34dfc.js:23

@@ -6,6 +6,7 @@ import { type DrawPoint, type DrawShape, type DrawTool, renderShape } from "./sh
 type DrawOverlayProps = {
 	onCapture: (annotation: Annotation) => void;
 	onDone: () => void;
+	enableScreenshots?: boolean;
 };
 
 const ALL_TOOLS: DrawTool[] = ["pen", "arrow", "rectangle", "circle"];
@@ -61,7 +62,7 @@ const TOOL_ICONS: Record<DrawTool, () => React.ReactNode> = {
 	),
 };
 
-export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.ReactNode {
+export function DrawOverlay({ onCapture, onDone, enableScreenshots = true }: DrawOverlayProps): React.ReactNode {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [activeTool, setActiveTool] = useState<DrawTool>("pen");
 	const [activeColor, setActiveColor] = useState("#ff3b30");
@@ -109,7 +110,12 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 				handleUndo();
 			}
 			if (!e.metaKey && !e.ctrlKey && !e.altKey) {
-				const toolMap: Record<string, DrawTool> = { "1": "pen", "2": "arrow", "3": "rectangle", "4": "circle" };
+				const toolMap: Record<string, DrawTool> = {
+					"1": "pen",
+					"2": "arrow",
+					"3": "rectangle",
+					"4": "circle",
+				};
 				const tool = toolMap[e.key];
 				if (tool) setActiveTool(tool);
 			}
@@ -171,22 +177,24 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 
 		const imageDataUri = canvas.toDataURL("image/png");
 
-		// Hide the drawing canvas temporarily so the screenshot captures the page without it
-		canvas.style.display = "none";
-		const toolbar = document.querySelector("[data-deloop-draw-toolbar]") as HTMLElement | null;
-		if (toolbar) toolbar.style.display = "none";
-		const instruction = canvas.parentElement?.querySelector(
-			".deloop-instruction",
-		) as HTMLElement | null;
-		if (instruction) instruction.style.display = "none";
+		let screenshotDataUri = "";
+		if (enableScreenshots) {
+			// Hide the drawing canvas temporarily so the screenshot captures the page without it
+			canvas.style.display = "none";
+			const toolbar = document.querySelector("[data-deloop-draw-toolbar]") as HTMLElement | null;
+			if (toolbar) toolbar.style.display = "none";
+			const instruction = canvas.parentElement?.querySelector(
+				".deloop-instruction",
+			) as HTMLElement | null;
+			if (instruction) instruction.style.display = "none";
 
-		let screenshotDataUri: string;
-		try {
-			screenshotDataUri = await captureFullPage();
-		} finally {
-			canvas.style.display = "";
-			if (toolbar) toolbar.style.display = "";
-			if (instruction) instruction.style.display = "";
+			try {
+				screenshotDataUri = await captureFullPage();
+			} finally {
+				canvas.style.display = "";
+				if (toolbar) toolbar.style.display = "";
+				if (instruction) instruction.style.display = "";
+			}
 		}
 
 		const annotation: Annotation = {
@@ -203,7 +211,7 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 		};
 		onCapture(annotation);
 		onDone();
-	}, [shapes, onCapture, onDone]);
+	}, [shapes, onCapture, onDone, enableScreenshots]);
 
 	return (
 		<div data-deloop="draw-overlay">
@@ -285,7 +293,8 @@ export function DrawOverlay({ onCapture, onDone }: DrawOverlayProps): React.Reac
 				</button>
 			</div>
 			<div className="deloop-instruction">
-				Draw on the page &middot; <kbd>1</kbd>-<kbd>4</kbd> tools &middot; <kbd>⌘Z</kbd> undo &middot; <kbd>Esc</kbd> finish
+				Draw on the page &middot; <kbd>1</kbd>-<kbd>4</kbd> tools &middot; <kbd>⌘Z</kbd> undo
+				&middot; <kbd>Esc</kbd> finish
 			</div>
 		</div>
 	);

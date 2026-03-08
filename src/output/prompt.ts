@@ -12,33 +12,23 @@ import type {
 
 function formatReactContext(ctx: ReactComponentContext | null | undefined, prefix = ""): string[] {
 	if (!ctx) return [];
-	const lines = [
-		`${prefix}- **React Component Path:** \`${ctx.componentPath}\``,
-	];
+	const lines = [`${prefix}- **React Component Path:** \`${ctx.componentPath}\``];
 	for (const comp of ctx.components) {
 		const propsEntries = Object.entries(comp.props);
-		const propsStr = propsEntries.length > 0
-			? ` props={${JSON.stringify(comp.props).slice(0, 300)}}`
-			: "";
-		const sourceStr = comp.source
-			? ` (${comp.source.fileName}:${comp.source.lineNumber})`
-			: "";
+		const propsStr =
+			propsEntries.length > 0 ? ` props={${JSON.stringify(comp.props).slice(0, 300)}}` : "";
+		const sourceStr = comp.source ? ` (${comp.source.fileName}:${comp.source.lineNumber})` : "";
 		lines.push(`${prefix}  - \`<${comp.name}${propsStr}>\`${sourceStr}`);
 	}
 	return lines;
 }
 
-function formatAnnotation(
-	annotation: Annotation,
-	index: number,
-	settings: DeloopSettings,
-): string {
-	const header = `### Annotation ${index + 1}: ${annotation.type}`;
+function formatAnnotation(annotation: Annotation, index: number, settings: DeloopSettings): string {
+	const labelStr = annotation.label ? ` [${annotation.label}]` : "";
+	const header = `### Annotation ${index + 1}: ${annotation.type}${labelStr}`;
 	const comments =
 		annotation.comments.length > 0
-			? annotation.comments
-					.map((c) => `> **${c.author}:** ${c.text}`)
-					.join("\n")
+			? annotation.comments.map((c) => `> **${c.author}:** ${c.text}`).join("\n")
 			: "";
 
 	switch (annotation.type) {
@@ -125,7 +115,14 @@ function formatAnnotation(
 }
 
 export const defaultPromptTemplate: PromptTemplate = (context) => {
-	const settings = context.settings ?? { includeImages: true, imageExportMode: "base64" as const, sidePanelMode: "overlay" as const };
+	const settings = context.settings ?? {
+		includeImages: true,
+		imageExportMode: "base64" as const,
+		sidePanelMode: "overlay" as const,
+		sidePanelSide: "right" as const,
+		enableScreenshots: true,
+		toolbarOrientation: "horizontal" as const,
+	};
 	const annotationText = context.annotations
 		.map((a, i) => formatAnnotation(a, i, settings))
 		.join("\n\n");

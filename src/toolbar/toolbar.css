@@ -32,12 +32,10 @@
 	--deloop-radius: 12px;
 	--deloop-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
 	--deloop-shadow-md:
-		0 0 0 1px rgba(0, 0, 0, 0.4),
-		0 16px 48px -8px rgba(0, 0, 0, 0.5),
+		0 0 0 1px rgba(0, 0, 0, 0.4), 0 16px 48px -8px rgba(0, 0, 0, 0.5),
 		0 0 1px rgba(255, 255, 255, 0.05) inset;
 	--deloop-shadow-lg:
-		0 0 0 1px rgba(0, 0, 0, 0.5),
-		0 24px 72px -12px rgba(0, 0, 0, 0.6),
+		0 0 0 1px rgba(0, 0, 0, 0.5), 0 24px 72px -12px rgba(0, 0, 0, 0.6),
 		0 0 1px rgba(255, 255, 255, 0.06) inset;
 }
 
@@ -59,12 +57,10 @@
 	--deloop-blue-hover: #4a6ce7;
 	--deloop-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
 	--deloop-shadow-md:
-		0 0 0 1px rgba(0, 0, 0, 0.06),
-		0 16px 48px -8px rgba(0, 0, 0, 0.12),
+		0 0 0 1px rgba(0, 0, 0, 0.06), 0 16px 48px -8px rgba(0, 0, 0, 0.12),
 		0 0 1px rgba(255, 255, 255, 0.8) inset;
 	--deloop-shadow-lg:
-		0 0 0 1px rgba(0, 0, 0, 0.08),
-		0 24px 72px -12px rgba(0, 0, 0, 0.15),
+		0 0 0 1px rgba(0, 0, 0, 0.08), 0 24px 72px -12px rgba(0, 0, 0, 0.15),
 		0 0 1px rgba(255, 255, 255, 0.9) inset;
 }
 
@@ -87,12 +83,10 @@
 		--deloop-blue-hover: #4a6ce7;
 		--deloop-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
 		--deloop-shadow-md:
-			0 0 0 1px rgba(0, 0, 0, 0.06),
-			0 16px 48px -8px rgba(0, 0, 0, 0.12),
+			0 0 0 1px rgba(0, 0, 0, 0.06), 0 16px 48px -8px rgba(0, 0, 0, 0.12),
 			0 0 1px rgba(255, 255, 255, 0.8) inset;
 		--deloop-shadow-lg:
-			0 0 0 1px rgba(0, 0, 0, 0.08),
-			0 24px 72px -12px rgba(0, 0, 0, 0.15),
+			0 0 0 1px rgba(0, 0, 0, 0.08), 0 24px 72px -12px rgba(0, 0, 0, 0.15),
 			0 0 1px rgba(255, 255, 255, 0.9) inset;
 	}
 }
@@ -120,6 +114,42 @@
 	box-shadow: var(--deloop-shadow-lg);
 }
 
+.deloop-bar-vertical {
+	bottom: auto;
+	left: 24px;
+	top: 50%;
+	transform: translateY(-50%);
+	flex-direction: column;
+	padding: 5px 4px;
+}
+
+.deloop-bar-vertical .deloop-bar-divider {
+	width: 16px;
+	height: 1px;
+	margin: 2px 0;
+}
+
+.deloop-bar-vertical .deloop-bar-drag {
+	width: 32px;
+	height: 26px;
+	cursor: grab;
+}
+
+.deloop-bar-vertical .deloop-tooltip {
+	bottom: auto;
+	left: calc(100% + 10px);
+	top: 50%;
+	transform: translateY(-50%) translateX(3px);
+}
+
+.deloop-bar-vertical .deloop-bar-btn:hover .deloop-tooltip {
+	transform: translateY(-50%) translateX(0);
+}
+
+.deloop-bar-vertical.deloop-bar-panel-open .deloop-bar-btn:hover .deloop-tooltip {
+	opacity: 0;
+}
+
 .deloop-bar-drag {
 	display: flex;
 	align-items: center;
@@ -128,7 +158,9 @@
 	height: 32px;
 	cursor: grab;
 	color: var(--deloop-text-muted);
-	transition: color 0.2s, background 0.2s;
+	transition:
+		color 0.2s,
+		background 0.2s;
 	user-select: none;
 	border-radius: 8px;
 }
@@ -249,18 +281,16 @@
 	font-size: 10px;
 	font-weight: 600;
 	letter-spacing: 0.02em;
-	font-family:
-		"SF Mono",
-		"JetBrains Mono",
-		"Cascadia Code",
-		"Fira Code",
-		ui-monospace,
-		monospace;
+	font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
 }
 
 .deloop-bar-btn:hover .deloop-tooltip {
 	opacity: 1;
 	transform: translateX(-50%) translateY(0);
+}
+
+.deloop-bar-panel-open .deloop-bar-btn:hover .deloop-tooltip {
+	opacity: 0;
 }
 
 /* ─── Panel ─── */
@@ -394,12 +424,7 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	letter-spacing: -0.01em;
-	font-family:
-		"SF Mono",
-		"JetBrains Mono",
-		"Cascadia Code",
-		ui-monospace,
-		monospace;
+	font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
 }
 
 .deloop-annotation-time {
@@ -407,11 +432,7 @@
 	font-weight: 400;
 	color: var(--deloop-text-muted);
 	margin-left: 6px;
-	font-family:
-		"SF Mono",
-		"JetBrains Mono",
-		ui-monospace,
-		monospace;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
 	font-variant-numeric: tabular-nums;
 }
 
@@ -571,12 +592,78 @@
 	border: 1px solid var(--deloop-border);
 	font-size: 10px;
 	font-weight: 500;
-	font-family:
-		"SF Mono",
-		"JetBrains Mono",
-		ui-monospace,
-		monospace;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
 	color: var(--deloop-text);
+}
+
+/* ─── Export menu ─── */
+.deloop-bar-export-wrap {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.deloop-export-menu {
+	position: absolute;
+	right: 0;
+	z-index: 2147483646;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 10px;
+	padding: 4px;
+	width: 170px;
+	box-shadow: var(--deloop-shadow-md);
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	animation: deloop-panel-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+	white-space: nowrap;
+}
+
+.deloop-export-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 7px 10px;
+	border: none;
+	border-radius: 7px;
+	background: none;
+	color: var(--deloop-text);
+	font-size: 12px;
+	font-weight: 450;
+	cursor: pointer;
+	transition: background 0.1s;
+	font-family: inherit;
+}
+
+.deloop-export-menu-item:hover {
+	background: var(--deloop-accent-hover);
+}
+
+.deloop-export-menu-item svg {
+	width: 14px;
+	height: 14px;
+	opacity: 0.7;
+}
+
+.deloop-export-menu-key {
+	margin-left: auto;
+	font-size: 10px;
+	color: var(--deloop-text-muted);
+}
+
+.deloop-export-menu-divider {
+	height: 1px;
+	background: var(--deloop-border);
+	margin: 4px 0;
+}
+
+.deloop-export-menu-item-danger {
+	color: var(--deloop-red);
+}
+
+.deloop-export-menu-item-danger:hover {
+	background: rgba(242, 92, 92, 0.1);
 }
 
 /* ─── Mini bar (visible during tool mode) ─── */
@@ -694,17 +781,23 @@
 /* ─── Comment threads ─── */
 .deloop-annotation-item-wrapper {
 	border-radius: 9px;
-	transition: background 0.12s;
+	transition: background 0.15s;
+}
+
+.deloop-annotation-item-wrapper.deloop-thread-expanded {
+	background: var(--deloop-bg-surface);
 }
 
 .deloop-annotation-thread-toggle {
 	font-size: 10.5px;
 	color: var(--deloop-text-muted);
 	cursor: pointer;
-	margin-top: 1px;
-	padding: 1px 3px;
-	border-radius: 3px;
-	transition: color 0.15s, background 0.15s;
+	margin-top: 2px;
+	padding: 2px 4px;
+	border-radius: 4px;
+	transition:
+		color 0.15s,
+		background 0.15s;
 	font-family: inherit;
 }
 
@@ -713,24 +806,119 @@
 	background: var(--deloop-blue-muted);
 }
 
+/* Thread preview (avatar stack + count + last comment) */
+.deloop-thread-preview {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.deloop-thread-avatar-stack {
+	display: inline-flex;
+	flex-direction: row-reverse;
+}
+
+.deloop-thread-avatar-mini {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	font-size: 8px;
+	font-weight: 700;
+	color: #fff;
+	margin-right: -4px;
+	border: 1.5px solid var(--deloop-bg);
+	line-height: 1;
+}
+
+.deloop-thread-avatar-stack .deloop-thread-avatar-mini:first-child {
+	margin-right: 0;
+}
+
+.deloop-thread-count-pill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	border-radius: 8px;
+	background: var(--deloop-accent-glow);
+	border: 1px solid var(--deloop-border);
+	font-size: 9px;
+	font-weight: 650;
+	color: var(--deloop-text-secondary);
+	font-variant-numeric: tabular-nums;
+}
+
+.deloop-thread-last-text {
+	color: var(--deloop-text-muted);
+	font-size: 10px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 120px;
+}
+
+/* Thread body */
 .deloop-thread {
-	padding: 4px 8px 8px 46px;
+	padding: 2px 10px 10px 10px;
+	animation: deloop-thread-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes deloop-thread-enter {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .deloop-thread-comment {
-	padding: 6px 0;
-	border-bottom: 1px solid var(--deloop-border);
+	padding: 5px 0;
 }
 
-.deloop-thread-comment:last-of-type {
-	border-bottom: none;
+.deloop-thread-comment + .deloop-thread-comment {
+	border-top: 1px solid var(--deloop-border);
+}
+
+/* Comment row with avatar */
+.deloop-thread-comment-row {
+	display: flex;
+	gap: 8px;
+	align-items: flex-start;
+}
+
+.deloop-thread-avatar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	font-size: 9.5px;
+	font-weight: 700;
+	color: #fff;
+	flex-shrink: 0;
+	letter-spacing: 0.02em;
+	margin-top: 1px;
+}
+
+.deloop-thread-comment-body {
+	flex: 1;
+	min-width: 0;
 }
 
 .deloop-thread-comment-header {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	margin-bottom: 3px;
+	margin-bottom: 2px;
 }
 
 .deloop-thread-author {
@@ -743,11 +931,7 @@
 .deloop-thread-time {
 	font-size: 10px;
 	color: var(--deloop-text-muted);
-	font-family:
-		"SF Mono",
-		"JetBrains Mono",
-		ui-monospace,
-		monospace;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
 	font-variant-numeric: tabular-nums;
 }
 
@@ -780,21 +964,48 @@
 .deloop-thread-comment-text {
 	font-size: 12px;
 	color: var(--deloop-text-secondary);
-	line-height: 1.45;
+	line-height: 1.5;
 	letter-spacing: -0.005em;
+	padding: 3px 8px;
+	background: var(--deloop-accent-glow);
+	border-radius: 6px;
+	margin-top: 2px;
+	word-break: break-word;
 }
 
+/* Input area */
 .deloop-thread-input-row {
 	display: flex;
+	gap: 8px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--deloop-border);
+	align-items: flex-start;
+}
+
+.deloop-thread-avatar-input {
+	opacity: 0.7;
+}
+
+.deloop-thread-input-group {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
 	gap: 4px;
-	margin-top: 6px;
+	min-width: 0;
+}
+
+.deloop-thread-input-wrap {
+	display: flex;
+	gap: 4px;
+	align-items: center;
 }
 
 .deloop-thread-author-input {
-	width: 60px;
+	width: 100%;
 	border: 1px solid var(--deloop-border);
-	border-radius: 6px;
-	padding: 4px 6px;
+	border-radius: 7px;
+	padding: 5px 8px;
 	font-size: 11px;
 	background: var(--deloop-bg-surface);
 	color: var(--deloop-text);
@@ -814,15 +1025,17 @@
 .deloop-thread-input {
 	flex: 1;
 	border: 1px solid var(--deloop-border);
-	border-radius: 6px;
-	padding: 4px 8px;
+	border-radius: 7px;
+	padding: 5px 8px;
 	font-size: 11px;
 	background: var(--deloop-bg-surface);
 	color: var(--deloop-text);
 	outline: none;
 	font-family: inherit;
 	min-width: 0;
-	transition: border-color 0.15s;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
 }
 
 .deloop-thread-input:focus {
@@ -840,25 +1053,27 @@
 	justify-content: center;
 	width: 26px;
 	height: 26px;
-	border-radius: 6px;
+	border-radius: 7px;
 	border: none;
 	background: var(--deloop-blue);
 	color: #fff;
 	cursor: pointer;
-	font-size: 12px;
-	font-weight: 600;
 	transition: all 0.15s;
 	flex-shrink: 0;
 }
 
 .deloop-thread-send:disabled {
-	opacity: 0.25;
+	opacity: 0.2;
 	cursor: default;
 }
 
 .deloop-thread-send:not(:disabled):hover {
 	background: var(--deloop-blue-hover);
 	transform: translateY(-0.5px);
+}
+
+.deloop-thread-send:not(:disabled):active {
+	transform: scale(0.94);
 }
 
 /* ─── Badge pulse ─── */
@@ -892,6 +1107,75 @@
 	z-index: 2147483646;
 	animation: deloop-side-panel-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 	box-shadow: -12px 0 48px rgba(0, 0, 0, 0.2);
+	/* Base variables so the panel works when portaled outside .deloop-toolbar */
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		BlinkMacSystemFont,
+		"Segoe UI",
+		system-ui,
+		sans-serif;
+	font-size: 13px;
+	line-height: 1.4;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	--deloop-bg: #0c0c0c;
+	--deloop-bg-elevated: #161616;
+	--deloop-bg-surface: rgba(255, 255, 255, 0.03);
+	--deloop-border: rgba(255, 255, 255, 0.07);
+	--deloop-border-hover: rgba(255, 255, 255, 0.13);
+	--deloop-border-active: rgba(255, 255, 255, 0.2);
+	--deloop-text: #f0f0f0;
+	--deloop-text-secondary: #8a8a8a;
+	--deloop-text-muted: #4a4a4a;
+	--deloop-accent: #f0f0f0;
+	--deloop-accent-glow: rgba(255, 255, 255, 0.05);
+	--deloop-accent-hover: rgba(255, 255, 255, 0.08);
+	--deloop-blue: #6e8efb;
+	--deloop-blue-muted: rgba(110, 142, 251, 0.12);
+	--deloop-blue-hover: #8da4fc;
+	--deloop-red: #f25c5c;
+	--deloop-green: #4ade80;
+	--deloop-radius: 12px;
+	--deloop-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+	--deloop-shadow-md:
+		0 0 0 1px rgba(0, 0, 0, 0.4), 0 16px 48px -8px rgba(0, 0, 0, 0.5),
+		0 0 1px rgba(255, 255, 255, 0.05) inset;
+	--deloop-shadow-lg:
+		0 0 0 1px rgba(0, 0, 0, 0.5), 0 24px 72px -12px rgba(0, 0, 0, 0.6),
+		0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+/* Push mode: panel lives outside <body> as a flex sibling on <html> */
+[data-deloop="push-panel"] {
+	display: flex;
+	flex-shrink: 0;
+	height: 100vh;
+	position: relative;
+	z-index: 2147483647;
+}
+
+.deloop-side-panel.deloop-side-panel-left {
+	right: auto;
+	left: 0;
+	border-left: none;
+	border-right: 1px solid var(--deloop-border);
+	box-shadow: 12px 0 48px rgba(0, 0, 0, 0.2);
+	animation: deloop-side-panel-enter-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-side-panel.deloop-side-panel-push {
+	position: static;
+	width: 340px;
+	height: 100vh;
+	flex-shrink: 0;
+	z-index: auto;
+	box-shadow: none;
+	border-left: none;
+}
+
+.deloop-side-panel.deloop-side-panel-push.deloop-side-panel-left {
+	border-right: none;
 }
 
 .deloop-side-panel-header {
@@ -916,6 +1200,28 @@
 	width: 14px;
 	height: 14px;
 }
+
+/* ─── Side panel compact bar ─── */
+.deloop-side-panel-bar {
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	padding: 6px 8px;
+	border-bottom: 1px solid var(--deloop-border);
+	flex-shrink: 0;
+	overflow: visible;
+}
+
+.deloop-side-panel-bar .deloop-bar-btn {
+	position: relative;
+}
+
+.deloop-side-panel-bar .deloop-bar-export-wrap {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
 
 .deloop-panel-close-active {
 	background: var(--deloop-accent-glow) !important;
@@ -1009,7 +1315,9 @@
 	border-radius: 4px;
 	pointer-events: none;
 	z-index: 2147483642;
-	transition: background 0.15s, border-color 0.15s;
+	transition:
+		background 0.15s,
+		border-color 0.15s;
 }
 
 .deloop-selection-marker-clickable {
@@ -1072,7 +1380,9 @@
 .deloop-persistent-pin-clickable {
 	pointer-events: auto;
 	cursor: pointer;
-	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+	transition:
+		transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+		box-shadow 0.2s;
 }
 
 .deloop-persistent-pin-clickable:hover {
@@ -1413,7 +1723,9 @@
 	background: var(--deloop-bg-surface);
 	color: var(--deloop-text);
 	font-family: inherit;
-	transition: border-color 0.15s, box-shadow 0.15s;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
 }
 
 .deloop-note-input input:focus {
@@ -1547,7 +1859,9 @@
 	background: var(--deloop-bg-surface);
 	color: var(--deloop-text);
 	font-family: inherit;
-	transition: border-color 0.15s, box-shadow 0.15s;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
 }
 
 .deloop-capture-note input:focus {
@@ -1583,8 +1897,13 @@
 }
 
 @keyframes deloop-capture-pulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.6; }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
 }
 
 /* ─── Selection region ─── */
@@ -1636,10 +1955,16 @@
 	font-weight: 700;
 	color: #fff;
 	z-index: 2147483644;
-	font-family: "SF Pro Display", -apple-system, system-ui, sans-serif;
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		system-ui,
+		sans-serif;
 	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 	cursor: pointer;
-	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+	transition:
+		transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+		box-shadow 0.2s;
 }
 
 .deloop-marker-pin:hover {
@@ -1680,14 +2005,29 @@
 /* ─── Animations ─── */
 
 @keyframes deloop-backdrop-enter {
-	from { opacity: 0; }
-	to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
 @keyframes deloop-side-panel-enter {
 	from {
 		opacity: 0;
 		transform: translateX(100%);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes deloop-side-panel-enter-left {
+	from {
+		opacity: 0;
+		transform: translateX(-100%);
 	}
 	to {
 		opacity: 1;
@@ -1703,6 +2043,32 @@
 	to {
 		opacity: 1;
 		transform: translateX(-50%) translateY(0) scale(1);
+	}
+}
+
+@keyframes deloop-floating-panel-above {
+	from {
+		opacity: 0;
+		scale: 0.97;
+		translate: 0 8px;
+	}
+	to {
+		opacity: 1;
+		scale: 1;
+		translate: 0 0;
+	}
+}
+
+@keyframes deloop-floating-panel-below {
+	from {
+		opacity: 0;
+		scale: 0.97;
+		translate: 0 -8px;
+	}
+	to {
+		opacity: 1;
+		scale: 1;
+		translate: 0 0;
 	}
 }
 
@@ -1794,4 +2160,115 @@
 .deloop-settings-seg-btn svg {
 	width: 14px;
 	height: 14px;
+}
+
+/* Auth modal */
+.deloop-auth-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.5);
+	backdrop-filter: blur(4px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2147483647;
+}
+
+.deloop-auth-modal {
+	background: var(--deloop-bg-elevated);
+	border: 1px solid var(--deloop-border);
+	border-radius: 12px;
+	width: 320px;
+	overflow: hidden;
+	animation: deloop-panel-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-auth-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--deloop-border);
+}
+
+.deloop-auth-form {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 16px;
+}
+
+.deloop-auth-input {
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 8px;
+	padding: 8px 12px;
+	color: var(--deloop-text);
+	font-size: 13px;
+	font-family: inherit;
+	outline: none;
+	transition: border-color 0.15s;
+}
+
+.deloop-auth-input:focus {
+	border-color: var(--deloop-accent);
+}
+
+.deloop-auth-input::placeholder {
+	color: var(--deloop-text-muted);
+}
+
+.deloop-auth-error {
+	color: var(--deloop-red, #f25c5c);
+	font-size: 12px;
+	padding: 0 2px;
+}
+
+.deloop-auth-submit {
+	background: #3b82f6;
+	color: #fff;
+	border: none;
+	border-radius: 8px;
+	padding: 8px 16px;
+	font-size: 13px;
+	font-family: inherit;
+	font-weight: 500;
+	cursor: pointer;
+	transition: opacity 0.15s;
+}
+
+.deloop-auth-submit:hover {
+	opacity: 0.9;
+}
+
+.deloop-auth-submit:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.deloop-auth-switch {
+	padding: 12px 16px;
+	text-align: center;
+	font-size: 12px;
+	color: var(--deloop-text-muted);
+	border-top: 1px solid var(--deloop-border);
+}
+
+.deloop-auth-link {
+	background: none;
+	border: none;
+	color: #3b82f6;
+	cursor: pointer;
+	font-size: 12px;
+	font-family: inherit;
+	text-decoration: underline;
+	padding: 0;
+}
+
+.deloop-bar-btn-user {
+	opacity: 0.8;
+}
+
+.deloop-bar-btn-user:hover {
+	opacity: 1;
 }

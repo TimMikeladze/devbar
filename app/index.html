@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<title>deloop.dev — Annotate Any Website, Prompt Any LLM</title>
+		<meta
+			name="description"
+			content="Open-source drop-in toolbar that turns visual feedback into AI-ready context. Designers, QA, reviewers, and developers can select elements, draw, capture screenshots, and export structured prompts with XPaths, CSS selectors, computed styles, and React component trees — ready to paste into any LLM for instant code fixes."
+		/>
+
+		<link rel="canonical" href="https://deloop.dev" />
+		<meta name="theme-color" content="#fafafa" />
+
+		<!-- Open Graph -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://deloop.dev" />
+		<meta property="og:locale" content="en_US" />
+		<meta property="og:title" content="deloop.dev — Annotate Any Website, Prompt Any LLM" />
+		<meta
+			property="og:description"
+			content="Turn visual feedback into AI-ready context. Anyone on your team — designers, QA, PMs, developers — can annotate issues and generate structured prompts with XPaths, React component trees, and screenshots. Paste into any LLM for instant fixes."
+		/>
+		<meta property="og:site_name" content="deloop.dev" />
+		<meta property="og:image" content="https://deloop.dev/og.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:alt" content="deloop.dev — annotate any website, prompt any LLM" />
+
+		<!-- Twitter -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@linesofcode" />
+		<meta name="twitter:creator" content="@linesofcode" />
+		<meta name="twitter:title" content="deloop.dev — Annotate Any Website, Prompt Any LLM" />
+		<meta
+			name="twitter:description"
+			content="Turn visual feedback into AI-ready context. Anyone on your team — designers, QA, PMs, developers — can annotate issues and generate structured prompts with XPaths, React component trees, and screenshots. Paste into any LLM for instant fixes."
+		/>
+		<meta name="twitter:image" content="https://deloop.dev/og.png" />
+		<meta name="twitter:image:alt" content="deloop.dev — annotate any website, prompt any LLM" />
+
+		<!-- SEO -->
+		<meta
+			name="keywords"
+			content="website annotation tool, visual bug reporting, LLM prompt generator, AI bug fix, element inspector, XPath capture, CSS selector, React component context, screenshot annotation, visual feedback tool, QA tool, design review tool, code review feedback, Chrome extension annotation, drop-in toolbar, open source, iteration loop, feedback loop, developer tools, designer QA workflow, visual debugging, structured bug report, ChatGPT bug fix, Claude code fix, Cursor AI, bug tracker integration"
+		/>
+		<meta name="author" content="Tim Mikeladze" />
+		<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+		<link rel="icon" type="image/svg+xml" href="/vite.svg" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+			rel="stylesheet"
+		/>
+
+		<!-- JSON-LD: SoftwareApplication -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "SoftwareApplication",
+				"name": "deloop.dev",
+				"alternateName": ["deloop", "website annotation tool", "LLM prompt generator", "visual bug reporter"],
+				"description": "Open-source drop-in toolbar that turns visual feedback into AI-ready context.",
+				"url": "https://deloop.dev",
+				"applicationCategory": "DeveloperApplication",
+				"applicationSubCategory": "Annotation & QA",
+				"operatingSystem": "Any",
+				"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+				"author": { "@type": "Person", "name": "Tim Mikeladze", "url": "https://github.com/TimMikeladze" },
+				"codeRepository": "https://github.com/TimMikeladze/deloop",
+				"license": "https://opensource.org/licenses/MIT",
+				"programmingLanguage": ["TypeScript", "JavaScript"],
+				"runtimePlatform": "Browser"
+			}
+		</script>
+
+		<!-- JSON-LD: FAQPage -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "FAQPage",
+				"mainEntity": [
+					{ "@type": "Question", "name": "How does deloop speed up iteration cycles?", "acceptedAnswer": { "@type": "Answer", "text": "deloop captures selectors, styles, component trees, and screenshots in one interaction — so the developer (or an LLM) can fix it immediately." } },
+					{ "@type": "Question", "name": "How does React context extraction work?", "acceptedAnswer": { "@type": "Answer", "text": "deloop reads the React fiber node and walks up the tree, capturing every component's name, props, and source file location — all locally in your browser." } },
+					{ "@type": "Question", "name": "Does it work without React?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any website." } }
+				]
+			}
+		</script>
+
+		<!-- JSON-LD: WebSite -->
+		<script type="application/ld+json">
+			{ "@context": "https://schema.org", "@type": "WebSite", "name": "deloop.dev", "url": "https://deloop.dev" }
+		</script>
+	</head>
+	<body class="antialiased">
+		<div id="root"></div>
+		<script type="module" src="/src/main.tsx"></script>
+		<script defer src="%VITE_UMAMI_URL%/script.js" data-website-id="%VITE_UMAMI_WEBSITE_ID%" data-auto-track="false"></script>
+		<script>
+			if (window.umami) {
+				window.umami.track(function () { return { url: "/", title: "visit" }; });
+			} else {
+				document.addEventListener("DOMContentLoaded", function () {
+					if (window.umami) {
+						window.umami.track(function () { return { url: "/", title: "visit" }; });
+					}
+				});
+			}
+		</script>
+	</body>
+</html>

@@ -7,7 +7,7 @@ test.describe("Draw Tool", () => {
 	});
 
 	test("activating shows minibar, draw toolbar, and instruction", async ({ page }) => {
-		await page.getByRole("button", { name: "Draw D" }).click();
+		await page.getByRole("button", { name: /Draw/ }).click();
 
 		await expect(page.locator(".deloop-minibar")).toBeVisible();
 		await expect(page.locator(".deloop-minibar")).toContainText("Draw");
@@ -16,7 +16,7 @@ test.describe("Draw Tool", () => {
 	});
 
 	test("draw toolbar has shape tools", async ({ page }) => {
-		await page.getByRole("button", { name: "Draw D" }).click();
+		await page.getByRole("button", { name: /Draw/ }).click();
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
 		const toolbar = page.locator("[data-deloop-draw-toolbar]");
@@ -27,7 +27,7 @@ test.describe("Draw Tool", () => {
 	});
 
 	test("draw toolbar has color swatches", async ({ page }) => {
-		await page.getByRole("button", { name: "Draw D" }).click();
+		await page.getByRole("button", { name: /Draw/ }).click();
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
 		// Count all interactive elements in the draw toolbar
@@ -39,7 +39,7 @@ test.describe("Draw Tool", () => {
 	});
 
 	test("draw toolbar has line width buttons", async ({ page }) => {
-		await page.getByRole("button", { name: "Draw D" }).click();
+		await page.getByRole("button", { name: /Draw/ }).click();
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
 		await expect(
@@ -54,18 +54,20 @@ test.describe("Draw Tool", () => {
 	});
 
 	test("can switch shape tools", async ({ page }) => {
-		await page.getByRole("button", { name: "Draw D" }).click();
+		await page.getByRole("button", { name: /Draw/ }).click();
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
 		const toolbar = page.locator("[data-deloop-draw-toolbar]");
 		// Click arrow tool
 		await toolbar.getByRole("button", { name: /Arrow/ }).click();
 		// Arrow button should have the active class
-		await expect(toolbar.getByRole("button", { name: /Arrow/ })).toHaveClass(/deloop-overlay-btn-active/);
+		await expect(toolbar.getByRole("button", { name: /Arrow/ })).toHaveClass(
+			/deloop-overlay-btn-active/,
+		);
 	});
 
 	test("clear button clears drawings", async ({ page }) => {
-		await page.getByRole("button", { name: "Draw D" }).click();
+		await page.getByRole("button", { name: /Draw/ }).click();
 		await page.waitForSelector("[data-deloop-draw-toolbar]");
 
 		// Draw something
@@ -82,7 +84,7 @@ test.describe("Draw Tool", () => {
 	});
 
 	test("Escape finishes drawing and exits", async ({ page }) => {
-		await page.getByRole("button", { name: "Draw D" }).click();
+		await page.getByRole("button", { name: /Draw/ }).click();
 		await page.waitForSelector(".deloop-minibar");
 
 		await page.keyboard.press("Escape");

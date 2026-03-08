@@ -1,248 +1,137 @@
 import "./styles.css";
 
-import { Deloop } from "../../src";
+import { useState, useEffect } from "react";
+import { DefaultPage } from "./pages/default";
+import { ServerNoAuthPage } from "./pages/server-no-auth";
+import { ServerInjectedUserPage } from "./pages/server-injected-user";
+import { ServerAuthProxyPage } from "./pages/server-auth-proxy";
+import { ServerUserAndAuthProxyPage } from "./pages/server-user-and-auth-proxy";
+import { CustomToolsPage } from "./pages/custom-tools";
+import { LightThemePage } from "./pages/light-theme";
+import { DarkThemePage } from "./pages/dark-theme";
+import { AutoThemePage } from "./pages/auto-theme";
+import { ClipboardOnlyPage } from "./pages/clipboard-only";
 
-export function App() {
+const routes: Record<string, { label: string; group: string; component: () => React.ReactNode }> = {
+	"/": { label: "Default (no server, no auth)", group: "Auth Variations", component: DefaultPage },
+	"/server-no-auth": { label: "Server (no auth)", group: "Auth Variations", component: ServerNoAuthPage },
+	"/server-injected-user": { label: "Server + Injected User", group: "Auth Variations", component: ServerInjectedUserPage },
+	"/server-auth-proxy": { label: "Server + Auth Proxy", group: "Auth Variations", component: ServerAuthProxyPage },
+	"/server-user-and-auth-proxy": { label: "Server + User + Auth Proxy", group: "Auth Variations", component: ServerUserAndAuthProxyPage },
+	"/clipboard-only": { label: "Clipboard Only", group: "Output Modes", component: ClipboardOnlyPage },
+	"/custom-tools": { label: "Custom Tools (select + marker)", group: "Configuration", component: CustomToolsPage },
+	"/light-theme": { label: "Light Theme", group: "Themes", component: LightThemePage },
+	"/dark-theme": { label: "Dark Theme", group: "Themes", component: DarkThemePage },
+	"/auto-theme": { label: "Auto Theme", group: "Themes", component: AutoThemePage },
+};
+
+function NavIndex() {
+	const groups = new Map<string, { path: string; label: string }[]>();
+	for (const [path, route] of Object.entries(routes)) {
+		if (!groups.has(route.group)) groups.set(route.group, []);
+		groups.get(route.group)!.push({ path, label: route.label });
+	}
+
 	return (
 		<main>
 			<header style={{ marginBottom: 32 }}>
-				<h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Deloop Test Page</h1>
+				<h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Deloop Test Pages</h1>
 				<p style={{ color: "#6b7280", fontSize: 15 }}>
-					Use the toolbar in the bottom-right to annotate elements, draw, add text notes, and
-					capture screenshots.
+					Each page renders the Deloop toolbar with a different prop configuration.
 				</p>
 			</header>
-
-			<section style={{ marginBottom: 32 }}>
-				<h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Form Elements</h2>
-				<div
-					style={{
-						padding: 20,
-						background: "#f9fafb",
-						borderRadius: 8,
-						border: "1px solid #e5e7eb",
-						display: "flex",
-						flexDirection: "column",
-						gap: 12,
-					}}
-				>
-					<div>
-						<label
-							htmlFor="name"
-							style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}
-						>
-							Name
-						</label>
-						<input
-							id="name"
-							type="text"
-							placeholder="Enter your name"
-							style={{
-								padding: "8px 12px",
-								border: "1px solid #d1d5db",
-								borderRadius: 6,
-								fontSize: 14,
-								width: "100%",
-							}}
-						/>
+			{[...groups.entries()].map(([group, items]) => (
+				<section key={group} style={{ marginBottom: 24 }}>
+					<h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{group}</h2>
+					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+						{items.map(({ path, label }) => (
+							<a
+								key={path}
+								href={path}
+								style={{
+									padding: "10px 16px",
+									background: "#f9fafb",
+									border: "1px solid #e5e7eb",
+									borderRadius: 8,
+									color: "#1d4ed8",
+									textDecoration: "none",
+									fontSize: 14,
+								}}
+							>
+								{label}
+								<span style={{ color: "#9ca3af", marginLeft: 8, fontSize: 12 }}>{path}</span>
+							</a>
+						))}
 					</div>
-					<div>
-						<label
-							htmlFor="email"
-							style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 4 }}
-						>
-							Email
-						</label>
-						<input
-							id="email"
-							type="email"
-							placeholder="you@example.com"
-							style={{
-								padding: "8px 12px",
-								border: "1px solid #d1d5db",
-								borderRadius: 6,
-								fontSize: 14,
-								width: "100%",
-							}}
-						/>
-					</div>
-					<div style={{ display: "flex", gap: 8 }}>
-						<button
-							type="button"
-							style={{
-								padding: "8px 20px",
-								background: "#3b82f6",
-								color: "#fff",
-								border: "none",
-								borderRadius: 6,
-								cursor: "pointer",
-								fontSize: 14,
-							}}
-						>
-							Submit
-						</button>
-						<button
-							type="button"
-							style={{
-								padding: "8px 20px",
-								background: "#fff",
-								color: "#374151",
-								border: "1px solid #d1d5db",
-								borderRadius: 6,
-								cursor: "pointer",
-								fontSize: 14,
-							}}
-						>
-							Cancel
-						</button>
-					</div>
-				</div>
-			</section>
-
-			<section style={{ marginBottom: 32 }}>
-				<h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Card Layout</h2>
-				<div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-					<div style={{ padding: 20, background: "#dbeafe", borderRadius: 8, textAlign: "center" }}>
-						<div style={{ fontSize: 24, marginBottom: 8 }}>A</div>
-						<div style={{ fontSize: 13, color: "#1e40af" }}>Feature Card</div>
-					</div>
-					<div style={{ padding: 20, background: "#fef3c7", borderRadius: 8, textAlign: "center" }}>
-						<div style={{ fontSize: 24, marginBottom: 8 }}>B</div>
-						<div style={{ fontSize: 13, color: "#92400e" }}>Pricing Card</div>
-					</div>
-					<div style={{ padding: 20, background: "#dcfce7", borderRadius: 8, textAlign: "center" }}>
-						<div style={{ fontSize: 24, marginBottom: 8 }}>C</div>
-						<div style={{ fontSize: 13, color: "#166534" }}>Status Card</div>
-					</div>
-				</div>
-			</section>
-
-			<section style={{ marginBottom: 32 }}>
-				<h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Table</h2>
-				<table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-					<thead>
-						<tr style={{ borderBottom: "2px solid #e5e7eb" }}>
-							<th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Name</th>
-							<th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Role</th>
-							<th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Status</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr style={{ borderBottom: "1px solid #f3f4f6" }}>
-							<td style={{ padding: "8px 12px" }}>Alice</td>
-							<td style={{ padding: "8px 12px" }}>Engineer</td>
-							<td style={{ padding: "8px 12px" }}>
-								<span
-									style={{
-										padding: "2px 8px",
-										background: "#dcfce7",
-										color: "#166534",
-										borderRadius: 12,
-										fontSize: 12,
-									}}
-								>
-									Active
-								</span>
-							</td>
-						</tr>
-						<tr style={{ borderBottom: "1px solid #f3f4f6" }}>
-							<td style={{ padding: "8px 12px" }}>Bob</td>
-							<td style={{ padding: "8px 12px" }}>Designer</td>
-							<td style={{ padding: "8px 12px" }}>
-								<span
-									style={{
-										padding: "2px 8px",
-										background: "#fef3c7",
-										color: "#92400e",
-										borderRadius: 12,
-										fontSize: 12,
-									}}
-								>
-									Away
-								</span>
-							</td>
-						</tr>
-						<tr>
-							<td style={{ padding: "8px 12px" }}>Charlie</td>
-							<td style={{ padding: "8px 12px" }}>PM</td>
-							<td style={{ padding: "8px 12px" }}>
-								<span
-									style={{
-										padding: "2px 8px",
-										background: "#fee2e2",
-										color: "#991b1b",
-										borderRadius: 12,
-										fontSize: 12,
-									}}
-								>
-									Offline
-								</span>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</section>
-
-			<section>
-				<h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
-					Broken Elements (for testing)
-				</h2>
-				<div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-					<button
-						type="button"
-						style={{
-							padding: "8px 16px",
-							background: "#3b82f6",
-							color: "#3b82f6",
-							border: "none",
-							borderRadius: 6,
-							cursor: "pointer",
-						}}
-					>
-						Invisible Text Bug
-					</button>
-					<div
-						style={{
-							width: 150,
-							height: 60,
-							background: "#ef4444",
-							borderRadius: 8,
-							position: "relative",
-						}}
-					>
-						<div
-							style={{
-								position: "absolute",
-								top: -10,
-								left: -10,
-								width: 170,
-								height: 80,
-								background: "rgba(0,0,0,0.1)",
-								borderRadius: 4,
-							}}
-						>
-							Overflow Bug
-						</div>
-					</div>
-					<div
-						style={{
-							width: 100,
-							height: 40,
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							border: "2px solid #d1d5db",
-							borderRadius: 6,
-							fontSize: 11,
-						}}
-					>
-						Misaligned
-					</div>
-				</div>
-			</section>
-
-			<Deloop clipboard onSubmit={(payload) => console.log("Deloop payload:", payload)} />
+				</section>
+			))}
 		</main>
+	);
+}
+
+export function App() {
+	const [path, setPath] = useState(window.location.pathname);
+
+	useEffect(() => {
+		const onPop = () => setPath(window.location.pathname);
+		window.addEventListener("popstate", onPop);
+		return () => window.removeEventListener("popstate", onPop);
+	}, []);
+
+	// Intercept link clicks for client-side navigation
+	useEffect(() => {
+		const onClick = (e: MouseEvent) => {
+			const anchor = (e.target as HTMLElement).closest("a");
+			if (!anchor || !anchor.href) return;
+			const url = new URL(anchor.href);
+			if (url.origin !== window.location.origin) return;
+			if (routes[url.pathname] || url.pathname === "/nav") {
+				e.preventDefault();
+				window.history.pushState(null, "", url.pathname);
+				setPath(url.pathname);
+				window.scrollTo(0, 0);
+			}
+		};
+		document.addEventListener("click", onClick);
+		return () => document.removeEventListener("click", onClick);
+	}, []);
+
+	if (path === "/nav") return <NavIndex />;
+
+	const route = routes[path];
+	if (!route) return <NavIndex />;
+
+	const Page = route.component;
+	return (
+		<>
+			<div
+				data-deloop="test-nav"
+				style={{
+					position: "fixed",
+					top: 0,
+					left: 0,
+					right: 0,
+					zIndex: 100,
+					background: "rgba(255,255,255,0.9)",
+					backdropFilter: "blur(8px)",
+					borderBottom: "1px solid #e5e7eb",
+					padding: "6px 16px",
+					display: "flex",
+					alignItems: "center",
+					gap: 12,
+					fontSize: 13,
+				}}
+			>
+				<a href="/nav" style={{ color: "#6b7280", textDecoration: "none", fontWeight: 600 }}>
+					All Pages
+				</a>
+				<span style={{ color: "#d1d5db" }}>/</span>
+				<span style={{ color: "#111827", fontWeight: 500 }}>{route.label}</span>
+			</div>
+			<div style={{ paddingTop: 40 }}>
+				<Page />
+			</div>
+		</>
 	);
 }
 

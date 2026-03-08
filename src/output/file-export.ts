@@ -24,9 +24,7 @@ export function exportToFile(
 	} else {
 		// For JSON with "files" mode, strip base64 data and replace with filenames
 		const jsonPayload =
-			settings?.imageExportMode === "files"
-				? stripBase64FromPayload(payload, timestamp)
-				: payload;
+			settings?.imageExportMode === "files" ? stripBase64FromPayload(payload, timestamp) : payload;
 		const blob = new Blob([JSON.stringify(jsonPayload, null, 2)], {
 			type: "application/json",
 		});
@@ -51,10 +49,7 @@ function exportImageFiles(annotations: Annotation[], timestamp: string): void {
 		} else if (a.type === "screenshot") {
 			const d = a.data as ScreenshotData;
 			if (d.imageDataUri) {
-				downloadDataUri(
-					d.imageDataUri,
-					`deloop-screenshot-${timestamp}-${++imageIndex}.png`,
-				);
+				downloadDataUri(d.imageDataUri, `deloop-screenshot-${timestamp}-${++imageIndex}.png`);
 			}
 		}
 	}
