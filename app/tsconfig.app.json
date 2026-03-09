@@ -15,6 +15,10 @@
 		"moduleDetection": "force",
 		"noEmit": true,
 		"jsx": "react-jsx",
+		"paths": {
+			"deloop.dev": ["../dist/index.d.ts"],
+			"deloop.dev/styles.css": ["../dist/styles.css"]
+		},
 
 		/* Linting */
 		"strict": true,

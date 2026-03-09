@@ -268,7 +268,7 @@ function ReportRow({ report, isLast }: { report: Report; isLast: boolean }) {
 		path = report.url;
 	}
 
-	const typesPresent = [...new Set(annotations.map((a: any) => a.type as string))];
+	const typesPresent = [...new Set<string>(annotations.map((a: any) => a.type as string))];
 
 	return (
 		<Link

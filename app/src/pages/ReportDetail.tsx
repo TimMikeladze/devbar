@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { useReport, getTimeAgo, type DashboardContext } from "../lib/hooks";
+import { useReport, getTimeAgo } from "../lib/hooks";
 import { api } from "../lib/api";
 
 const TYPE_COLORS: Record<string, { dot: string; text: string }> = {

@@ -28,7 +28,7 @@ export function OrgSettingsPage() {
 	);
 }
 
-function CreateOrg({ onDone }: { onDone: () => void }) {
+function CreateOrg({ onDone: _onDone }: { onDone: () => void }) {
 	const [name, setName] = useState("");
 	const [slug, setSlug] = useState("");
 	const [loading, setLoading] = useState(false);
