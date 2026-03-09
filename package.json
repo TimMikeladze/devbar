@@ -58,7 +58,7 @@
 		"lint": "oxlint . app",
 		"prepare": "bun simple-git-hooks",
 		"release": "bumpp --commit --push --tag",
-		"test": "bun test",
+		"test": "bun test test/index.test.ts",
 		"test:e2e": "bunx playwright test",
 		"test:coverage": "bun test --coverage",
 		"test:watch": "bun test --watch",
