@@ -179,42 +179,50 @@ export function DrawOverlay({
 			return;
 		}
 
-		const imageDataUri = canvas.toDataURL("image/png");
+		try {
+			const imageDataUri = canvas.toDataURL("image/png");
 
-		let screenshotDataUri = "";
-		if (enableScreenshots) {
-			// Hide the drawing canvas temporarily so the screenshot captures the page without it
-			canvas.style.display = "none";
-			const toolbar = document.querySelector("[data-deloop-draw-toolbar]") as HTMLElement | null;
-			if (toolbar) toolbar.style.display = "none";
-			const instruction = canvas.parentElement?.querySelector(
-				".deloop-instruction",
-			) as HTMLElement | null;
-			if (instruction) instruction.style.display = "none";
+			let screenshotDataUri = "";
+			if (enableScreenshots) {
+				canvas.style.display = "none";
+				const toolbar = document.querySelector(
+					"[data-deloop-draw-toolbar]",
+				) as HTMLElement | null;
+				if (toolbar) toolbar.style.display = "none";
+				const instruction = canvas.parentElement?.querySelector(
+					".deloop-instruction",
+				) as HTMLElement | null;
+				if (instruction) instruction.style.display = "none";
 
-			try {
-				screenshotDataUri = await captureFullPage();
-			} finally {
-				canvas.style.display = "";
-				if (toolbar) toolbar.style.display = "";
-				if (instruction) instruction.style.display = "";
+				try {
+					screenshotDataUri = await captureFullPage();
+				} catch (e) {
+					console.warn("[deloop] screenshot capture error:", e);
+				} finally {
+					canvas.style.display = "";
+					if (toolbar) toolbar.style.display = "";
+					if (instruction) instruction.style.display = "";
+				}
 			}
-		}
 
-		const annotation: Annotation = {
-			id: crypto.randomUUID(),
-			type: "drawing",
-			timestamp: Date.now(),
-			data: {
-				imageDataUri,
-				screenshotDataUri,
-				viewportOffset: { x: window.scrollX, y: window.scrollY },
-				dimensions: { width: canvas.width, height: canvas.height },
-			},
-			comments: [],
-		};
-		onCapture(annotation);
-		onDone();
+			const annotation: Annotation = {
+				id: crypto.randomUUID(),
+				type: "drawing",
+				timestamp: Date.now(),
+				data: {
+					imageDataUri,
+					screenshotDataUri,
+					viewportOffset: { x: window.scrollX, y: window.scrollY },
+					dimensions: { width: canvas.width, height: canvas.height },
+				},
+				comments: [],
+			};
+			onCapture(annotation);
+		} catch (e) {
+			console.warn("[deloop] drawing capture error:", e);
+		} finally {
+			onDone();
+		}
 	}, [shapes, onCapture, onDone, enableScreenshots]);
 
 	return (

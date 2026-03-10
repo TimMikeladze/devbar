@@ -1378,10 +1378,14 @@
 
 .deloop-persistent-pin-clickable {
 	pointer-events: auto;
-	cursor: pointer;
+	cursor: grab;
 	transition:
 		transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
 		box-shadow 0.2s;
+}
+
+.deloop-persistent-pin-clickable:active {
+	cursor: grabbing;
 }
 
 .deloop-persistent-pin-clickable:hover {
@@ -1937,6 +1941,13 @@
 	pointer-events: none;
 	z-index: 2147483645;
 	border-radius: 4px;
+}
+
+/* ─── Drawing overlay (persistent) ─── */
+.deloop-drawing-overlay {
+	position: fixed;
+	pointer-events: none;
+	z-index: 2147483643;
 }
 
 /* ─── Marker pin (shared in overlay and toolbar) ─── */

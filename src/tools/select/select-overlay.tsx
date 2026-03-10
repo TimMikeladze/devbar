@@ -116,9 +116,7 @@ export function SelectOverlay({
 			if (commentInput && selectedEl.current) {
 				const rect = selectedEl.current.getBoundingClientRect();
 				setCommentInput((prev) =>
-					prev
-						? { ...prev, x: rect.x + rect.width / 2, y: rect.y + rect.height + 8 }
-						: null,
+					prev ? { ...prev, x: rect.x + rect.width / 2, y: rect.y + rect.height + 8 } : null,
 				);
 				setHighlight({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
 				return;

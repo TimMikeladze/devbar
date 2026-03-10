@@ -165,11 +165,19 @@ function getAnnotationRect(a: Annotation): HighlightRect | null {
 	switch (a.type) {
 		case "element": {
 			const d = a.data as ElementData;
+			const el = document.querySelector(d.cssSelector);
+			if (el) {
+				const rect = el.getBoundingClientRect();
+				return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+			}
 			return d.boundingRect;
 		}
 		case "marker": {
 			const d = a.data as MarkerData;
-			return { x: d.position.x - 16, y: d.position.y - 16, width: 32, height: 32 };
+			const so = d.scrollOffset ?? { x: 0, y: 0 };
+			const vx = d.position.x + so.x - window.scrollX;
+			const vy = d.position.y + so.y - window.scrollY;
+			return { x: vx - 16, y: vy - 16, width: 32, height: 32 };
 		}
 		case "screenshot": {
 			const d = a.data as ScreenshotData;
@@ -1718,6 +1726,43 @@ export function Deloop({
 
 	return (
 		<div data-deloop="toolbar" className="deloop-toolbar">
+			{/* Persistent element annotation highlights — live-tracking via rAF */}
+			<AnnotationHighlights
+				annotations={state.annotations}
+				focusedAnnotation={focusedAnnotation}
+				onFocusAnnotation={setFocusedAnnotation}
+				onUpdateAnnotation={state.updateAnnotation}
+				selectMode={state.activeMode === "select"}
+			/>
+
+			{/* Tool overlays — rapid mode for select/marker */}
+			{state.activeMode === "select" && (
+				<SelectOverlay
+					onCapture={handleRapidCapture}
+					onDone={handleToolDone}
+					annotations={state.annotations}
+					onFocusAnnotation={handleFocusAnnotation}
+				/>
+			)}
+			{state.activeMode === "draw" && (
+				<DrawOverlay
+					onCapture={handleCapture}
+					onDone={handleToolDone}
+					enableScreenshots={settings.enableScreenshots}
+				/>
+			)}
+			{state.activeMode === "marker" && (
+				<MarkerOverlay
+					onCapture={handleRapidCapture}
+					onDone={handleToolDone}
+					annotations={state.annotations}
+					onFocusAnnotation={handleFocusAnnotation}
+				/>
+			)}
+			{state.activeMode === "capture" && (
+				<CaptureOverlay onCapture={handleCapture} onDone={handleToolDone} />
+			)}
+
 			{/* Annotations popup panel (toolbar mode only) */}
 			{uiMode === "toolbar" && panelOpen && !state.activeMode && !sidePanelOpen && (
 				<div
@@ -2294,42 +2339,6 @@ export function Deloop({
 				</div>
 			)}
 
-			{/* Persistent marker pins — clickable to open thread */}
-			{!state.activeMode &&
-				state.annotations
-					.filter((a) => a.type === "marker")
-					.map((a) => {
-						const d = a.data as MarkerData;
-						return (
-							<div key={`pin-${a.id}`}>
-								<div
-									className="deloop-persistent-pin deloop-persistent-pin-clickable"
-									style={{
-										left: d.position.x - 12,
-										top: d.position.y - 12,
-										background: d.color,
-										boxShadow: `0 2px 8px ${d.color}66, 0 1px 3px rgba(0,0,0,0.3)`,
-									}}
-									title={a.comments.length > 0 ? a.comments[0]!.text : `Marker #${d.number}`}
-									onClick={() => setFocusedAnnotation((prev) => (prev === a.id ? null : a.id))}
-								>
-									{d.number}
-								</div>
-								{a.comments.length > 0 && focusedAnnotation !== a.id && (
-									<div
-										className="deloop-persistent-pin-note"
-										style={{
-											left: d.position.x + 16,
-											top: d.position.y - 10,
-										}}
-									>
-										{a.comments[0]!.text}
-									</div>
-								)}
-							</div>
-						);
-					})}
-
 			{/* Floating comment thread popover for focused annotation */}
 			{focusedAnnotation &&
 				!state.activeMode &&
@@ -2480,42 +2489,6 @@ export function Deloop({
 						/>
 					);
 				})()}
-
-			{/* Persistent element annotation highlights — live-tracking via rAF */}
-			<AnnotationHighlights
-				annotations={state.annotations}
-				focusedAnnotation={focusedAnnotation}
-				onFocusAnnotation={setFocusedAnnotation}
-				selectMode={state.activeMode === "select"}
-			/>
-
-			{/* Tool overlays — rapid mode for select/marker */}
-			{state.activeMode === "select" && (
-				<SelectOverlay
-					onCapture={handleRapidCapture}
-					onDone={handleToolDone}
-					annotations={state.annotations}
-					onFocusAnnotation={handleFocusAnnotation}
-				/>
-			)}
-			{state.activeMode === "draw" && (
-				<DrawOverlay
-					onCapture={handleCapture}
-					onDone={handleToolDone}
-					enableScreenshots={settings.enableScreenshots}
-				/>
-			)}
-			{state.activeMode === "marker" && (
-				<MarkerOverlay
-					onCapture={handleRapidCapture}
-					onDone={handleToolDone}
-					annotations={state.annotations}
-					onFocusAnnotation={handleFocusAnnotation}
-				/>
-			)}
-			{state.activeMode === "capture" && (
-				<CaptureOverlay onCapture={handleCapture} onDone={handleToolDone} />
-			)}
 
 			{/* Labels panel (floating, toolbar mode only) */}
 			{showLabels && !state.activeMode && !sidePanelOpen && (

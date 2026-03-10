@@ -32,6 +32,8 @@ export function MarkerOverlay({
 	const [commentInput, setCommentInput] = useState<{
 		x: number;
 		y: number;
+		scrollX: number;
+		scrollY: number;
 		xpath: string;
 		cssSelector: string;
 		reactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
@@ -60,6 +62,8 @@ export function MarkerOverlay({
 			setCommentInput({
 				x: e.clientX,
 				y: e.clientY,
+				scrollX: window.scrollX,
+				scrollY: window.scrollY,
 				xpath,
 				cssSelector,
 				reactContext,
@@ -107,6 +111,7 @@ export function MarkerOverlay({
 			timestamp: Date.now(),
 			data: {
 				position: { x: commentInput.x, y: commentInput.y },
+				scrollOffset: { x: commentInput.scrollX, y: commentInput.scrollY },
 				color: commentInput.color,
 				number: commentInput.number,
 				nearestElementXPath: commentInput.xpath,
@@ -122,31 +127,6 @@ export function MarkerOverlay({
 
 	return (
 		<div data-deloop="marker-overlay">
-			{/* Existing markers */}
-			{markerAnnotations.map((a) => {
-				const d = a.data as MarkerData;
-				return (
-					<div
-						key={a.id}
-						data-deloop="marker-pin"
-						className="deloop-marker-pin"
-						style={{
-							left: d.position.x - 12,
-							top: d.position.y - 12,
-							background: d.color,
-							boxShadow: `0 2px 8px ${d.color}66, 0 1px 3px rgba(0,0,0,0.3)`,
-						}}
-						title={a.comments.length > 0 ? a.comments[0]!.text : `Marker #${d.number}`}
-						onClick={(e) => {
-							e.stopPropagation();
-							if (onFocusAnnotation) onFocusAnnotation(a.id);
-						}}
-					>
-						{d.number}
-					</div>
-				);
-			})}
-
 			{/* Preview marker at cursor position */}
 			{commentInput && (
 				<div

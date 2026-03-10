@@ -9,6 +9,7 @@ export type DeloopState = {
 	setMinimized: (v: boolean) => void;
 	setActiveLabel: (label: string | null) => void;
 	addAnnotation: (annotation: Annotation, remote?: boolean) => void;
+	updateAnnotation: (id: string, data: Annotation["data"]) => void;
 	removeAnnotation: (id: string, remote?: boolean) => void;
 	addComment: (annotationId: string, comment: Comment, remote?: boolean) => void;
 	removeComment: (annotationId: string, commentId: string, remote?: boolean) => void;
@@ -149,6 +150,15 @@ export function useDeloopState(): DeloopState {
 		dbPut(annotation).catch((e) => console.warn("[deloop] save error:", e));
 	}, []);
 
+	const updateAnnotation = useCallback((id: string, data: Annotation["data"]): void => {
+		setAnnotations((prev) => {
+			const updated = prev.map((a) => (a.id === id ? { ...a, data } : a));
+			const annotation = updated.find((a) => a.id === id);
+			if (annotation) dbPut(annotation).catch((e) => console.warn("[deloop] save error:", e));
+			return updated;
+		});
+	}, []);
+
 	const removeAnnotation = useCallback((id: string, _remote?: boolean): void => {
 		setAnnotations((prev) => prev.filter((a) => a.id !== id));
 		dbDelete(id).catch((e) => console.warn("[deloop] delete error:", e));
@@ -209,6 +219,7 @@ export function useDeloopState(): DeloopState {
 		setMinimized,
 		setActiveLabel: updateLabel,
 		addAnnotation,
+		updateAnnotation,
 		removeAnnotation,
 		addComment,
 		removeComment,

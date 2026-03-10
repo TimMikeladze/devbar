@@ -38,6 +38,7 @@ export type ScreenshotData = {
 
 export type MarkerData = {
 	position: { x: number; y: number };
+	scrollOffset?: { x: number; y: number };
 	color: string;
 	number: number;
 	nearestElementXPath: string;
