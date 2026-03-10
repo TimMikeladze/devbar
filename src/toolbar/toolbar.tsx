@@ -9,6 +9,7 @@ import type {
 	DeloopTheme,
 	DeloopUser,
 	ElementData,
+	ExportMethod,
 	MarkerData,
 	PromptTemplate,
 	ScreenshotData,
@@ -58,6 +59,7 @@ import {
 	UserIcon,
 	SendIcon,
 	LabelIcon,
+	HistoryIcon,
 } from "./icons";
 
 export type DeloopPlugin = {
@@ -133,6 +135,20 @@ function annotationLabel(a: Annotation): string {
 }
 
 const ALL_TOOLS: ToolMode[] = ["select", "marker", "draw", "capture"];
+
+const METHOD_ICONS: Record<ExportMethod, () => React.ReactNode> = {
+	clipboard: CopyIcon,
+	"file-md": SaveFileIcon,
+	"file-json": SaveFileIcon,
+	server: SendIcon,
+};
+
+const METHOD_TIPS: Record<ExportMethod, string> = {
+	clipboard: "Clipboard",
+	"file-md": "Markdown file",
+	"file-json": "JSON file",
+	server: "Server",
+};
 
 function timeAgo(ts: number): string {
 	const sec = Math.floor((Date.now() - ts) / 1000);
@@ -406,6 +422,14 @@ export function Deloop({
 		collab.sendClear();
 	}, [state.clearAnnotations, collab.sendClear]);
 
+	const localArchiveAndClear = useCallback(
+		(method: ExportMethod) => {
+			state.archiveAndClear(method, state.activeLabel);
+			collab.sendClear();
+		},
+		[state.archiveAndClear, state.activeLabel, collab.sendClear],
+	);
+
 	const [uiMode, setUiMode] = useState<"toolbar" | "panel">("toolbar");
 	const [panelOpen, setPanelOpen] = useState(false);
 	const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -441,6 +465,8 @@ export function Deloop({
 	});
 	const [labelDraft, setLabelDraft] = useState(state.activeLabel ?? "");
 	const [showLabels, setShowLabels] = useState(false);
+	const [showHistory, setShowHistory] = useState(false);
+	const [expandedExportId, setExpandedExportId] = useState<string | null>(null);
 	const [showExportMenu, setShowExportMenu] = useState(false);
 	const exportMenuRef = useRef<HTMLDivElement>(null);
 	const [savedLabels, setSavedLabels] = useState<string[]>(() => {
@@ -656,6 +682,7 @@ export function Deloop({
 				setShowSettings(false);
 				setShowHelp(false);
 				setShowLabels(false);
+
 				return;
 			}
 
@@ -679,6 +706,7 @@ export function Deloop({
 					return !v;
 				});
 				setShowSettings(false);
+
 				setPanelOpen(false);
 				return;
 			}
@@ -696,6 +724,7 @@ export function Deloop({
 				});
 				setShowSettings(false);
 				setShowLabels(false);
+
 				setPanelOpen(false);
 				return;
 			}
@@ -737,7 +766,7 @@ export function Deloop({
 		setTimeout(() => setCopied(false), 1500);
 		onSubmit?.(payload);
 		if (!onSubmit) {
-			localClearAnnotations();
+			localArchiveAndClear("clipboard");
 			setPanelOpen(false);
 			setSidePanelOpen(false);
 		}
@@ -748,7 +777,7 @@ export function Deloop({
 		state.activeLabel,
 		onSubmit,
 		showToast,
-		localClearAnnotations,
+		localArchiveAndClear,
 	]);
 
 	const handleExport = useCallback(
@@ -758,7 +787,7 @@ export function Deloop({
 			showToast(format === "md" ? "Saved markdown!" : "Saved JSON!");
 			onSubmit?.(payload);
 			if (!onSubmit) {
-				localClearAnnotations();
+				localArchiveAndClear(format === "md" ? "file-md" : "file-json");
 				setPanelOpen(false);
 				setSidePanelOpen(false);
 			}
@@ -770,7 +799,7 @@ export function Deloop({
 			state.activeLabel,
 			onSubmit,
 			showToast,
-			localClearAnnotations,
+			localArchiveAndClear,
 		],
 	);
 
@@ -810,7 +839,7 @@ export function Deloop({
 			if (res.ok) {
 				showToast("Submitted to server!");
 				onSubmit?.(payload);
-				localClearAnnotations();
+				localArchiveAndClear("server");
 				setPanelOpen(false);
 				setSidePanelOpen(false);
 			} else {
@@ -830,7 +859,7 @@ export function Deloop({
 		user,
 		onSubmit,
 		showToast,
-		localClearAnnotations,
+		localArchiveAndClear,
 	]);
 
 	const handleToolClick = useCallback(
@@ -1072,6 +1101,172 @@ export function Deloop({
 					Settings
 				</span>
 			)}
+		</button>
+	);
+
+	// Shared export menu items — used in both toolbar bar and side panel bar
+	const renderExportMenuItems = () => (
+		<>
+			<button
+				type="button"
+				className="deloop-export-menu-item"
+				onClick={() => {
+					handleCopy();
+					setShowExportMenu(false);
+				}}
+			>
+				<CopyIcon /> Copy <span className="deloop-export-menu-key">⌘↵</span>
+			</button>
+			<button
+				type="button"
+				className="deloop-export-menu-item"
+				onClick={() => {
+					handleExport("md");
+					setShowExportMenu(false);
+				}}
+			>
+				<SaveFileIcon /> .md
+			</button>
+			<button
+				type="button"
+				className="deloop-export-menu-item"
+				onClick={() => {
+					handleExport("json");
+					setShowExportMenu(false);
+				}}
+			>
+				<SaveFileIcon /> .json
+			</button>
+			{server && (
+				<button
+					type="button"
+					className="deloop-export-menu-item"
+					onClick={() => {
+						handleServerSubmit();
+						setShowExportMenu(false);
+					}}
+				>
+					<SendIcon /> Submit
+				</button>
+			)}
+			<div className="deloop-export-menu-divider" />
+			<button
+				type="button"
+				className="deloop-export-menu-item deloop-export-menu-item-danger"
+				onClick={() => {
+					if (!clearConfirm) {
+						setClearConfirm(true);
+						setTimeout(() => setClearConfirm(false), 2000);
+						return;
+					}
+					localClearAnnotations();
+					setShowExportMenu(false);
+					setClearConfirm(false);
+				}}
+			>
+				{clearConfirm ? "Confirm clear?" : "Clear all"}
+			</button>
+		</>
+	);
+
+	// Shared export button + dropdown — used in both toolbar bar and side panel bar
+	const renderExportButton = (tooltipBelow?: boolean) => (
+		<div className="deloop-bar-export-wrap" ref={exportMenuRef}>
+			<button
+				type="button"
+				className={`deloop-bar-btn ${showExportMenu ? "deloop-bar-btn-active" : ""}`}
+				onClick={() => setShowExportMenu((v) => !v)}
+				style={
+					copied
+						? { color: "var(--deloop-green, #4ade80)" }
+						: state.annotations.length > 0
+							? { color: "var(--deloop-text)" }
+							: undefined
+				}
+			>
+				{copied ? <CheckIcon /> : <SubmitIcon />}
+				<span
+					className="deloop-tooltip"
+					style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}
+				>
+					{copied ? "Copied!" : "Export"}
+					{!copied && <span className="deloop-tooltip-key">⌘↵</span>}
+				</span>
+			</button>
+			{showExportMenu && (
+				<div
+					className={`deloop-export-menu deloop-theme-${theme}`}
+					style={
+						tooltipBelow
+							? { bottom: "auto", top: "100%", marginTop: 8 }
+							: isVertical
+								? { left: "100%", marginLeft: 8, bottom: 0 }
+								: drag.offset && drag.offset.y < window.innerHeight / 2
+									? { top: "100%", marginTop: 8 }
+									: { bottom: "100%", marginBottom: 8 }
+					}
+				>
+					{renderExportMenuItems()}
+				</div>
+			)}
+		</div>
+	);
+
+	// Shared tool buttons — used in both toolbar bar and side panel bar
+	const renderToolButtons = (tooltipBelow?: boolean) =>
+		toolDefs.map((tool) => {
+			const Icon = tool.icon;
+			return (
+				<button
+					key={tool.key}
+					type="button"
+					className={`deloop-bar-btn ${state.activeMode === tool.key ? "deloop-bar-btn-active" : ""}`}
+					onClick={() => handleToolClick(tool.key)}
+				>
+					<Icon />
+					<span
+						className="deloop-tooltip"
+						style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}
+					>
+						{tool.label}
+						<span className="deloop-tooltip-key">{tool.shortcut}</span>
+					</span>
+				</button>
+			);
+		});
+
+	// Shared label button — used in both toolbar bar and side panel bar
+	const renderLabelButton = (tooltipBelow?: boolean) => (
+		<button
+			type="button"
+			className={`deloop-bar-btn ${showLabels || state.activeLabel ? "deloop-bar-btn-active" : ""}`}
+			onClick={() => {
+				setShowLabels((v) => {
+					if (!v) {
+						if (!tooltipBelow) {
+							panelOpenAboveRef.current = drag.offset
+								? drag.offset.y >= window.innerHeight / 2
+								: true;
+						}
+						setShowSettings(false);
+						setShowHelp(false);
+					}
+					return !v;
+				});
+				if (!tooltipBelow) {
+					setPanelOpen(false);
+				}
+			}}
+			title={state.activeLabel ? `Label: ${state.activeLabel}` : "Labels"}
+		>
+			<LabelIcon />
+			<span
+				className="deloop-tooltip"
+				style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}
+			>
+				{state.activeLabel ?? "Labels"}
+				<span className="deloop-tooltip-key">L</span>
+			</span>
 		</button>
 	);
 
@@ -1385,6 +1580,127 @@ export function Deloop({
 		</div>
 	);
 
+	const renderHistoryContent = () => (
+		<div className="deloop-history-list">
+			{state.exports.map((exp) => {
+				const isExpanded = expandedExportId === exp.id;
+				const MethodIcon = METHOD_ICONS[exp.method];
+
+				const typeCounts: Record<string, number> = {};
+				let totalComments = 0;
+				for (const ann of exp.annotations) {
+					typeCounts[ann.type] = (typeCounts[ann.type] ?? 0) + 1;
+					totalComments += ann.comments.length;
+				}
+
+				const getPayload = () => buildPayload(exp.annotations, promptTemplate, settings, exp.label);
+
+				return (
+					<div
+						key={exp.id}
+						className={`deloop-history-item${isExpanded ? " deloop-history-item-expanded" : ""}`}
+					>
+						<button
+							type="button"
+							className="deloop-history-item-header"
+							onClick={() => setExpandedExportId(isExpanded ? null : exp.id)}
+						>
+							<span className="deloop-history-item-method" title={METHOD_TIPS[exp.method]}>
+								{MethodIcon && <MethodIcon />}
+							</span>
+							<div className="deloop-history-item-info">
+								<div className="deloop-history-item-chips">
+									{Object.entries(typeCounts).map(([type, count]) => {
+										const Icon = ITEM_ICONS[type];
+										return (
+											<span key={type} className="deloop-history-chip">
+												{Icon && <Icon />}
+												{count}
+											</span>
+										);
+									})}
+									{totalComments > 0 && (
+										<span className="deloop-history-chip deloop-history-chip-comment">
+											{totalComments} comment{totalComments !== 1 ? "s" : ""}
+										</span>
+									)}
+								</div>
+								{exp.label && <span className="deloop-history-item-label">{exp.label}</span>}
+							</div>
+							<span
+								className="deloop-history-item-date"
+								title={new Date(exp.timestamp).toLocaleString()}
+							>
+								{timeAgo(exp.timestamp)}
+							</span>
+						</button>
+						{isExpanded && (
+							<div className="deloop-history-item-details">
+								<div className="deloop-history-item-url">{exp.url}</div>
+								<div className="deloop-history-item-actions">
+									<button
+										type="button"
+										className="deloop-history-action-btn"
+										title="Copy to clipboard"
+										onClick={async () => {
+											await copyToClipboard(getPayload());
+											showToast("Copied!");
+										}}
+									>
+										<CopyIcon />
+									</button>
+									<button
+										type="button"
+										className="deloop-history-action-btn"
+										title="Save as Markdown"
+										onClick={() => {
+											exportToFile(getPayload(), "md", settings);
+											showToast("Saved .md!");
+										}}
+									>
+										<SaveFileIcon />
+									</button>
+									<button
+										type="button"
+										className="deloop-history-action-btn"
+										title="Save as JSON"
+										onClick={() => {
+											exportToFile(getPayload(), "json", settings);
+											showToast("Saved .json!");
+										}}
+									>
+										<SaveFileIcon />
+									</button>
+									<button
+										type="button"
+										className="deloop-history-action-btn deloop-history-action-danger"
+										title="Delete"
+										onClick={() => {
+											state.deleteExport(exp.id);
+											setExpandedExportId(null);
+										}}
+									>
+										<svg
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="1.5"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<line x1="18" y1="6" x2="6" y2="18" />
+											<line x1="6" y1="6" x2="18" y2="18" />
+										</svg>
+									</button>
+								</div>
+							</div>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+
 	// Preview renderer
 	const renderPreview = (maxHeight?: string) => (
 		<div
@@ -1645,6 +1961,20 @@ export function Deloop({
 					);
 				})
 			)}
+			{state.exports.length > 0 && (
+				<div className="deloop-history-section">
+					<button
+						type="button"
+						className="deloop-history-section-toggle"
+						onClick={() => setShowHistory((v) => !v)}
+					>
+						<HistoryIcon />
+						<span>Past Exports ({state.exports.length})</span>
+						{showHistory ? <ChevronUpIcon /> : <ChevronDownIcon />}
+					</button>
+					{showHistory && renderHistoryContent()}
+				</div>
+			)}
 		</div>
 	);
 
@@ -1804,137 +2134,9 @@ export function Deloop({
 						>
 							{/* Compact icon bar matching toolbar layout */}
 							<div className="deloop-side-panel-bar">
-								{toolDefs.map((tool) => {
-									const Icon = tool.icon;
-									return (
-										<button
-											key={tool.key}
-											type="button"
-											className={`deloop-bar-btn ${state.activeMode === tool.key ? "deloop-bar-btn-active" : ""}`}
-											onClick={() => handleToolClick(tool.key)}
-										>
-											<Icon />
-											<span
-												className="deloop-tooltip"
-												style={{ bottom: "auto", top: "calc(100% + 10px)" }}
-											>
-												{tool.label}
-												<span className="deloop-tooltip-key">{tool.shortcut}</span>
-											</span>
-										</button>
-									);
-								})}
-								<button
-									type="button"
-									className="deloop-bar-btn"
-									onClick={() =>
-										setShowLabels((v) => {
-											if (!v) {
-												setShowSettings(false);
-												setShowHelp(false);
-											}
-											return !v;
-										})
-									}
-								>
-									<LabelIcon />
-									<span
-										className="deloop-tooltip"
-										style={{ bottom: "auto", top: "calc(100% + 10px)" }}
-									>
-										{state.activeLabel ?? "Labels"}
-										<span className="deloop-tooltip-key">L</span>
-									</span>
-								</button>
-								<div className="deloop-bar-export-wrap" ref={exportMenuRef}>
-									<button
-										type="button"
-										className={`deloop-bar-btn ${showExportMenu ? "deloop-bar-btn-active" : ""}`}
-										onClick={() => setShowExportMenu((v) => !v)}
-										style={
-											copied
-												? { color: "var(--deloop-green, #4ade80)" }
-												: state.annotations.length > 0
-													? { color: "var(--deloop-text)" }
-													: undefined
-										}
-									>
-										{copied ? <CheckIcon /> : <SubmitIcon />}
-										<span
-											className="deloop-tooltip"
-											style={{ bottom: "auto", top: "calc(100% + 10px)" }}
-										>
-											{copied ? "Copied!" : "Export"}
-											{!copied && <span className="deloop-tooltip-key">⌘↵</span>}
-										</span>
-									</button>
-									{showExportMenu && (
-										<div
-											className={`deloop-export-menu deloop-theme-${theme}`}
-											style={{ bottom: "auto", top: "100%", marginTop: 8 }}
-										>
-											<button
-												type="button"
-												className="deloop-export-menu-item"
-												onClick={() => {
-													handleCopy();
-													setShowExportMenu(false);
-												}}
-											>
-												<CopyIcon /> Copy <span className="deloop-export-menu-key">⌘↵</span>
-											</button>
-											<button
-												type="button"
-												className="deloop-export-menu-item"
-												onClick={() => {
-													handleExport("md");
-													setShowExportMenu(false);
-												}}
-											>
-												<SaveFileIcon /> .md
-											</button>
-											<button
-												type="button"
-												className="deloop-export-menu-item"
-												onClick={() => {
-													handleExport("json");
-													setShowExportMenu(false);
-												}}
-											>
-												<SaveFileIcon /> .json
-											</button>
-											{server && (
-												<button
-													type="button"
-													className="deloop-export-menu-item"
-													onClick={() => {
-														handleServerSubmit();
-														setShowExportMenu(false);
-													}}
-												>
-													<SendIcon /> Submit
-												</button>
-											)}
-											<div className="deloop-export-menu-divider" />
-											<button
-												type="button"
-												className="deloop-export-menu-item deloop-export-menu-item-danger"
-												onClick={() => {
-													if (!clearConfirm) {
-														setClearConfirm(true);
-														setTimeout(() => setClearConfirm(false), 2000);
-														return;
-													}
-													localClearAnnotations();
-													setShowExportMenu(false);
-													setClearConfirm(false);
-												}}
-											>
-												{clearConfirm ? "Confirm clear?" : "Clear all"}
-											</button>
-										</div>
-									)}
-								</div>
+								{renderToolButtons(true)}
+								{renderLabelButton(true)}
+								{renderExportButton(true)}
 								{renderSettingsButton("deloop-bar-btn", "deloop-bar-btn-active", true, true)}
 								<button
 									type="button"
@@ -2006,6 +2208,7 @@ export function Deloop({
 												{state.annotations.length > 0 ? ` (${state.annotations.length})` : ""}
 											</div>
 											{renderAnnotationList("none")}
+											{renderFooter()}
 										</div>
 
 										{/* Plugin panels */}
@@ -2126,23 +2329,7 @@ export function Deloop({
 						<DragHandleIcon />
 					</div>
 					<div className="deloop-bar-divider" />
-					{toolDefs.map((tool) => {
-						const Icon = tool.icon;
-						return (
-							<button
-								key={tool.key}
-								type="button"
-								className={`deloop-bar-btn ${state.activeMode === tool.key ? "deloop-bar-btn-active" : ""}`}
-								onClick={() => handleToolClick(tool.key)}
-							>
-								<Icon />
-								<span className="deloop-tooltip">
-									{tool.label}
-									<span className="deloop-tooltip-key">{tool.shortcut}</span>
-								</span>
-							</button>
-						);
-					})}
+					{renderToolButtons()}
 					{plugins.length > 0 && (
 						<>
 							<div className="deloop-bar-divider" />
@@ -2185,128 +2372,9 @@ export function Deloop({
 							<span className="deloop-tooltip-key">A</span>
 						</span>
 					</button>
-					<button
-						type="button"
-						className={`deloop-bar-btn ${showLabels || state.activeLabel ? "deloop-bar-btn-active" : ""}`}
-						onClick={() => {
-							setShowLabels((v) => {
-								if (!v) {
-									panelOpenAboveRef.current = drag.offset
-										? drag.offset.y >= window.innerHeight / 2
-										: true;
-								}
-								return !v;
-							});
-							setShowSettings(false);
-							setPanelOpen(false);
-							setShowHelp(false);
-						}}
-						title={state.activeLabel ? `Label: ${state.activeLabel}` : "Labels"}
-					>
-						<LabelIcon />
-						<span className="deloop-tooltip">
-							{state.activeLabel ?? "Labels"}
-							<span className="deloop-tooltip-key">L</span>
-						</span>
-					</button>
+					{renderLabelButton()}
 					<div className="deloop-bar-divider" />
-					<div className="deloop-bar-export-wrap" ref={exportMenuRef}>
-						<button
-							type="button"
-							className={`deloop-bar-btn ${showExportMenu ? "deloop-bar-btn-active" : ""}`}
-							onClick={() => setShowExportMenu((v) => !v)}
-							style={
-								copied
-									? { color: "var(--deloop-green, #4ade80)" }
-									: state.annotations.length > 0
-										? { color: "var(--deloop-text)" }
-										: undefined
-							}
-						>
-							{copied ? <CheckIcon /> : <SubmitIcon />}
-							<span className="deloop-tooltip">
-								{copied ? "Copied!" : "Export"}
-								{!copied && <span className="deloop-tooltip-key">⌘↵</span>}
-							</span>
-						</button>
-						{showExportMenu && (
-							<div
-								className={`deloop-export-menu deloop-theme-${theme}`}
-								style={
-									isVertical
-										? { left: "100%", marginLeft: 8, bottom: 0 }
-										: drag.offset && drag.offset.y < window.innerHeight / 2
-											? { top: "100%", marginTop: 8 }
-											: { bottom: "100%", marginBottom: 8 }
-								}
-							>
-								<button
-									type="button"
-									className="deloop-export-menu-item"
-									onClick={() => {
-										handleCopy();
-										setShowExportMenu(false);
-									}}
-								>
-									<CopyIcon />
-									Copy
-									<span className="deloop-export-menu-key">⌘↵</span>
-								</button>
-								<button
-									type="button"
-									className="deloop-export-menu-item"
-									onClick={() => {
-										handleExport("md");
-										setShowExportMenu(false);
-									}}
-								>
-									<SaveFileIcon />
-									.md
-								</button>
-								<button
-									type="button"
-									className="deloop-export-menu-item"
-									onClick={() => {
-										handleExport("json");
-										setShowExportMenu(false);
-									}}
-								>
-									<SaveFileIcon />
-									.json
-								</button>
-								{server && (
-									<button
-										type="button"
-										className="deloop-export-menu-item"
-										onClick={() => {
-											handleServerSubmit();
-											setShowExportMenu(false);
-										}}
-									>
-										<SendIcon />
-										Submit
-									</button>
-								)}
-								<div className="deloop-export-menu-divider" />
-								<button
-									type="button"
-									className="deloop-export-menu-item deloop-export-menu-item-danger"
-									onClick={() => {
-										if (!clearConfirm) {
-											setClearConfirm(true);
-											setTimeout(() => setClearConfirm(false), 2000);
-											return;
-										}
-										localClearAnnotations();
-										setShowExportMenu(false);
-										setClearConfirm(false);
-									}}
-								>
-									{clearConfirm ? "Confirm clear?" : "Clear all"}
-								</button>
-							</div>
-						)}
-					</div>
+					{renderExportButton()}
 					<div className="deloop-bar-divider" />
 					<button
 						type="button"

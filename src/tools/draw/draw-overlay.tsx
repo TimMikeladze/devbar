@@ -185,9 +185,7 @@ export function DrawOverlay({
 			let screenshotDataUri = "";
 			if (enableScreenshots) {
 				canvas.style.display = "none";
-				const toolbar = document.querySelector(
-					"[data-deloop-draw-toolbar]",
-				) as HTMLElement | null;
+				const toolbar = document.querySelector("[data-deloop-draw-toolbar]") as HTMLElement | null;
 				if (toolbar) toolbar.style.display = "none";
 				const instruction = canvas.parentElement?.querySelector(
 					".deloop-instruction",

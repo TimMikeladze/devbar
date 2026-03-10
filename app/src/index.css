@@ -20,6 +20,7 @@
 	--color-teal: #0d9488;
 	--color-blue-subtle: #f0f7ff;
 	--font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, sans-serif;
+	--font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
 	--font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Fira Code", monospace;
 }
 
@@ -509,4 +510,215 @@ html.dark .pricing-card:hover {
 	.dash-nav::-webkit-scrollbar {
 		display: none;
 	}
+}
+
+/* ──────── Landing: Display font ──────── */
+.font-display {
+	font-family: var(--font-display);
+}
+
+/* ──────── Landing: Section label ──────── */
+.section-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	margin-bottom: 10px;
+}
+.section-label::before {
+	content: "";
+	display: block;
+	width: 12px;
+	height: 1.5px;
+}
+
+/* ──────── Landing: How It Works steps ──────── */
+.step-card {
+	border: 1px solid var(--color-border);
+	border-radius: 12px;
+	padding: 20px;
+	background: var(--color-bg-card);
+	position: relative;
+	transition:
+		border-color 0.2s,
+		box-shadow 0.2s;
+}
+.step-card:hover {
+	border-color: var(--color-muted);
+}
+.landing-dark .step-card:hover {
+	box-shadow: 0 0 24px rgba(255, 255, 255, 0.02);
+}
+.step-number {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 13px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	margin-bottom: 12px;
+}
+.step-arrow {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	color: var(--color-border);
+}
+
+/* ──────── Landing: Capture readout card ──────── */
+.capture-readout {
+	border: 1px solid var(--color-border);
+	border-radius: 12px;
+	overflow: hidden;
+	background: var(--color-bg-card);
+	font-family: var(--font-mono);
+	font-size: 12px;
+	line-height: 1.7;
+}
+.capture-readout-header {
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--color-border);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.capture-readout-body {
+	padding: 16px;
+}
+.capture-readout-section {
+	margin-bottom: 12px;
+}
+.capture-readout-section:last-child {
+	margin-bottom: 0;
+}
+.capture-readout-label {
+	font-size: 9px;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--color-muted);
+	margin-bottom: 4px;
+}
+.capture-readout-row {
+	display: flex;
+	gap: 12px;
+	color: var(--color-dim);
+}
+.capture-readout-row .key {
+	color: var(--color-muted);
+	min-width: 72px;
+	flex-shrink: 0;
+}
+.capture-readout-row .val {
+	color: var(--color-fg);
+	word-break: break-all;
+}
+.capture-color-swatch {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 2px;
+	vertical-align: middle;
+	margin-right: 4px;
+}
+
+/* ──────── Landing: Before/After comparison ──────── */
+.comparison-panel {
+	border: 1px solid var(--color-border);
+	border-radius: 12px;
+	overflow: hidden;
+	font-size: 13px;
+	flex: 1;
+}
+.comparison-panel-header {
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--color-border);
+	font-size: 12px;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.comparison-panel-body {
+	padding: 16px;
+}
+.comparison-bad .comparison-panel-header {
+	background: rgba(225, 29, 72, 0.05);
+	color: var(--color-rose);
+}
+.comparison-good .comparison-panel-header {
+	background: rgba(5, 150, 105, 0.05);
+	color: var(--color-emerald);
+}
+
+/* ──────── Landing: Integration cards ──────── */
+.integration-card {
+	border: 1px solid var(--color-border);
+	border-radius: 12px;
+	padding: 20px;
+	background: var(--color-bg-card);
+	transition:
+		border-color 0.2s,
+		box-shadow 0.2s,
+		transform 0.2s;
+}
+.integration-card:hover {
+	border-color: var(--color-muted);
+	transform: translateY(-2px);
+}
+.landing-dark .integration-card:hover {
+	box-shadow: 0 4px 24px rgba(255, 255, 255, 0.02);
+}
+
+/* ──────── Landing: Hero annotation card ──────── */
+@keyframes heroCardIn {
+	from {
+		opacity: 0;
+		transform: translateY(12px) rotate(1deg);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) rotate(0.5deg);
+	}
+}
+.hero-annotation-card {
+	animation: heroCardIn 0.6s ease-out 0.2s both;
+	transform: rotate(0.5deg);
+	border: 1px solid var(--color-border);
+	border-top: 2px solid var(--color-accent);
+	border-radius: 12px;
+	padding: 16px;
+	background: var(--color-bg-card);
+	font-family: var(--font-mono);
+	font-size: 11px;
+	line-height: 1.6;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ──────── Landing: Staggered step reveals ──────── */
+.reveal .step-card:nth-child(1) {
+	transition-delay: 0s;
+}
+.reveal .step-card:nth-child(2) {
+	transition-delay: 0.08s;
+}
+.reveal .step-card:nth-child(3) {
+	transition-delay: 0.16s;
+}
+.reveal .step-arrow:nth-child(1) {
+	transition-delay: 0.04s;
+}
+.reveal .step-arrow:nth-child(2) {
+	transition-delay: 0.12s;
 }

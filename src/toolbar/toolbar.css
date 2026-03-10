@@ -2281,3 +2281,256 @@
 .deloop-bar-btn-user:hover {
 	opacity: 1;
 }
+
+/* ─── History section (inside annotations panel) ─── */
+.deloop-history-section {
+	border-top: 1px solid var(--deloop-border);
+	margin-top: 4px;
+}
+
+.deloop-history-section-toggle {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding: 9px 12px;
+	background: none;
+	border: none;
+	color: var(--deloop-text-muted);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 500;
+	text-align: left;
+	transition: all 0.15s;
+	letter-spacing: -0.01em;
+}
+
+.deloop-history-section-toggle:hover {
+	color: var(--deloop-text-secondary);
+	background: var(--deloop-accent-hover);
+}
+
+.deloop-history-section-toggle svg {
+	width: 12px;
+	height: 12px;
+	flex-shrink: 0;
+	opacity: 0.6;
+}
+
+.deloop-history-section-toggle span {
+	flex: 1;
+}
+
+/* Slide-open animation for history content */
+.deloop-history-list {
+	overflow: hidden;
+	animation: deloop-history-slide 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+	background: var(--deloop-bg-surface);
+	border-top: 1px solid var(--deloop-border);
+}
+
+@keyframes deloop-history-slide {
+	from {
+		opacity: 0;
+		max-height: 0;
+	}
+	to {
+		opacity: 1;
+		max-height: 600px;
+	}
+}
+
+.deloop-panel-empty {
+	padding: 24px 14px;
+	text-align: center;
+	color: var(--deloop-text-muted);
+	font-size: 12px;
+}
+
+/* History items */
+.deloop-history-item {
+	border-bottom: 1px solid var(--deloop-border);
+	transition: background 0.12s;
+}
+
+.deloop-history-item:last-child {
+	border-bottom: none;
+}
+
+.deloop-history-item-expanded {
+	background: var(--deloop-accent-glow);
+}
+
+.deloop-history-item-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 7px 10px;
+	background: none;
+	border: none;
+	color: var(--deloop-text);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 12px;
+	text-align: left;
+	transition: background 0.12s;
+}
+
+.deloop-history-item-header:hover {
+	background: var(--deloop-accent-hover);
+}
+
+/* Method icon (left side) */
+.deloop-history-item-method {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 6px;
+	background: var(--deloop-bg-surface);
+	border: 1px solid var(--deloop-border);
+	flex-shrink: 0;
+}
+
+.deloop-history-item-method svg {
+	width: 12px;
+	height: 12px;
+	color: var(--deloop-text-secondary);
+}
+
+/* Info area */
+.deloop-history-item-info {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 1;
+	min-width: 0;
+}
+
+/* Type count chips */
+.deloop-history-item-chips {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	flex-wrap: wrap;
+}
+
+.deloop-history-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: var(--deloop-accent-glow);
+	border: 1px solid var(--deloop-border);
+	font-size: 10px;
+	font-weight: 500;
+	color: var(--deloop-text-secondary);
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.deloop-history-chip svg {
+	width: 10px;
+	height: 10px;
+}
+
+.deloop-history-chip-comment {
+	background: none;
+	border-color: transparent;
+	color: var(--deloop-text-muted);
+	font-weight: 400;
+	font-size: 9.5px;
+}
+
+/* Label badge */
+.deloop-history-item-label {
+	font-size: 10px;
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: var(--deloop-blue-muted);
+	color: var(--deloop-blue);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 72px;
+	font-weight: 500;
+}
+
+/* Relative timestamp */
+.deloop-history-item-date {
+	font-size: 10px;
+	color: var(--deloop-text-muted);
+	white-space: nowrap;
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Expanded details */
+.deloop-history-item-details {
+	padding: 0 10px 8px 42px;
+	animation: deloop-history-detail-in 0.15s ease-out;
+}
+
+@keyframes deloop-history-detail-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.deloop-history-item-url {
+	font-size: 10px;
+	color: var(--deloop-text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	margin-bottom: 6px;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Action buttons row */
+.deloop-history-item-actions {
+	display: flex;
+	gap: 4px;
+}
+
+.deloop-history-action-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 24px;
+	border-radius: 5px;
+	border: 1px solid var(--deloop-border);
+	background: transparent;
+	color: var(--deloop-text-muted);
+	cursor: pointer;
+	font-size: 12px;
+	font-family: inherit;
+	transition: all 0.12s;
+}
+
+.deloop-history-action-btn:hover {
+	background: var(--deloop-accent-hover);
+	color: var(--deloop-text);
+	border-color: var(--deloop-border-hover);
+}
+
+.deloop-history-action-btn svg {
+	width: 12px;
+	height: 12px;
+}
+
+.deloop-history-action-danger:hover {
+	color: var(--deloop-red);
+	border-color: rgba(242, 92, 92, 0.3);
+	background: rgba(242, 92, 92, 0.08);
+}

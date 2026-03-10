@@ -102,6 +102,18 @@ export type DeloopUser = {
 	avatar?: string;
 };
 
+export type ExportMethod = "clipboard" | "file-md" | "file-json" | "server";
+
+export type ExportRecord = {
+	id: string;
+	timestamp: number;
+	url: string;
+	title: string;
+	label?: string;
+	annotations: Annotation[];
+	method: ExportMethod;
+};
+
 export type DeloopPayload = {
 	url: string;
 	route: {

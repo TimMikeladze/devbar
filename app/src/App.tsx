@@ -50,8 +50,12 @@ function App() {
 			<Header />
 			<main className="max-w-5xl mx-auto px-5 sm:px-8 pt-20 sm:pt-24 pb-10">
 				<Hero />
+				<HowItWorks />
 				<Examples />
-				<TheProblem />
+				<CapturedData />
+				<BeforeAfter />
+				<Integrations />
+				<Pipelines />
 				<UseCases />
 				<Features />
 				<Pricing />
@@ -63,6 +67,10 @@ function App() {
 		</div>
 	);
 }
+
+/* ═══════════════════════════════════════════
+   Header
+   ═══════════════════════════════════════════ */
 
 function Header() {
 	const [open, setOpen] = useState(false);
@@ -77,9 +85,9 @@ function Header() {
 	}, [open]);
 
 	const links = [
+		{ href: "#how-it-works", label: "How It Works" },
 		{ href: "#pricing", label: "Pricing" },
 		{ href: "#faq", label: "FAQ" },
-		{ href: "#contact", label: "Contact" },
 		{ href: "https://github.com/TimMikeladze/deloop", label: "GitHub", external: true },
 	];
 
@@ -90,7 +98,6 @@ function Header() {
 					deloop.dev
 				</a>
 
-				{/* Desktop nav */}
 				<nav className="hidden sm:flex items-center gap-5 text-[13px]">
 					{links.map((l) => (
 						<a
@@ -113,7 +120,6 @@ function Header() {
 					</a>
 				</nav>
 
-				{/* Mobile hamburger */}
 				<button
 					type="button"
 					onClick={() => setOpen(!open)}
@@ -130,7 +136,6 @@ function Header() {
 				</button>
 			</div>
 
-			{/* Mobile dropdown */}
 			{open && (
 				<nav className="mobile-menu sm:hidden border-t border-border/50 bg-bg/95 backdrop-blur-xl px-5 py-4 space-y-1">
 					{links.map((l) => (
@@ -161,24 +166,209 @@ function Header() {
 	);
 }
 
+/* ═══════════════════════════════════════════
+   Hero
+   ═══════════════════════════════════════════ */
+
 function Hero() {
 	return (
-		<section className="mb-14 sm:mb-18">
-			<p className="text-muted text-[13px] tracking-wide mb-4">Open source</p>
-			<h1 className="text-[2.5rem] sm:text-5xl lg:text-[3.5rem] font-bold tracking-[-0.025em] leading-[1.08] mb-4">
-				Annotate any website,
-				<br />
-				<span className="gradient-agent">prompt any LLM.</span>
-			</h1>
-			<p className="text-dim text-[15px] sm:text-base leading-[1.7] mb-6 max-w-xl">
-				Drop-in toolbar that turns visual feedback into AI-ready context. Select elements, draw,
-				screenshot, and export structured prompts with XPaths, styles, and React component trees —
-				feed directly to your AI agent or paste into any LLM for instant fixes.
-			</p>
-			<CodeBlock lang="bash" code={`bun add deloop.dev`} />
+		<section className="mb-16 sm:mb-20 flex flex-col lg:flex-row lg:items-start lg:gap-12">
+			<div className="flex-1 min-w-0">
+				<p className="text-accent text-[11px] tracking-[0.2em] uppercase font-semibold mb-4">
+					Open source
+				</p>
+				<h1 className="text-[2.5rem] sm:text-5xl lg:text-[3.5rem] font-bold tracking-[-0.025em] leading-[1.08] mb-4">
+					<span className="font-display italic text-[2.8rem] sm:text-[3.4rem] lg:text-[4rem] tracking-[-0.02em]">
+						Annotate
+					</span>{" "}
+					any website,
+					<br />
+					<span className="gradient-agent">prompt any LLM.</span>
+				</h1>
+				<p className="text-dim text-[15px] sm:text-base leading-[1.7] mb-6 max-w-xl">
+					Drop-in toolbar that turns visual feedback into AI-ready context. Select elements, draw,
+					screenshot, and export structured prompts with XPaths, styles, and React component trees —
+					feed directly to your AI agent or paste into any LLM for instant fixes.
+				</p>
+				<CodeBlock lang="bash" code={`bun add deloop.dev`} />
+			</div>
+
+			{/* Floating annotation preview */}
+			<div className="hidden lg:block w-[300px] shrink-0 mt-8">
+				<HeroAnnotationCard />
+			</div>
 		</section>
 	);
 }
+
+function HeroAnnotationCard() {
+	return (
+		<div className="hero-annotation-card">
+			<div className="flex items-center gap-2 text-accent text-[10px] tracking-[0.1em] uppercase font-semibold mb-3">
+				<span className="w-[6px] h-[6px] rounded-full bg-accent" />
+				Element annotation
+			</div>
+
+			<div className="space-y-[6px] text-muted mb-3">
+				<div className="flex gap-2">
+					<span className="text-muted/60 w-[52px] shrink-0">tag</span>
+					<span className="text-fg">button#submit-btn</span>
+				</div>
+				<div className="flex gap-2">
+					<span className="text-muted/60 w-[52px] shrink-0">xpath</span>
+					<span className="text-fg text-[10px]">/html/body/div/main/button</span>
+				</div>
+				<div className="flex gap-2">
+					<span className="text-muted/60 w-[52px] shrink-0">css</span>
+					<span className="text-fg">#submit-btn</span>
+				</div>
+			</div>
+
+			<div className="border-t border-border pt-2.5 space-y-[6px] text-muted mb-3">
+				<div className="flex items-center gap-2">
+					<span className="text-muted/60 w-[52px] shrink-0">bg</span>
+					<span className="w-[10px] h-[10px] rounded-sm bg-accent" />
+					<span className="text-fg">rgb(59, 130, 246)</span>
+				</div>
+				<div className="flex gap-2">
+					<span className="text-muted/60 w-[52px] shrink-0">font</span>
+					<span className="text-fg">14px</span>
+				</div>
+				<div className="flex gap-2">
+					<span className="text-muted/60 w-[52px] shrink-0">rect</span>
+					<span className="text-fg">120×40 @ (450, 320)</span>
+				</div>
+			</div>
+
+			<div className="border-t border-border pt-2.5 text-muted">
+				<div className="text-muted/60 text-[9px] tracking-[0.1em] uppercase mb-1">React tree</div>
+				<div className="text-emerald text-[10px]">App › Dashboard › Button</div>
+				<div className="text-[10px] text-muted/50">src/ui/Button.tsx:6</div>
+			</div>
+		</div>
+	);
+}
+
+/* ═══════════════════════════════════════════
+   How It Works
+   ═══════════════════════════════════════════ */
+
+function HowItWorks() {
+	const ref = useReveal();
+
+	const steps = [
+		{
+			number: 1,
+			title: "Annotate",
+			color: "accent",
+			desc: "Interact with any page using familiar tools — click to select elements, draw freehand, drop numbered markers, or capture screenshots. Add comments to explain each issue.",
+			items: [
+				"Element selection",
+				"Freehand drawing",
+				"Numbered markers",
+				"Screenshot capture",
+				"Comments & threads",
+			],
+		},
+		{
+			number: 2,
+			title: "Auto-capture",
+			color: "emerald",
+			desc: "Every annotation automatically extracts rich structured data from the page — no manual copying, no asking for more details.",
+			items: [
+				"XPaths & CSS selectors",
+				"Computed styles",
+				"React component tree",
+				"Source file locations",
+				"Context screenshots",
+			],
+		},
+		{
+			number: 3,
+			title: "Export",
+			color: "cyan",
+			desc: "One click turns everything into a structured report. Paste into any LLM, pipe to your AI agent via webhook, or save as files.",
+			items: [
+				"Markdown for LLMs",
+				"JSON payload",
+				"Clipboard copy",
+				"Webhook POST",
+				"File download (.md / .json)",
+			],
+		},
+	];
+
+	const colorMap: Record<string, string> = {
+		accent: "bg-accent text-white",
+		emerald: "bg-emerald text-white",
+		cyan: "bg-cyan text-white",
+	};
+
+	const labelColorMap: Record<string, string> = {
+		accent: "text-accent",
+		emerald: "text-emerald",
+		cyan: "text-cyan",
+	};
+
+	const lineColorMap: Record<string, string> = {
+		accent: "section-label text-accent before:bg-accent",
+		emerald: "section-label text-emerald before:bg-emerald",
+		cyan: "section-label text-cyan before:bg-cyan",
+	};
+	void lineColorMap;
+
+	return (
+		<section ref={ref} id="how-it-works" className="mb-16 sm:mb-20 scroll-mt-20 reveal">
+			<p className="section-label text-accent before:bg-accent">How it works</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+				Three steps to close the feedback loop
+			</h2>
+			<p className="text-[13px] text-muted mb-8 max-w-2xl">
+				Spot an issue, annotate it, and get a structured report that any developer or LLM can act on
+				immediately. No back-and-forth, no lost context.
+			</p>
+
+			<div className="flex flex-col sm:flex-row items-stretch gap-4 sm:gap-0">
+				{steps.map((step, i) => (
+					<div key={step.number} className="contents">
+						{i > 0 && (
+							<div className="step-arrow hidden sm:flex w-10">
+								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+									<path
+										d="M6 10h8M11 7l3 3-3 3"
+										stroke="currentColor"
+										strokeWidth="1.2"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+									/>
+								</svg>
+							</div>
+						)}
+						<div className="step-card flex-1">
+							<div className={`step-number ${colorMap[step.color]}`}>{step.number}</div>
+							<h3 className={`text-base font-semibold mb-1 ${labelColorMap[step.color]}`}>
+								{step.title}
+							</h3>
+							<p className="text-[13px] text-muted leading-relaxed mb-3">{step.desc}</p>
+							<ul className="space-y-1">
+								{step.items.map((item) => (
+									<li key={item} className="flex items-center gap-2 text-[12px] text-dim">
+										<span className={`w-1 h-1 rounded-full bg-${step.color} shrink-0`} />
+										{item}
+									</li>
+								))}
+							</ul>
+						</div>
+					</div>
+				))}
+			</div>
+		</section>
+	);
+}
+
+/* ═══════════════════════════════════════════
+   Examples (code tabs)
+   ═══════════════════════════════════════════ */
 
 function Examples() {
 	const [tab, setTab] = useState(0);
@@ -391,7 +581,7 @@ Include code changes where applicable.`,
 	];
 
 	return (
-		<section className="mb-14 sm:mb-18">
+		<section className="mb-16 sm:mb-20">
 			<div className="flex items-center gap-1 mb-3 overflow-x-auto tabs-scroll pb-1 -mx-5 px-5 sm:mx-0 sm:px-0">
 				{tabs.map((t, i) => (
 					<button
@@ -417,80 +607,583 @@ Include code changes where applicable.`,
 	);
 }
 
-function TheProblem() {
+/* ═══════════════════════════════════════════
+   What Gets Captured
+   ═══════════════════════════════════════════ */
+
+function CapturedData() {
 	const ref = useReveal();
 	return (
-		<section ref={ref} className="mb-14 sm:mb-18 reveal">
-			<h2 className="text-lg font-semibold text-fg mb-1">Close the feedback loop</h2>
-			<p className="text-[13px] text-muted leading-relaxed max-w-2xl mb-4">
-				Bug reports today are broken. A screenshot in Slack, a vague ticket, three follow-ups to
-				reproduce. By the time someone has enough context, the feedback is stale and the fix takes
-				longer than it should.
+		<section ref={ref} className="mb-16 sm:mb-20 reveal">
+			<p className="section-label text-emerald before:bg-emerald">What gets captured</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+				Everything an LLM needs, in one click
+			</h2>
+			<p className="text-[13px] text-muted mb-8 max-w-2xl">
+				Click an element and deloop captures its full DOM context, computed styles, React component
+				hierarchy with source file locations, and a screenshot — automatically.
 			</p>
-			<p className="text-[13px] text-muted leading-relaxed max-w-2xl mb-4">
-				deloop captures everything in one interaction — the exact element, its selectors, computed
-				styles, React component tree with source file locations, and a screenshot of the surrounding
-				area. No context lost, no ambiguity left.
-			</p>
-			<p className="text-[13px] text-muted leading-relaxed max-w-2xl">
-				Use it in your local dev flow and the report goes directly to your AI agent via webhook or
-				onSubmit — no copy-paste needed. Or use it across your team so designers, QA, and PMs can
-				file structured reports that developers (or LLMs) can act on immediately. Either way, spot
-				it, annotate it, fix it.
-			</p>
+
+			<div className="grid lg:grid-cols-2 gap-6">
+				{/* Left: the readout card */}
+				<div className="capture-readout">
+					<div className="capture-readout-header">
+						<span className="w-[6px] h-[6px] rounded-full bg-accent" />
+						<span className="text-accent">Element annotation</span>
+						<span className="ml-auto text-muted font-normal normal-case tracking-normal text-[11px]">
+							button#submit-btn
+						</span>
+					</div>
+					<div className="capture-readout-body space-y-4">
+						<div className="capture-readout-section">
+							<div className="capture-readout-label">Selectors</div>
+							<div className="capture-readout-row">
+								<span className="key">xpath</span>
+								<span className="val text-[11px]">/html/body/div/main/form/button</span>
+							</div>
+							<div className="capture-readout-row">
+								<span className="key">css</span>
+								<span className="val">#submit-btn</span>
+							</div>
+							<div className="capture-readout-row">
+								<span className="key">classes</span>
+								<span className="val">.btn .btn-primary</span>
+							</div>
+						</div>
+
+						<div className="capture-readout-section">
+							<div className="capture-readout-label">Computed styles</div>
+							<div className="capture-readout-row">
+								<span className="key">background</span>
+								<span className="val">
+									<span className="capture-color-swatch" style={{ background: "#3b82f6" }} />
+									rgb(59, 130, 246)
+								</span>
+							</div>
+							<div className="capture-readout-row">
+								<span className="key">color</span>
+								<span className="val">
+									<span className="capture-color-swatch" style={{ background: "#ffffff" }} />
+									rgb(255, 255, 255)
+								</span>
+							</div>
+							<div className="capture-readout-row">
+								<span className="key">font-size</span>
+								<span className="val">14px</span>
+							</div>
+							<div className="capture-readout-row">
+								<span className="key">padding</span>
+								<span className="val">8px 16px</span>
+							</div>
+						</div>
+
+						<div className="capture-readout-section">
+							<div className="capture-readout-label">React component tree</div>
+							<div className="text-emerald text-[12px]">App › Dashboard › OrderForm › Button</div>
+							<div className="capture-readout-row mt-1">
+								<span className="key">props</span>
+								<span className="val text-[11px]">
+									{"{ "}variant: &quot;primary&quot;, size: &quot;md&quot;{" }"}
+								</span>
+							</div>
+							<div className="capture-readout-row">
+								<span className="key">source</span>
+								<span className="val text-accent text-[11px]">src/ui/Button.tsx:6</span>
+							</div>
+						</div>
+
+						<div className="capture-readout-section">
+							<div className="capture-readout-label">Layout</div>
+							<div className="capture-readout-row">
+								<span className="key">size</span>
+								<span className="val">120 × 40</span>
+							</div>
+							<div className="capture-readout-row">
+								<span className="key">position</span>
+								<span className="val">(450, 320)</span>
+							</div>
+							<div className="capture-readout-row">
+								<span className="key">text</span>
+								<span className="val">&quot;Submit Order&quot;</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Right: explanation */}
+				<div className="space-y-5 py-2">
+					{[
+						{
+							color: "text-accent",
+							dot: "bg-accent",
+							title: "DOM selectors",
+							desc: "XPath and CSS selector for every element — the most reliable way for an LLM to locate and reference specific nodes in code.",
+						},
+						{
+							color: "text-cyan",
+							dot: "bg-cyan",
+							title: "Computed CSS",
+							desc: "The actual rendered values, not what's in the stylesheet. Background color, font size, padding, display mode — exactly what the browser computed.",
+						},
+						{
+							color: "text-emerald",
+							dot: "bg-emerald",
+							title: "React component context",
+							desc: "The full component hierarchy with props and source file locations. An LLM can go directly to the file and line that renders the problematic element.",
+						},
+						{
+							color: "text-amber",
+							dot: "bg-amber",
+							title: "Layout & bounding rect",
+							desc: "Element dimensions, position on screen, inner text, and outer HTML — everything needed to understand the element in context.",
+						},
+						{
+							color: "text-rose",
+							dot: "bg-rose",
+							title: "Context screenshot",
+							desc: "A screenshot of the surrounding area is captured with every drawing annotation, so there's always visual reference alongside the structured data.",
+						},
+					].map((item) => (
+						<div key={item.title} className="flex items-start gap-3">
+							<span className={`mt-[7px] block w-1.5 h-1.5 rounded-full ${item.dot} shrink-0`} />
+							<div>
+								<p className={`text-sm font-medium ${item.color}`}>{item.title}</p>
+								<p className="text-[13px] text-muted leading-relaxed">{item.desc}</p>
+							</div>
+						</div>
+					))}
+				</div>
+			</div>
 		</section>
 	);
 }
 
-function UseCases() {
+/* ═══════════════════════════════════════════
+   Before vs After
+   ═══════════════════════════════════════════ */
+
+function BeforeAfter() {
 	const ref = useReveal();
-	const roles = [
+	return (
+		<section ref={ref} className="mb-16 sm:mb-20 reveal">
+			<p className="section-label text-rose before:bg-rose">Why this matters</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+				Close the feedback loop
+			</h2>
+			<p className="text-[13px] text-muted mb-8 max-w-2xl">
+				Bug reports today are broken. A screenshot in Slack, a vague ticket, three follow-ups to
+				reproduce. By the time someone has enough context, the feedback is stale.
+			</p>
+
+			<div className="grid sm:grid-cols-2 gap-4">
+				{/* The Old Way */}
+				<div className="comparison-panel comparison-bad">
+					<div className="comparison-panel-header">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<line x1="15" y1="9" x2="9" y2="15" />
+							<line x1="9" y1="9" x2="15" y2="15" />
+						</svg>
+						The old way
+					</div>
+					<div className="comparison-panel-body space-y-3 text-[13px] text-muted">
+						<div className="rounded-lg border border-border p-3 bg-bg-code">
+							<div className="flex items-center gap-2 mb-2">
+								<span className="w-5 h-5 rounded-full bg-rose/20 flex items-center justify-center text-[10px]">
+									💬
+								</span>
+								<span className="text-[11px] text-dim font-medium">QA in #bugs</span>
+							</div>
+							<p className="text-muted italic">
+								&quot;hey the button on the dashboard is the wrong color, can someone look at
+								it?&quot;
+							</p>
+							<div className="mt-2 rounded border border-border bg-bg h-16 flex items-center justify-center text-[10px] text-muted/50">
+								blurry-screenshot.png
+							</div>
+						</div>
+						<div className="space-y-2 pl-4 border-l-2 border-border">
+							<p className="text-[12px]">
+								<span className="text-dim font-medium">Dev:</span>{" "}
+								<span className="text-muted italic">&quot;Which button?&quot;</span>
+							</p>
+							<p className="text-[12px]">
+								<span className="text-dim font-medium">QA:</span>{" "}
+								<span className="text-muted italic">
+									&quot;The blue one on the orders page&quot;
+								</span>
+							</p>
+							<p className="text-[12px]">
+								<span className="text-dim font-medium">Dev:</span>{" "}
+								<span className="text-muted italic">
+									&quot;Which orders page? There are three.&quot;
+								</span>
+							</p>
+							<p className="text-[12px]">
+								<span className="text-dim font-medium">QA:</span>{" "}
+								<span className="text-muted italic">&quot;...the one with the table&quot;</span>
+							</p>
+						</div>
+						<p className="text-[11px] text-rose/80 font-medium">
+							4 messages later, still no actionable context.
+						</p>
+					</div>
+				</div>
+
+				{/* The Deloop Way */}
+				<div className="comparison-panel comparison-good">
+					<div className="comparison-panel-header">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+							<polyline points="22 4 12 14.01 9 11.01" />
+						</svg>
+						With deloop
+					</div>
+					<div className="comparison-panel-body text-[13px] text-muted font-mono">
+						<div className="space-y-2 text-[11px]">
+							<div className="flex gap-2">
+								<span className="text-muted/60 w-[52px] shrink-0">tag</span>
+								<span className="text-fg">button#submit-btn</span>
+							</div>
+							<div className="flex gap-2">
+								<span className="text-muted/60 w-[52px] shrink-0">xpath</span>
+								<span className="text-fg text-[10px]">/html/body/div/main/form/button</span>
+							</div>
+							<div className="flex gap-2">
+								<span className="text-muted/60 w-[52px] shrink-0">bg</span>
+								<span className="text-fg">
+									<span className="inline-block w-2 h-2 rounded-sm bg-accent mr-1 align-middle" />
+									rgb(59, 130, 246)
+								</span>
+							</div>
+							<div className="flex gap-2">
+								<span className="text-muted/60 w-[52px] shrink-0">react</span>
+								<span className="text-emerald">App › OrderForm › Button</span>
+							</div>
+							<div className="flex gap-2">
+								<span className="text-muted/60 w-[52px] shrink-0">source</span>
+								<span className="text-accent">src/ui/Button.tsx:6</span>
+							</div>
+							<div className="border-t border-border pt-2 mt-2 flex gap-2">
+								<span className="text-muted/60 w-[52px] shrink-0">note</span>
+								<span className="text-fg font-sans">
+									&quot;Color should be #10b981 per design spec&quot;
+								</span>
+							</div>
+							<div className="flex gap-2">
+								<span className="text-muted/60 w-[52px] shrink-0">📷</span>
+								<span className="text-dim font-sans">annotated screenshot attached</span>
+							</div>
+						</div>
+						<p className="text-[11px] text-emerald/80 font-medium font-sans mt-3">
+							One interaction. Every detail captured. Ready for an LLM or a developer.
+						</p>
+					</div>
+				</div>
+			</div>
+		</section>
+	);
+}
+
+/* ═══════════════════════════════════════════
+   Integrations
+   ═══════════════════════════════════════════ */
+
+function Integrations() {
+	const ref = useReveal();
+
+	const methods = [
 		{
-			color: "bg-emerald",
-			role: "Local development",
-			desc: "Wire onSubmit or a webhook to your AI agent. See a bug, annotate it, and the structured context goes directly to Claude, Cursor, or your own pipeline — no copy-paste, no context switching.",
+			label: "npm package",
+			color: "text-accent",
+			desc: "Import the React component or call init() programmatically. Full TypeScript support.",
+			code: `import { Deloop } from "deloop.dev";
+<Deloop onSubmit={(p) => agent.send(p)} />`,
+			lang: "tsx",
 		},
 		{
-			color: "bg-accent",
-			role: "Designers",
-			desc: "Spot a spacing issue, select the element, and submit. The report includes the exact CSS values, bounding rect, and component source — so developers fix the right thing on the first try.",
+			label: "CDN script tag",
+			color: "text-emerald",
+			desc: "One tag, zero build step. Works on WordPress, Shopify, static HTML — anything.",
+			code: `<script src="https://unpkg.com/deloop.dev/cdn"></script>
+<script>window.Deloop.init();</script>`,
+			lang: "html",
 		},
 		{
-			color: "bg-cyan",
-			role: "QA & Reviewers",
-			desc: 'Annotate bugs with markers, drawings, and screenshots in context. Every report is structured and reproducible — no more guesswork, no more "works on my machine."',
+			label: "Chrome extension",
+			color: "text-amber",
+			desc: "Use on any website without modifying source — staging, competitors, third-party tools.",
+			code: `// No code needed — install from Chrome Web Store
+// Works on any tab, any domain`,
+			lang: "typescript",
 		},
 		{
-			color: "bg-amber",
-			role: "Product Managers",
-			desc: "Give feedback directly on staging without leaving the browser. The toolbar captures everything a developer needs — no follow-up questions, no lost context.",
+			label: "Webhook",
+			color: "text-cyan",
+			desc: "POST structured payloads to any URL. Connect to Slack, Linear, Jira, or your own pipeline.",
+			code: `<Deloop server="https://api.yourapp.com/bugs" />
+// or via init({ server: "..." })`,
+			lang: "tsx",
 		},
 	];
 
 	return (
-		<section ref={ref} className="mb-14 sm:mb-18 reveal">
-			<h2 className="text-lg font-semibold text-fg mb-1">
-				Built for every role in the iteration loop
+		<section ref={ref} className="mb-16 sm:mb-20 reveal">
+			<p className="section-label text-amber before:bg-amber">Integration</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+				Add it anywhere in under a minute
 			</h2>
-			<p className="text-[13px] text-muted mb-5 max-w-2xl">
-				Whether you&apos;re a solo developer feeding annotations to your AI agent or a team
-				coordinating across design, QA, and engineering — deloop captures the context that closes
-				the gap between spotting a bug and shipping the fix.
+			<p className="text-[13px] text-muted mb-8 max-w-2xl">
+				Four ways to add deloop to any project. React component, CDN tag, Chrome extension, or
+				programmatic init — pick what fits your stack.
 			</p>
-			<div className="grid sm:grid-cols-2 gap-x-12 gap-y-4">
-				{roles.map((r) => (
-					<div key={r.role} className="flex items-start gap-3">
-						<span className={`mt-[7px] block w-1.5 h-1.5 rounded-full ${r.color} shrink-0`} />
-						<div>
-							<p className="text-sm font-medium text-fg">{r.role}</p>
-							<p className="text-[13px] text-muted">{r.desc}</p>
-						</div>
+
+			<div className="grid sm:grid-cols-2 gap-4">
+				{methods.map((m) => (
+					<div key={m.label} className="integration-card">
+						<p className={`text-sm font-semibold ${m.color} mb-1`}>{m.label}</p>
+						<p className="text-[13px] text-muted leading-relaxed mb-3">{m.desc}</p>
+						<CodeBlock lang={m.lang} code={m.code} />
 					</div>
 				))}
 			</div>
 		</section>
 	);
 }
+
+/* ═══════════════════════════════════════════
+   Pipelines & Webhooks
+   ═══════════════════════════════════════════ */
+
+function Pipelines() {
+	const ref = useReveal();
+
+	const pipelines = [
+		{
+			name: "Slack",
+			color: "text-amber",
+			dot: "bg-amber",
+			desc: "Post structured bug reports to any Slack channel. The webhook receives the full payload — format it however you want.",
+			code: `// Your webhook endpoint
+app.post("/api/deloop", async (req) => {
+  const { prompt, annotations } = req.body;
+  await slack.chat.postMessage({
+    channel: "#bugs",
+    text: prompt, // formatted Markdown
+  });
+});`,
+			lang: "typescript",
+		},
+		{
+			name: "GitHub Issues",
+			color: "text-fg",
+			dot: "bg-fg",
+			desc: "Auto-create GitHub issues with the full annotation context, labels, and screenshots attached.",
+			code: `app.post("/api/deloop", async (req) => {
+  const { prompt, annotations, label } = req.body;
+  await octokit.issues.create({
+    owner: "org", repo: "app",
+    title: \`Bug: \${label || "Untitled"}\`,
+    body: prompt,
+    labels: ["bug", "deloop"],
+  });
+});`,
+			lang: "typescript",
+		},
+		{
+			name: "Jira",
+			color: "text-accent",
+			dot: "bg-accent",
+			desc: "Create Jira tickets with structured reproduction steps. XPaths and component paths go right into the description.",
+			code: `app.post("/api/deloop", async (req) => {
+  const { prompt, url, annotations } = req.body;
+  await jira.addNewIssue({
+    fields: {
+      project: { key: "APP" },
+      issuetype: { name: "Bug" },
+      summary: \`Visual issue on \${url}\`,
+      description: prompt,
+    },
+  });
+});`,
+			lang: "typescript",
+		},
+		{
+			name: "Linear",
+			color: "text-cyan",
+			dot: "bg-cyan",
+			desc: "Push annotated issues directly into Linear with team assignment, priority, and full context.",
+			code: `app.post("/api/deloop", async (req) => {
+  const { prompt, label } = req.body;
+  await linear.createIssue({
+    teamId: "...",
+    title: label || "Visual bug report",
+    description: prompt,
+    priority: 2,
+  });
+});`,
+			lang: "typescript",
+		},
+	];
+
+	return (
+		<section ref={ref} className="mb-16 sm:mb-20 reveal">
+			<p className="section-label text-rose before:bg-rose">Pipelines</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+				Connect to anything with webhooks
+			</h2>
+			<p className="text-[13px] text-muted mb-3 max-w-2xl">
+				Set a{" "}
+				<code className="text-fg font-mono text-[12px] bg-bg-code px-1.5 py-0.5 rounded">
+					server
+				</code>{" "}
+				URL and deloop POSTs the full structured payload on every export. Write a small handler to
+				route it wherever your team works — Slack, Jira, GitHub, Linear, or your own custom
+				pipeline.
+			</p>
+			<div className="flex items-center gap-2 mb-8">
+				<CodeBlock lang="tsx" code={`<Deloop server="https://api.yourapp.com/deloop" />`} />
+			</div>
+
+			<div className="grid sm:grid-cols-2 gap-4">
+				{pipelines.map((p) => (
+					<div key={p.name} className="integration-card">
+						<div className="flex items-center gap-2.5 mb-1">
+							<span className={`block w-2 h-2 rounded-full ${p.dot} shrink-0`} />
+							<p className={`text-sm font-semibold ${p.color}`}>{p.name}</p>
+						</div>
+						<p className="text-[13px] text-muted leading-relaxed mb-3">{p.desc}</p>
+						<CodeBlock lang={p.lang} code={p.code} />
+					</div>
+				))}
+			</div>
+
+			<div className="mt-6 border border-border rounded-xl p-5 bg-bg-card">
+				<h3 className="text-sm font-semibold text-fg mb-2">Fully customizable with onSubmit</h3>
+				<p className="text-[13px] text-muted leading-relaxed mb-3">
+					For complete control, use the{" "}
+					<code className="text-fg font-mono text-[12px] bg-bg-code px-1.5 py-0.5 rounded">
+						onSubmit
+					</code>{" "}
+					callback instead of a server URL. You receive the full typed payload and can do anything —
+					chain multiple services, transform the data, run it through your own AI pipeline, or
+					conditionally route based on labels.
+				</p>
+				<CodeBlock
+					lang="tsx"
+					code={`<Deloop
+  onSubmit={async (payload) => {
+    // payload.prompt — formatted Markdown string
+    // payload.annotations — full structured array
+    // payload.label — optional label from the toolbar
+    // payload.url, payload.viewport, payload.userAgent, ...
+
+    // Send to multiple services
+    await Promise.all([
+      postToSlack(payload.prompt),
+      createGitHubIssue(payload),
+      notifyTeam(payload.label, payload.url),
+    ]);
+  }}
+/>`}
+				/>
+			</div>
+		</section>
+	);
+}
+
+/* ═══════════════════════════════════════════
+   Use Cases
+   ═══════════════════════════════════════════ */
+
+function UseCases() {
+	const ref = useReveal();
+	const roles = [
+		{
+			color: "bg-emerald",
+			colorText: "text-emerald",
+			role: "Local development",
+			desc: "Wire onSubmit or a webhook to your AI agent. See a bug, annotate it, and the structured context goes directly to Claude, Cursor, or your own pipeline — no copy-paste, no context switching.",
+			detail:
+				"The React component tree and source file paths let the LLM jump directly to the code that needs fixing.",
+		},
+		{
+			color: "bg-accent",
+			colorText: "text-accent",
+			role: "Designers",
+			desc: "Spot a spacing issue, select the element, and submit. The report includes the exact CSS values, bounding rect, and component source — so developers fix the right thing on the first try.",
+			detail:
+				"Computed styles show what the browser actually renders, not what's in the stylesheet — catching cascade and override bugs.",
+		},
+		{
+			color: "bg-cyan",
+			colorText: "text-cyan",
+			role: "QA & Reviewers",
+			desc: 'Annotate bugs with markers, drawings, and screenshots in context. Every report is structured and reproducible — no more guesswork, no more "works on my machine."',
+			detail:
+				"Page URL, viewport dimensions, and user agent are captured automatically — instant reproduction context.",
+		},
+		{
+			color: "bg-amber",
+			colorText: "text-amber",
+			role: "Product Managers",
+			desc: "Give feedback directly on staging without leaving the browser. The toolbar captures everything a developer needs — no follow-up questions, no lost context.",
+			detail:
+				"Comments on annotations add narrative context that structured data alone can't provide.",
+		},
+	];
+
+	return (
+		<section ref={ref} className="mb-16 sm:mb-20 reveal">
+			<p className="section-label text-cyan before:bg-cyan">Use cases</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+				Built for every role in the iteration loop
+			</h2>
+			<p className="text-[13px] text-muted mb-6 max-w-2xl">
+				Whether you&apos;re a solo developer feeding annotations to your AI agent or a team
+				coordinating across design, QA, and engineering — deloop captures the context that closes
+				the gap between spotting a bug and shipping the fix.
+			</p>
+			<div className="grid sm:grid-cols-2 gap-5">
+				{roles.map((r) => (
+					<div
+						key={r.role}
+						className="border border-border rounded-lg p-5 hover:border-muted transition-colors"
+					>
+						<div className="flex items-center gap-2.5 mb-2">
+							<span className={`block w-2 h-2 rounded-full ${r.color} shrink-0`} />
+							<p className={`text-sm font-semibold ${r.colorText}`}>{r.role}</p>
+						</div>
+						<p className="text-[13px] text-muted leading-relaxed mb-2">{r.desc}</p>
+						<p className="text-[12px] text-dim leading-relaxed">{r.detail}</p>
+					</div>
+				))}
+			</div>
+		</section>
+	);
+}
+
+/* ═══════════════════════════════════════════
+   Features
+   ═══════════════════════════════════════════ */
 
 function Features() {
 	const ref = useReveal();
@@ -568,9 +1261,12 @@ function Features() {
 	];
 
 	return (
-		<section ref={ref} className="mb-14 sm:mb-18 reveal">
-			<h2 className="text-lg font-semibold text-fg mb-1">Everything captured, nothing lost</h2>
-			<p className="text-[13px] text-muted mb-5 max-w-2xl">
+		<section ref={ref} className="mb-16 sm:mb-20 reveal">
+			<p className="section-label text-accent before:bg-accent">Features</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+				Everything captured, nothing lost
+			</h2>
+			<p className="text-[13px] text-muted mb-6 max-w-2xl">
 				Every annotation automatically captures the surrounding context — selectors, styles,
 				components, screenshots — so the person fixing the bug has everything they need without
 				asking.
@@ -590,12 +1286,19 @@ function Features() {
 	);
 }
 
+/* ═══════════════════════════════════════════
+   Pricing
+   ═══════════════════════════════════════════ */
+
 function Pricing() {
 	const ref = useReveal();
 	return (
-		<section ref={ref} id="pricing" className="mb-14 sm:mb-18 scroll-mt-20 reveal">
-			<h2 className="text-lg font-semibold text-fg mb-1">Pricing</h2>
-			<p className="text-[13px] text-muted mb-5 max-w-2xl">
+		<section ref={ref} id="pricing" className="mb-16 sm:mb-20 scroll-mt-20 reveal">
+			<p className="section-label text-emerald before:bg-emerald">Pricing</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+				Simple pricing
+			</h2>
+			<p className="text-[13px] text-muted mb-6 max-w-2xl">
 				Self-host for free with every feature included. Or use the hosted version for team
 				dashboards and report history.
 			</p>
@@ -603,6 +1306,10 @@ function Pricing() {
 		</section>
 	);
 }
+
+/* ═══════════════════════════════════════════
+   CodeBlock
+   ═══════════════════════════════════════════ */
 
 function CodeBlock({ code, lang }: { code: string; lang: string }) {
 	const [html, setHtml] = useState("");
@@ -678,6 +1385,10 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 	);
 }
 
+/* ═══════════════════════════════════════════
+   FAQ
+   ═══════════════════════════════════════════ */
+
 function FAQ() {
 	const faqs = [
 		{
@@ -720,9 +1431,12 @@ function FAQ() {
 
 	const ref = useReveal();
 	return (
-		<section ref={ref} id="faq" className="mb-14 sm:mb-18 scroll-mt-20 reveal">
-			<h2 className="text-lg font-semibold text-fg mb-5">FAQ</h2>
-			<div className="grid sm:grid-cols-2 gap-x-16 gap-y-4">
+		<section ref={ref} id="faq" className="mb-16 sm:mb-20 scroll-mt-20 reveal">
+			<p className="section-label text-cyan before:bg-cyan">FAQ</p>
+			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-6">
+				Frequently asked questions
+			</h2>
+			<div className="grid sm:grid-cols-2 gap-x-16 gap-y-5">
 				{faqs.map((f) => (
 					<div key={f.q}>
 						<p className="text-sm font-medium text-fg mb-1">{f.q}</p>
@@ -733,6 +1447,10 @@ function FAQ() {
 		</section>
 	);
 }
+
+/* ═══════════════════════════════════════════
+   Contact
+   ═══════════════════════════════════════════ */
 
 function Contact() {
 	const ref = useReveal();
@@ -762,122 +1480,281 @@ function Contact() {
 	};
 
 	return (
-		<section ref={ref} id="contact" className="mb-14 sm:mb-18 scroll-mt-20 reveal text-center">
-			<h2 className="text-lg font-semibold text-fg mb-1">Contact</h2>
-			<p className="text-[13px] text-muted mb-5 max-w-2xl mx-auto">
-				Have a question, feature request, or just want to say hi? Send us a message.
-			</p>
-			<form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-3 text-left">
-				<input
-					name="email"
-					type="email"
-					required
-					placeholder="Your email"
-					className="w-full rounded-lg border border-border bg-bg-code px-3 py-2 text-[13px] text-fg placeholder:text-muted/50 outline-none focus:border-accent/50 transition-colors"
-				/>
-				<textarea
-					name="message"
-					required
-					rows={4}
-					placeholder="Your message"
-					className="w-full rounded-lg border border-border bg-bg-code px-3 py-2 text-[13px] text-fg placeholder:text-muted/50 outline-none focus:border-accent/50 transition-colors resize-y"
-				/>
-				<div className="flex items-center gap-3">
-					<button
-						type="submit"
-						disabled={status === "sending" || status === "sent"}
-						className="text-bg bg-fg rounded-md px-4 py-1.5 text-[13px] font-medium hover:bg-fg/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						{status === "sending" ? "Sending..." : status === "sent" ? "Sent" : "Send message"}
-					</button>
-					{status === "sent" && (
-						<span className="text-emerald text-[13px]">Thanks! We'll get back to you soon.</span>
-					)}
-					{status === "error" && (
-						<span className="text-rose text-[13px]">Something went wrong. Please try again.</span>
-					)}
+		<section ref={ref} id="contact" className="mb-16 sm:mb-20 scroll-mt-20 reveal">
+			<div className="grid sm:grid-cols-2 gap-6 items-start">
+				{/* Left: copy */}
+				<div>
+					<p className="section-label text-accent before:bg-accent">Contact</p>
+					<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+						Get in touch
+					</h2>
+					<p className="text-[13px] text-muted leading-relaxed mb-5 max-w-sm">
+						Have a question, feature request, or just want to say hi? We&apos;d love to hear from
+						you.
+					</p>
+					<div className="space-y-3">
+						<a
+							href="https://github.com/TimMikeladze/deloop/issues"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex items-center gap-3 text-[13px] text-muted hover:text-fg transition-colors group"
+						>
+							<span className="w-8 h-8 rounded-lg border border-border bg-bg-card flex items-center justify-center shrink-0 group-hover:border-muted transition-colors">
+								<svg
+									width="14"
+									height="14"
+									viewBox="0 0 16 16"
+									fill="currentColor"
+									className="text-dim"
+								>
+									<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
+								</svg>
+							</span>
+							<span>
+								<span className="text-fg font-medium block">Open an issue</span>
+								<span className="text-[12px]">Bug reports &amp; feature requests on GitHub</span>
+							</span>
+						</a>
+						<a
+							href="https://x.com/linesofcode"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex items-center gap-3 text-[13px] text-muted hover:text-fg transition-colors group"
+						>
+							<span className="w-8 h-8 rounded-lg border border-border bg-bg-card flex items-center justify-center shrink-0 group-hover:border-muted transition-colors">
+								<svg
+									width="12"
+									height="12"
+									viewBox="0 0 24 24"
+									fill="currentColor"
+									className="text-dim"
+								>
+									<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+								</svg>
+							</span>
+							<span>
+								<span className="text-fg font-medium block">@linesofcode</span>
+								<span className="text-[12px]">DMs open on X</span>
+							</span>
+						</a>
+					</div>
 				</div>
-			</form>
+
+				{/* Right: form in a card */}
+				<div className="border border-border rounded-xl bg-bg-card overflow-hidden">
+					<div className="px-5 py-3 border-b border-border flex items-center gap-2">
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="1.5"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							className="text-muted"
+						>
+							<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+							<polyline points="22,6 12,13 2,6" />
+						</svg>
+						<span className="text-[12px] font-medium text-muted">Send a message</span>
+					</div>
+					<form onSubmit={handleSubmit} className="p-5 space-y-3">
+						<div>
+							<label
+								htmlFor="contact-email"
+								className="block text-[11px] font-medium text-muted uppercase tracking-wider mb-1.5"
+							>
+								Email
+							</label>
+							<input
+								id="contact-email"
+								name="email"
+								type="email"
+								required
+								placeholder="you@company.com"
+								className="w-full rounded-lg border border-border bg-bg-code px-3 py-2 text-[13px] text-fg placeholder:text-muted/40 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/20 transition-all"
+							/>
+						</div>
+						<div>
+							<label
+								htmlFor="contact-message"
+								className="block text-[11px] font-medium text-muted uppercase tracking-wider mb-1.5"
+							>
+								Message
+							</label>
+							<textarea
+								id="contact-message"
+								name="message"
+								required
+								rows={4}
+								placeholder="What's on your mind?"
+								className="w-full rounded-lg border border-border bg-bg-code px-3 py-2 text-[13px] text-fg placeholder:text-muted/40 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/20 transition-all resize-y"
+							/>
+						</div>
+						<div className="flex items-center gap-3 pt-1">
+							<button
+								type="submit"
+								disabled={status === "sending" || status === "sent"}
+								className="inline-flex items-center gap-2 text-bg bg-fg rounded-lg px-4 py-2 text-[13px] font-medium hover:bg-fg/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+							>
+								{status === "sending" ? (
+									<>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											className="animate-spin"
+										>
+											<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+										</svg>
+										Sending...
+									</>
+								) : status === "sent" ? (
+									<>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<polyline points="20 6 9 17 4 12" />
+										</svg>
+										Sent
+									</>
+								) : (
+									<>
+										<svg
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="1.5"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<line x1="22" y1="2" x2="11" y2="13" />
+											<polygon points="22 2 15 22 11 13 2 9 22 2" />
+										</svg>
+										Send message
+									</>
+								)}
+							</button>
+							{status === "sent" && (
+								<span className="text-emerald text-[12px]">
+									Thanks! We&apos;ll get back to you soon.
+								</span>
+							)}
+							{status === "error" && (
+								<span className="text-rose text-[12px]">Something went wrong. Try again.</span>
+							)}
+						</div>
+					</form>
+				</div>
+			</div>
 		</section>
+	);
+}
+
+/* ═══════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════ */
+
+const footerLinks = [
+	{
+		href: "https://github.com/TimMikeladze/deloop",
+		label: "GitHub",
+		icon: (
+			<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+				<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
+			</svg>
+		),
+	},
+	{
+		href: "https://www.npmjs.com/package/deloop.dev",
+		label: "npm",
+		icon: (
+			<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+				<path d="M0 0v16h16V0H0zm13 13H8V5h2.5v5.5H13V5h-1.5V3H3v10h10v-3z" />
+			</svg>
+		),
+	},
+	{
+		href: "https://github.com/TimMikeladze/deloop/releases",
+		label: "Releases",
+		icon: (
+			<svg
+				width="14"
+				height="14"
+				viewBox="0 0 16 16"
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="1.3"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			>
+				<path d="M3 8.5V13a1 1 0 001 1h8a1 1 0 001-1V8.5M8 2v8M5 5l3-3 3 3" />
+			</svg>
+		),
+	},
+	{ sep: true },
+	{
+		href: "https://x.com/linesofcode",
+		label: "X",
+		icon: (
+			<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+				<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+			</svg>
+		),
+	},
+	{
+		href: "https://bsky.app/profile/linesofcode.bsky.social",
+		label: "Bluesky",
+		icon: (
+			<svg width="14" height="14" viewBox="0 0 568 501" fill="currentColor">
+				<path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-201.21C491.866-1.611 568-28.906 568 57.947c0 17.346-9.945 145.713-15.778 166.555-20.275 72.453-94.155 90.933-159.875 79.748C507.222 323.8 536.444 388.56 473.333 453.32 353.473 576.312 301.061 422.461 287.631 383.039c-2.458-7.22-3.503-10.581-3.631-7.734-.128-2.847-1.173.514-3.631 7.734-13.43 39.422-65.842 193.273-185.702 70.281-63.111-64.76-33.89-129.52 80.986-149.071-65.72 11.185-139.6-7.295-159.875-79.748C9.945 203.659 0 75.291 0 57.946 0-28.906 76.135-1.612 123.121 33.664z" />
+			</svg>
+		),
+	},
+] as const;
+
+function FooterLink({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) {
+	return (
+		<a
+			href={href}
+			target="_blank"
+			rel="noopener noreferrer"
+			className="inline-flex items-center gap-1.5 text-muted hover:text-fg transition-colors"
+		>
+			{icon}
+			{label}
+		</a>
 	);
 }
 
 function Footer() {
 	return (
-		<footer className="border-t border-border pt-8 mt-4">
-			<div className="flex flex-wrap items-center justify-between gap-4 text-[13px] text-muted">
-				<div className="flex items-center gap-5">
-					<a
-						href="https://github.com/TimMikeladze/deloop"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
-					>
-						<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-							<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
-						</svg>
-						GitHub
-					</a>
-					<a
-						href="https://www.npmjs.com/package/deloop.dev"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
-					>
-						<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-							<path d="M0 0v16h16V0H0zm13 13H8V5h2.5v5.5H13V5h-1.5V3H3v10h10v-3z" />
-						</svg>
-						npm
-					</a>
-					<a
-						href="https://github.com/TimMikeladze/deloop/releases"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
-					>
-						<svg
-							width="14"
-							height="14"
-							viewBox="0 0 16 16"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="1.3"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						>
-							<path d="M3 8.5V13a1 1 0 001 1h8a1 1 0 001-1V8.5M8 2v8M5 5l3-3 3 3" />
-						</svg>
-						Releases
-					</a>
-				</div>
-				<div className="flex items-center gap-5">
-					<a
-						href="https://x.com/linesofcode"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
-					>
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-							<path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-						</svg>
-						X
-					</a>
-					<a
-						href="https://bsky.app/profile/linesofcode.bsky.social"
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-flex items-center gap-1.5 hover:text-fg transition-colors"
-					>
-						<svg width="14" height="14" viewBox="0 0 568 501" fill="currentColor">
-							<path d="M123.121 33.664C188.241 82.553 258.281 181.68 284 234.873c25.719-53.192 95.759-152.32 160.879-201.21C491.866-1.611 568-28.906 568 57.947c0 17.346-9.945 145.713-15.778 166.555-20.275 72.453-94.155 90.933-159.875 79.748C507.222 323.8 536.444 388.56 473.333 453.32 353.473 576.312 301.061 422.461 287.631 383.039c-2.458-7.22-3.503-10.581-3.631-7.734-.128-2.847-1.173.514-3.631 7.734-13.43 39.422-65.842 193.273-185.702 70.281-63.111-64.76-33.89-129.52 80.986-149.071-65.72 11.185-139.6-7.295-159.875-79.748C9.945 203.659 0 75.291 0 57.946 0-28.906 76.135-1.612 123.121 33.664z" />
-						</svg>
-						Bluesky
-					</a>
-				</div>
+		<footer className="border-t border-border pt-8 mt-4 pb-8">
+			<div className="flex flex-wrap items-center gap-5 text-[13px]">
+				{footerLinks.map((link, i) =>
+					"sep" in link ? (
+						<span key={i} className="w-px h-3.5 bg-border" />
+					) : (
+						<FooterLink key={link.href} href={link.href} label={link.label} icon={link.icon} />
+					),
+				)}
+				<span className="ml-auto text-muted/30 text-xs">
+					&copy; {new Date().getFullYear()} deloop.dev
+				</span>
 			</div>
-			<p className="text-muted/30 text-xs mt-5 pb-8">
-				&copy; {new Date().getFullYear()} deloop.dev
-			</p>
 		</footer>
 	);
 }
