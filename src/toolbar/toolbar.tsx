@@ -18,6 +18,7 @@ import { buildPayload } from "@/output/payload";
 import { copyToClipboard } from "@/output/clipboard";
 import { exportToFile } from "@/output/file-export";
 import { SelectOverlay } from "@/tools/select/select-overlay";
+import { AnnotationHighlights } from "@/tools/select/annotation-highlights";
 import { DrawOverlay } from "@/tools/draw/draw-overlay";
 import { CaptureOverlay } from "@/tools/capture/capture-overlay";
 import { MarkerOverlay } from "@/tools/marker/marker-overlay";
@@ -2293,40 +2294,6 @@ export function Deloop({
 				</div>
 			)}
 
-			{/* Persistent element selection markers — clickable to open thread */}
-			{!state.activeMode &&
-				state.annotations
-					.filter((a) => a.type === "element")
-					.map((a) => {
-						const d = a.data as ElementData;
-						const rect = d.boundingRect;
-						return (
-							<div key={`sel-${a.id}`}>
-								<div
-									className="deloop-selection-marker deloop-selection-marker-clickable"
-									style={{
-										left: rect.x - 2,
-										top: rect.y - 2,
-										width: rect.width + 4,
-										height: rect.height + 4,
-									}}
-									onClick={() => setFocusedAnnotation((prev) => (prev === a.id ? null : a.id))}
-								/>
-								{a.comments.length > 0 && focusedAnnotation !== a.id && (
-									<div
-										className="deloop-selection-note"
-										style={{
-											left: rect.x,
-											top: rect.y - 24,
-										}}
-									>
-										{a.comments[0]!.text}
-									</div>
-								)}
-							</div>
-						);
-					})}
-
 			{/* Persistent marker pins — clickable to open thread */}
 			{!state.activeMode &&
 				state.annotations
@@ -2513,6 +2480,14 @@ export function Deloop({
 						/>
 					);
 				})()}
+
+			{/* Persistent element annotation highlights — live-tracking via rAF */}
+			<AnnotationHighlights
+				annotations={state.annotations}
+				focusedAnnotation={focusedAnnotation}
+				onFocusAnnotation={setFocusedAnnotation}
+				selectMode={state.activeMode === "select"}
+			/>
 
 			{/* Tool overlays — rapid mode for select/marker */}
 			{state.activeMode === "select" && (

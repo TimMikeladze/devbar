@@ -1937,7 +1937,6 @@
 	pointer-events: none;
 	z-index: 2147483645;
 	border-radius: 4px;
-	transition: all 0.08s ease-out;
 }
 
 /* ─── Marker pin (shared in overlay and toolbar) ─── */

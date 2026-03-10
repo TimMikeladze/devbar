@@ -22,7 +22,7 @@ export function getXPath(el: Element): string {
 }
 
 export function getCssSelector(el: Element): string {
-	if (el.id) return `#${el.id}`;
+	if (el.id) return `#${CSS.escape(el.id)}`;
 
 	const parts: string[] = [];
 	let current: Element | null = el;
@@ -31,7 +31,7 @@ export function getCssSelector(el: Element): string {
 		let selector = current.tagName.toLowerCase();
 
 		if (current.classList.length > 0) {
-			selector += `.${Array.from(current.classList).join(".")}`;
+			selector += `.${Array.from(current.classList).map(CSS.escape).join(".")}`;
 		}
 
 		const parent = current.parentElement;

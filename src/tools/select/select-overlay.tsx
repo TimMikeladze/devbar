@@ -22,6 +22,7 @@ export function SelectOverlay({
 		height: number;
 	} | null>(null);
 	const hoveredEl = useRef<Element | null>(null);
+	const selectedEl = useRef<Element | null>(null);
 	const [commentInput, setCommentInput] = useState<{
 		annotation: Annotation;
 		x: number;
@@ -94,6 +95,7 @@ export function SelectOverlay({
 				comments: [],
 			};
 
+			selectedEl.current = el;
 			const rect = el.getBoundingClientRect();
 			setCommentInput({ annotation, x: rect.x + rect.width / 2, y: rect.y + rect.height + 8 });
 			setCommentText("");
@@ -104,18 +106,38 @@ export function SelectOverlay({
 				if (commentInput) {
 					onCaptureRef.current(commentInput.annotation);
 					setCommentInput(null);
+					selectedEl.current = null;
 				}
 				onDoneRef.current();
 			}
 		};
 
+		const onScroll = () => {
+			if (commentInput && selectedEl.current) {
+				const rect = selectedEl.current.getBoundingClientRect();
+				setCommentInput((prev) =>
+					prev
+						? { ...prev, x: rect.x + rect.width / 2, y: rect.y + rect.height + 8 }
+						: null,
+				);
+				setHighlight({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+				return;
+			}
+			const el = hoveredEl.current;
+			if (!el) return;
+			const rect = el.getBoundingClientRect();
+			setHighlight({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+		};
+
 		window.addEventListener("mousemove", onMouseMove, true);
 		window.addEventListener("click", onClick, true);
 		window.addEventListener("keydown", onKeyDown);
+		window.addEventListener("scroll", onScroll, true);
 		return () => {
 			window.removeEventListener("mousemove", onMouseMove, true);
 			window.removeEventListener("click", onClick, true);
 			window.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("scroll", onScroll, true);
 		};
 	}, [commentInput, findExistingAnnotation]);
 
@@ -137,6 +159,7 @@ export function SelectOverlay({
 		onCapture(updated);
 		setCommentInput(null);
 		setCommentText("");
+		selectedEl.current = null;
 	}, [commentInput, commentText, onCapture]);
 
 	// Check if hovered element already has an annotation
