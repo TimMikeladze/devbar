@@ -30,7 +30,11 @@ function formatDuration(seconds: number): string {
 	return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export function RecordOverlay({ onCapture, onDone, initialMode }: RecordOverlayProps): React.ReactNode {
+export function RecordOverlay({
+	onCapture,
+	onDone,
+	initialMode,
+}: RecordOverlayProps): React.ReactNode {
 	const [mode, setMode] = useState<RecordMode>("requesting");
 	const [pendingAnnotation, setPendingAnnotation] = useState<Annotation | null>(null);
 	const [noteText, setNoteText] = useState("");
@@ -63,55 +67,52 @@ export function RecordOverlay({ onCapture, onDone, initialMode }: RecordOverlayP
 		}
 	}, []);
 
-	const processRecording = useCallback(
-		async (blob: Blob, duration: number, mimeType: string) => {
-			setMode("processing");
+	const processRecording = useCallback(async (blob: Blob, duration: number, mimeType: string) => {
+		setMode("processing");
 
-			const videoBlobUrl = URL.createObjectURL(blob);
-			let thumbnailDataUri = "";
+		const videoBlobUrl = URL.createObjectURL(blob);
+		let thumbnailDataUri = "";
 
-			try {
-				const video = document.createElement("video");
-				video.muted = true;
-				video.playsInline = true;
-				video.src = videoBlobUrl;
+		try {
+			const video = document.createElement("video");
+			video.muted = true;
+			video.playsInline = true;
+			video.src = videoBlobUrl;
 
-				await new Promise<void>((resolve, reject) => {
-					video.onloadeddata = () => resolve();
-					video.onerror = () => reject(new Error("Failed to load video"));
-					video.load();
-				});
+			await new Promise<void>((resolve, reject) => {
+				video.onloadeddata = () => resolve();
+				video.onerror = () => reject(new Error("Failed to load video"));
+				video.load();
+			});
 
-				const seekTime = Math.min(1, duration * 0.1);
-				video.currentTime = seekTime;
-				await new Promise<void>((resolve) => {
-					video.onseeked = () => resolve();
-				});
+			const seekTime = Math.min(1, duration * 0.1);
+			video.currentTime = seekTime;
+			await new Promise<void>((resolve) => {
+				video.onseeked = () => resolve();
+			});
 
-				thumbnailDataUri = await captureThumbnail(video);
-			} catch {
-				// Thumbnail capture failed, proceed without it
-			}
+			thumbnailDataUri = await captureThumbnail(video);
+		} catch {
+			// Thumbnail capture failed, proceed without it
+		}
 
-			const annotation: Annotation = {
-				id: crypto.randomUUID(),
-				type: "recording",
-				timestamp: Date.now(),
-				data: {
-					videoBlobUrl,
-					thumbnailDataUri,
-					duration,
-					mimeType,
-				},
-				comments: [],
-			};
+		const annotation: Annotation = {
+			id: crypto.randomUUID(),
+			type: "recording",
+			timestamp: Date.now(),
+			data: {
+				videoBlobUrl,
+				thumbnailDataUri,
+				duration,
+				mimeType,
+			},
+			comments: [],
+		};
 
-			setPendingAnnotation(annotation);
-			setNoteText("");
-			setMode("note");
-		},
-		[],
-	);
+		setPendingAnnotation(annotation);
+		setNoteText("");
+		setMode("note");
+	}, []);
 
 	const startRecording = useCallback(
 		async (captureTab: boolean) => {
@@ -236,9 +237,7 @@ export function RecordOverlay({ onCapture, onDone, initialMode }: RecordOverlayP
 
 	return (
 		<div data-deloop="record-overlay" className="deloop-overlay">
-			{mode === "requesting" && (
-				<div className="deloop-capture-status">Requesting access...</div>
-			)}
+			{mode === "requesting" && <div className="deloop-capture-status">Requesting access...</div>}
 
 			{mode === "recording" && (
 				<div data-deloop-capture-toolbar className="deloop-overlay-toolbar">

@@ -483,45 +483,49 @@ export const invitation: any = sqliteTable("invitation", {
 /**
  * Reports table - stores feedback reports with full payload
  */
-export const reports: ReportsTable = sqliteTable("deloop_reports", {
-	id: text("id")
-		.primaryKey()
-		.$defaultFn(() => crypto.randomUUID()),
+export const reports: ReportsTable = sqliteTable(
+	"deloop_reports",
+	{
+		id: text("id")
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
 
-	/** FK to organization */
-	organizationId: text("organization_id"),
+		/** FK to organization */
+		organizationId: text("organization_id"),
 
-	/** FK to better-auth users, nullable */
-	userId: text("user_id"),
+		/** FK to better-auth users, nullable */
+		userId: text("user_id"),
 
-	/** Author name for injected identity */
-	authorName: text("author_name"),
+		/** Author name for injected identity */
+		authorName: text("author_name"),
 
-	/** Author email for injected identity */
-	authorEmail: text("author_email"),
+		/** Author email for injected identity */
+		authorEmail: text("author_email"),
 
-	/** Author avatar URL */
-	authorAvatar: text("author_avatar"),
+		/** Author avatar URL */
+		authorAvatar: text("author_avatar"),
 
-	/** Full DeloopPayload as JSON */
-	payload: text("payload", { mode: "json" }).notNull(),
+		/** Full DeloopPayload as JSON */
+		payload: text("payload", { mode: "json" }).notNull(),
 
-	/** Page URL, denormalized for filtering */
-	url: text("url").notNull(),
+		/** Page URL, denormalized for filtering */
+		url: text("url").notNull(),
 
-	/** Page title, denormalized */
-	title: text("title").notNull(),
+		/** Page title, denormalized */
+		title: text("title").notNull(),
 
-	/** When the report was created */
-	createdAt: integer("created_at", { mode: "timestamp_ms" })
-		.notNull()
-		.$defaultFn(() => new Date()),
-}, (table) => [
-	index("idx_deloop_reports_org_id").on(table.organizationId),
-	index("idx_deloop_reports_user_id").on(table.userId),
-	index("idx_deloop_reports_url").on(table.url),
-	index("idx_deloop_reports_created_at").on(table.createdAt),
-]) as ReportsTable;
+		/** When the report was created */
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => [
+		index("idx_deloop_reports_org_id").on(table.organizationId),
+		index("idx_deloop_reports_user_id").on(table.userId),
+		index("idx_deloop_reports_url").on(table.url),
+		index("idx_deloop_reports_created_at").on(table.createdAt),
+	],
+) as ReportsTable;
 
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
@@ -529,32 +533,34 @@ export type NewReport = typeof reports.$inferInsert;
 /**
  * Comments table - threaded comments on reports
  */
-export const comments: CommentsTable = sqliteTable("deloop_comments", {
-	id: text("id")
-		.primaryKey()
-		.$defaultFn(() => crypto.randomUUID()),
+export const comments: CommentsTable = sqliteTable(
+	"deloop_comments",
+	{
+		id: text("id")
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
 
-	/** FK to reports — matches PG schema's .references() for consistency (H2) */
-	reportId: text("report_id")
-		.notNull()
-		.references(() => reports.id, { onDelete: "cascade" }),
+		/** FK to reports — matches PG schema's .references() for consistency (H2) */
+		reportId: text("report_id")
+			.notNull()
+			.references(() => reports.id, { onDelete: "cascade" }),
 
-	/** FK to better-auth users, nullable */
-	userId: text("user_id"),
+		/** FK to better-auth users, nullable */
+		userId: text("user_id"),
 
-	/** Author name */
-	authorName: text("author_name"),
+		/** Author name */
+		authorName: text("author_name"),
 
-	/** Comment text */
-	text: text("text").notNull(),
+		/** Comment text */
+		text: text("text").notNull(),
 
-	/** When the report was created */
-	createdAt: integer("created_at", { mode: "timestamp_ms" })
-		.notNull()
-		.$defaultFn(() => new Date()),
-}, (table) => [
-	index("idx_deloop_comments_report_id").on(table.reportId),
-]) as CommentsTable;
+		/** When the report was created */
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => [index("idx_deloop_comments_report_id").on(table.reportId)],
+) as CommentsTable;
 
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
@@ -563,55 +569,58 @@ export type NewComment = typeof comments.$inferInsert;
  * Subscriptions table - tracks Stripe subscription per organization
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Stripe subscription tracking
-export const subscriptions: any = sqliteTable("deloop_subscriptions", {
-	id: text("id")
-		.primaryKey()
-		.$defaultFn(() => crypto.randomUUID()),
-	organizationId: text("organization_id").notNull().unique(),
-	stripeCustomerId: text("stripe_customer_id").notNull(),
-	stripeSubscriptionId: text("stripe_subscription_id"),
-	stripePriceId: text("stripe_price_id"),
-	plan: text("plan").notNull().default("free"),
-	status: text("status"),
-	currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }),
-	createdAt: integer("created_at", { mode: "timestamp_ms" })
-		.notNull()
-		.$defaultFn(() => new Date()),
-	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-		.notNull()
-		.$defaultFn(() => new Date()),
-}, (table) => [
-	index("idx_deloop_subscriptions_stripe_customer").on(table.stripeCustomerId),
-]);
+export const subscriptions: any = sqliteTable(
+	"deloop_subscriptions",
+	{
+		id: text("id")
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizationId: text("organization_id").notNull().unique(),
+		stripeCustomerId: text("stripe_customer_id").notNull(),
+		stripeSubscriptionId: text("stripe_subscription_id"),
+		stripePriceId: text("stripe_price_id"),
+		plan: text("plan").notNull().default("free"),
+		status: text("status"),
+		currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => [index("idx_deloop_subscriptions_stripe_customer").on(table.stripeCustomerId)],
+);
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
-
 
 // ============================================
 // API Keys table (for MCP server auth)
 // ============================================
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- MCP API key table
-export const apiKeys: any = sqliteTable("deloop_api_keys", {
-	id: text("id")
-		.primaryKey()
-		.$defaultFn(() => crypto.randomUUID()),
-	organizationId: text("organization_id").notNull(),
-	// H1: .unique() creates an implicit index used by resolveAuthContext() lookups.
-	// No separate named index needed — the UNIQUE constraint handles it.
-	key: text("key")
-		.notNull()
-		.unique()
-		.$defaultFn(() => `dlp_${crypto.randomUUID().replace(/-/g, "")}`),
-	label: text("label"),
-	revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
-	createdAt: integer("created_at", { mode: "timestamp_ms" })
-		.notNull()
-		.$defaultFn(() => new Date()),
-}, (table) => [
-	index("idx_deloop_api_keys_org_id").on(table.organizationId),
-]);
+export const apiKeys: any = sqliteTable(
+	"deloop_api_keys",
+	{
+		id: text("id")
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizationId: text("organization_id").notNull(),
+		// H1: .unique() creates an implicit index used by resolveAuthContext() lookups.
+		// No separate named index needed — the UNIQUE constraint handles it.
+		key: text("key")
+			.notNull()
+			.unique()
+			.$defaultFn(() => `dlp_${crypto.randomUUID().replace(/-/g, "")}`),
+		label: text("label"),
+		revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => [index("idx_deloop_api_keys_org_id").on(table.organizationId)],
+);
 
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;

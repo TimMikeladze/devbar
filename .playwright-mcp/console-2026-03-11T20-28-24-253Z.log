@@ -1,0 +1,1 @@
+[     123ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5174/%VITE_UMAMI_URL%/script.js:0

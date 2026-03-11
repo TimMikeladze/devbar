@@ -151,7 +151,15 @@ function annotationLabel(a: Annotation): string {
 	}
 }
 
-function ReadoutRow({ label, value, swatch }: { label: string; value: React.ReactNode; swatch?: string }) {
+function ReadoutRow({
+	label,
+	value,
+	swatch,
+}: {
+	label: string;
+	value: React.ReactNode;
+	swatch?: string;
+}) {
 	return (
 		<div className="deloop-readout-row">
 			<span className="deloop-readout-key">{label}</span>
@@ -178,7 +186,17 @@ function ReactTreeReadout({ ctx }: { ctx: ReactComponentContext }) {
 			{leafProps.length > 0 && (
 				<div className="deloop-readout-props">
 					{leafProps.slice(0, 8).map(([k, v]) => (
-						<ReadoutRow key={k} label={k} value={typeof v === "string" ? v : typeof v === "object" ? JSON.stringify(v).slice(0, 60) : String(v)} />
+						<ReadoutRow
+							key={k}
+							label={k}
+							value={
+								typeof v === "string"
+									? v
+									: typeof v === "object"
+										? JSON.stringify(v).slice(0, 60)
+										: String(v)
+							}
+						/>
 					))}
 				</div>
 			)}
@@ -199,7 +217,11 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 	switch (annotation.type) {
 		case "element": {
 			const d = annotation.data as ElementData;
-			const ident = d.id ? `${d.tagName}#${d.id}` : d.classes.length > 0 ? `${d.tagName}.${d.classes[0]}` : d.tagName;
+			const ident = d.id
+				? `${d.tagName}#${d.id}`
+				: d.classes.length > 0
+					? `${d.tagName}.${d.classes[0]}`
+					: d.tagName;
 			const s = d.computedStyles;
 			const bg = s["background-color"];
 			const color = s.color;
@@ -230,7 +252,10 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 						<ReadoutRow label="xpath" value={d.xpath} />
 						<ReadoutRow label="css" value={d.cssSelector} />
 						{parent && (
-							<ReadoutRow label="parent" value={`${parent.tagName}${parent.id ? `#${parent.id}` : ""}${parent.classes.length > 0 ? `.${parent.classes[0]}` : ""}`} />
+							<ReadoutRow
+								label="parent"
+								value={`${parent.tagName}${parent.id ? `#${parent.id}` : ""}${parent.classes.length > 0 ? `.${parent.classes[0]}` : ""}`}
+							/>
 						)}
 					</div>
 					{a11y && (
@@ -257,8 +282,14 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 					{d.imageDimensions && (
 						<div className="deloop-readout-section">
 							<div className="deloop-readout-heading">Image</div>
-							<ReadoutRow label="natural" value={`${d.imageDimensions.naturalWidth}×${d.imageDimensions.naturalHeight}`} />
-							<ReadoutRow label="render" value={`${d.imageDimensions.renderedWidth}×${d.imageDimensions.renderedHeight}`} />
+							<ReadoutRow
+								label="natural"
+								value={`${d.imageDimensions.naturalWidth}×${d.imageDimensions.naturalHeight}`}
+							/>
+							<ReadoutRow
+								label="render"
+								value={`${d.imageDimensions.renderedWidth}×${d.imageDimensions.renderedHeight}`}
+							/>
 						</div>
 					)}
 					{d.formState && (
@@ -272,30 +303,52 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 					<div className="deloop-readout-section">
 						{bg && bg !== "rgba(0, 0, 0, 0)" && <ReadoutRow label="bg" value={bg} swatch={bg} />}
 						{color && <ReadoutRow label="color" value={color} swatch={color} />}
-						{fontSize && <ReadoutRow label="font" value={`${fontSize}${fontWeight && fontWeight !== "400" ? ` / ${fontWeight}` : ""}`} />}
-						{d.renderedFont && fontFamily && d.renderedFont !== fontFamily.split(",")[0]?.trim().replace(/^["']|["']$/g, "") && (
-							<ReadoutRow label="actual" value={d.renderedFont} />
+						{fontSize && (
+							<ReadoutRow
+								label="font"
+								value={`${fontSize}${fontWeight && fontWeight !== "400" ? ` / ${fontWeight}` : ""}`}
+							/>
 						)}
+						{d.renderedFont &&
+							fontFamily &&
+							d.renderedFont !==
+								fontFamily
+									.split(",")[0]
+									?.trim()
+									.replace(/^["']|["']$/g, "") && (
+								<ReadoutRow label="actual" value={d.renderedFont} />
+							)}
 						{fontFamily && <ReadoutRow label="family" value={fontFamily.split(",")[0]?.trim()} />}
 						{display && <ReadoutRow label="display" value={display} />}
 						{position && position !== "static" && <ReadoutRow label="pos" value={position} />}
 						{padding && padding !== "0px" && <ReadoutRow label="pad" value={padding} />}
 						{margin && margin !== "0px" && <ReadoutRow label="margin" value={margin} />}
-						{borderRadius && borderRadius !== "0px" && <ReadoutRow label="radius" value={borderRadius} />}
+						{borderRadius && borderRadius !== "0px" && (
+							<ReadoutRow label="radius" value={borderRadius} />
+						)}
 						{boxShadow && boxShadow !== "none" && <ReadoutRow label="shadow" value={boxShadow} />}
-						<ReadoutRow label="rect" value={`${Math.round(rect.width)}×${Math.round(rect.height)} @ (${Math.round(rect.x)}, ${Math.round(rect.y)})`} />
+						<ReadoutRow
+							label="rect"
+							value={`${Math.round(rect.width)}×${Math.round(rect.height)} @ (${Math.round(rect.x)}, ${Math.round(rect.y)})`}
+						/>
 					</div>
 					{d.pseudoContent && (
 						<div className="deloop-readout-section">
 							<div className="deloop-readout-heading">Pseudo elements</div>
-							{d.pseudoContent.before && <ReadoutRow label="::before" value={d.pseudoContent.before} />}
-							{d.pseudoContent.after && <ReadoutRow label="::after" value={d.pseudoContent.after} />}
+							{d.pseudoContent.before && (
+								<ReadoutRow label="::before" value={d.pseudoContent.before} />
+							)}
+							{d.pseudoContent.after && (
+								<ReadoutRow label="::after" value={d.pseudoContent.after} />
+							)}
 						</div>
 					)}
 					{text && (
 						<div className="deloop-readout-section">
 							<div className="deloop-readout-heading">Text content</div>
-							<div className="deloop-readout-text">{text.length > 120 ? `${text.slice(0, 120)}…` : text}</div>
+							<div className="deloop-readout-text">
+								{text.length > 120 ? `${text.slice(0, 120)}…` : text}
+							</div>
 						</div>
 					)}
 					{d.reactContext && <ReactTreeReadout ctx={d.reactContext} />}
@@ -311,10 +364,17 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 						{typeLabels.marker} #{d.number}
 					</div>
 					<div className="deloop-readout-section">
-						<ReadoutRow label="pos" value={`(${Math.round(d.position.x)}, ${Math.round(d.position.y)})`} />
-						{d.nearestElementTagName && <ReadoutRow label="element" value={d.nearestElementTagName} />}
+						<ReadoutRow
+							label="pos"
+							value={`(${Math.round(d.position.x)}, ${Math.round(d.position.y)})`}
+						/>
+						{d.nearestElementTagName && (
+							<ReadoutRow label="element" value={d.nearestElementTagName} />
+						)}
 						{d.nearestElementXPath && <ReadoutRow label="xpath" value={d.nearestElementXPath} />}
-						{d.nearestElementCssSelector && <ReadoutRow label="css" value={d.nearestElementCssSelector} />}
+						{d.nearestElementCssSelector && (
+							<ReadoutRow label="css" value={d.nearestElementCssSelector} />
+						)}
 					</div>
 					{d.nearestReactContext && <ReactTreeReadout ctx={d.nearestReactContext} />}
 				</div>
@@ -329,10 +389,18 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 						{typeLabels.text}
 					</div>
 					<div className="deloop-readout-section">
-						<ReadoutRow label="text" value={d.text.length > 80 ? `${d.text.slice(0, 80)}…` : d.text} />
-						<ReadoutRow label="pos" value={`(${Math.round(d.position.x)}, ${Math.round(d.position.y)})`} />
+						<ReadoutRow
+							label="text"
+							value={d.text.length > 80 ? `${d.text.slice(0, 80)}…` : d.text}
+						/>
+						<ReadoutRow
+							label="pos"
+							value={`(${Math.round(d.position.x)}, ${Math.round(d.position.y)})`}
+						/>
 						{d.nearestElementXPath && <ReadoutRow label="xpath" value={d.nearestElementXPath} />}
-						{d.nearestElementCssSelector && <ReadoutRow label="css" value={d.nearestElementCssSelector} />}
+						{d.nearestElementCssSelector && (
+							<ReadoutRow label="css" value={d.nearestElementCssSelector} />
+						)}
 					</div>
 					{d.nearestReactContext && <ReactTreeReadout ctx={d.nearestReactContext} />}
 				</div>
@@ -348,7 +416,10 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 					</div>
 					<div className="deloop-readout-section">
 						<ReadoutRow label="size" value={`${d.dimensions.width}×${d.dimensions.height}`} />
-						<ReadoutRow label="offset" value={`(${Math.round(d.viewportOffset.x)}, ${Math.round(d.viewportOffset.y)})`} />
+						<ReadoutRow
+							label="offset"
+							value={`(${Math.round(d.viewportOffset.x)}, ${Math.round(d.viewportOffset.y)})`}
+						/>
 					</div>
 				</div>
 			);
@@ -364,7 +435,10 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 					<div className="deloop-readout-section">
 						<ReadoutRow label="type" value={d.fullPage ? "Full page" : "Region"} />
 						{d.region && (
-							<ReadoutRow label="region" value={`${Math.round(d.region.width)}×${Math.round(d.region.height)} @ (${Math.round(d.region.x)}, ${Math.round(d.region.y)})`} />
+							<ReadoutRow
+								label="region"
+								value={`${Math.round(d.region.width)}×${Math.round(d.region.height)} @ (${Math.round(d.region.x)}, ${Math.round(d.region.y)})`}
+							/>
 						)}
 					</div>
 				</div>
@@ -1580,7 +1654,11 @@ export function Deloop({
 			if (hasMenu) {
 				const isOpen = toolMenu === tool.key;
 				return (
-					<div key={tool.key} className="deloop-bar-export-wrap" ref={isOpen ? toolMenuRef : undefined}>
+					<div
+						key={tool.key}
+						className="deloop-bar-export-wrap"
+						ref={isOpen ? toolMenuRef : undefined}
+					>
 						<button
 							type="button"
 							className={`deloop-bar-btn ${isOpen || state.activeMode === tool.key ? "deloop-bar-btn-active" : ""}`}
@@ -1911,7 +1989,11 @@ export function Deloop({
 					["formState", "Form validation", "Validity state and validation messages"],
 					["pseudoContent", "Pseudo-elements", "Content of ::before and ::after pseudo-elements"],
 					["reactContext", "React context", "React component tree, props, and source locations"],
-					["consoleErrors", "Console errors", "Capture console.error, window errors, and unhandled rejections"],
+					[
+						"consoleErrors",
+						"Console errors",
+						"Capture console.error, window errors, and unhandled rejections",
+					],
 					["mediaPreferences", "Media preferences", "Color scheme, reduced motion, and language"],
 				] as const
 			).map(([key, title, desc]) => (
@@ -1925,7 +2007,9 @@ export function Deloop({
 						className={`deloop-toggle ${(settings.capture ?? DEFAULT_CAPTURE_CONFIG)[key] ? "deloop-toggle-on" : ""}`}
 						onClick={() =>
 							updateSettings({
-								capture: { [key]: !(settings.capture ?? DEFAULT_CAPTURE_CONFIG)[key] } as Partial<CaptureConfig> as CaptureConfig,
+								capture: {
+									[key]: !(settings.capture ?? DEFAULT_CAPTURE_CONFIG)[key],
+								} as Partial<CaptureConfig> as CaptureConfig,
 							})
 						}
 						title={`${(settings.capture ?? DEFAULT_CAPTURE_CONFIG)[key] ? "Disable" : "Enable"} ${title.toLowerCase()}`}
@@ -2625,14 +2709,20 @@ export function Deloop({
 			{state.activeMode === "capture" && captureSubMode && (
 				<CaptureOverlay
 					onCapture={handleCapture}
-					onDone={() => { setCaptureSubMode(null); handleToolDone(); }}
+					onDone={() => {
+						setCaptureSubMode(null);
+						handleToolDone();
+					}}
 					initialMode={captureSubMode}
 				/>
 			)}
 			{state.activeMode === "record" && recordSubMode && (
 				<RecordOverlay
 					onCapture={handleCapture}
-					onDone={() => { setRecordSubMode(null); handleToolDone(); }}
+					onDone={() => {
+						setRecordSubMode(null);
+						handleToolDone();
+					}}
 					initialMode={recordSubMode}
 				/>
 			)}

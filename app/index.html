@@ -16,13 +16,17 @@
 		<!-- Prevent flash of wrong theme on load -->
 		<script>
 			(function () {
-				var t = 'system';
-				try { t = localStorage.getItem('deloop-theme') || 'system'; } catch (e) {}
-				var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-				if (dark) document.documentElement.classList.add('dark');
-				else document.documentElement.classList.remove('dark');
+				var t = "system";
+				try {
+					t = localStorage.getItem("deloop-theme") || "system";
+				} catch (e) {}
+				var dark =
+					t === "dark" ||
+					(t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+				if (dark) document.documentElement.classList.add("dark");
+				else document.documentElement.classList.remove("dark");
 				var meta = document.querySelector('meta[name="theme-color"]');
-				if (meta) meta.setAttribute('content', dark ? '#0a0a0a' : '#fafafa');
+				if (meta) meta.setAttribute("content", dark ? "#0a0a0a" : "#fafafa");
 			})();
 		</script>
 
@@ -147,20 +151,46 @@
 		<div id="root"></div>
 		<noscript>
 			<h1>deloop.dev — Annotate Any Website, Prompt Any LLM</h1>
-			<p>Stop copy-pasting screenshots into Slack. Stop writing "the button on that page" in bug tickets.</p>
-			<p>Open-source toolbar that turns visual website annotations into structured, AI-ready bug reports. Captures XPaths, computed styles, React component trees, source file locations, and screenshots — ready for any LLM, MCP agent, or webhook pipeline.</p>
+			<p>
+				Stop copy-pasting screenshots into Slack. Stop writing "the button on that page" in bug
+				tickets.
+			</p>
+			<p>
+				Open-source toolbar that turns visual website annotations into structured, AI-ready bug
+				reports. Captures XPaths, computed styles, React component trees, source file locations, and
+				screenshots — ready for any LLM, MCP agent, or webhook pipeline.
+			</p>
 			<h2>How it works</h2>
 			<ol>
-				<li><strong>Annotate</strong> — Select elements, draw freehand, drop numbered markers, or capture screenshots.</li>
-				<li><strong>Auto-capture</strong> — Every annotation extracts XPaths, CSS selectors, computed styles, React component trees, and source file locations.</li>
-				<li><strong>Export</strong> — One click turns everything into structured Markdown, JSON, or a webhook POST. Pipe to any LLM or AI agent via MCP.</li>
+				<li>
+					<strong>Annotate</strong> — Select elements, draw freehand, drop numbered markers, or
+					capture screenshots.
+				</li>
+				<li>
+					<strong>Auto-capture</strong> — Every annotation extracts XPaths, CSS selectors, computed
+					styles, React component trees, and source file locations.
+				</li>
+				<li>
+					<strong>Export</strong> — One click turns everything into structured Markdown, JSON, or a
+					webhook POST. Pipe to any LLM or AI agent via MCP.
+				</li>
 			</ol>
 			<h2>Who it's for</h2>
 			<ul>
-				<li><strong>AI agents &amp; MCP</strong> — Connect via MCP server, webhooks, or callbacks for agentic workflows.</li>
-				<li><strong>Developers</strong> — Feed structured bug context directly into coding assistants.</li>
-				<li><strong>Designers &amp; QA</strong> — File bug reports with exact CSS values, bounding rects, and screenshots.</li>
-				<li><strong>Product managers</strong> — Give feedback on staging without leaving the browser.</li>
+				<li>
+					<strong>AI agents &amp; MCP</strong> — Connect via MCP server, webhooks, or callbacks for
+					agentic workflows.
+				</li>
+				<li>
+					<strong>Developers</strong> — Feed structured bug context directly into coding assistants.
+				</li>
+				<li>
+					<strong>Designers &amp; QA</strong> — File bug reports with exact CSS values, bounding
+					rects, and screenshots.
+				</li>
+				<li>
+					<strong>Product managers</strong> — Give feedback on staging without leaving the browser.
+				</li>
 			</ul>
 			<h2>Features</h2>
 			<ul>
@@ -178,15 +208,27 @@
 			<h2>FAQ</h2>
 			<dl>
 				<dt>How does this work with AI agents?</dt>
-				<dd>Connect via the built-in MCP server, an onSubmit callback, or a webhook URL. Structured context flows directly into Claude, Cursor, or your own agentic pipeline.</dd>
+				<dd>
+					Connect via the built-in MCP server, an onSubmit callback, or a webhook URL. Structured
+					context flows directly into Claude, Cursor, or your own agentic pipeline.
+				</dd>
 				<dt>Does it work without React?</dt>
-				<dd>Yes. XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any website.</dd>
+				<dd>
+					Yes. XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any
+					website.
+				</dd>
 				<dt>How does React context extraction work?</dt>
-				<dd>deloop reads the React fiber node and walks up the tree, capturing every component's name, props, and source file location — all locally in your browser.</dd>
+				<dd>
+					deloop reads the React fiber node and walks up the tree, capturing every component's name,
+					props, and source file location — all locally in your browser.
+				</dd>
 			</dl>
 			<h2>Pricing</h2>
 			<p><strong>Free</strong> — Self-hosted, open source, $0 forever. All features included.</p>
-			<p><strong>Team</strong> — $10/month, up to 5 members. Cloud dashboard, report history, org settings.</p>
+			<p>
+				<strong>Team</strong> — $10/month, up to 5 members. Cloud dashboard, report history, org
+				settings.
+			</p>
 			<p><strong>Organization</strong> — $50/month, unlimited members.</p>
 			<p><a href="https://github.com/TimMikeladze/deloop">View on GitHub</a></p>
 		</noscript>

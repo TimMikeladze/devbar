@@ -11,7 +11,12 @@ type TextOverlayProps = {
 	capture?: CaptureConfig;
 };
 
-export function TextOverlay({ onCapture, onDone, annotations, capture }: TextOverlayProps): React.ReactNode {
+export function TextOverlay({
+	onCapture,
+	onDone,
+	annotations,
+	capture,
+}: TextOverlayProps): React.ReactNode {
 	const [inputPos, setInputPos] = useState<{
 		x: number;
 		y: number;

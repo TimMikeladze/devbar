@@ -10,7 +10,11 @@ type CaptureOverlayProps = {
 
 type CaptureMode = "region" | "capturing" | "note";
 
-export function CaptureOverlay({ onCapture, onDone, initialMode }: CaptureOverlayProps): React.ReactNode {
+export function CaptureOverlay({
+	onCapture,
+	onDone,
+	initialMode,
+}: CaptureOverlayProps): React.ReactNode {
 	const [captureMode, setCaptureMode] = useState<CaptureMode>(
 		initialMode === "fullpage" ? "capturing" : "region",
 	);

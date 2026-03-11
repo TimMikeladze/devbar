@@ -58,7 +58,10 @@ function exportImageFiles(annotations: Annotation[], timestamp: string): void {
 				downloadBlobUrl(d.videoBlobUrl, `deloop-recording-${timestamp}-${++imageIndex}.webm`);
 			}
 			if (d.thumbnailDataUri) {
-				downloadDataUri(d.thumbnailDataUri, `deloop-recording-thumb-${timestamp}-${imageIndex}.png`);
+				downloadDataUri(
+					d.thumbnailDataUri,
+					`deloop-recording-thumb-${timestamp}-${imageIndex}.png`,
+				);
 			}
 		}
 	}

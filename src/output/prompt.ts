@@ -47,13 +47,25 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				d.xpath ? `- **XPath:** \`${d.xpath}\`` : "",
 				d.cssSelector ? `- **CSS Selector:** \`${d.cssSelector}\`` : "",
 				`- **Bounding Rect:** ${d.boundingRect.width.toFixed(0)}x${d.boundingRect.height.toFixed(0)} at (${d.boundingRect.x.toFixed(0)}, ${d.boundingRect.y.toFixed(0)})`,
-				d.parentContext ? `- **Parent:** ${d.parentContext.tagName}${d.parentContext.id ? `#${d.parentContext.id}` : ""}${d.parentContext.classes.length > 0 ? `.${d.parentContext.classes.join(".")}` : ""}` : "",
-				d.accessibility ? `- **Accessibility:** role="${d.accessibility.role}" name="${d.accessibility.name}" tabIndex=${d.accessibility.tabIndex}` : "",
-				d.overflowClipped ? `- **⚠ Overflow Clipped:** Element is visually clipped by a parent with overflow: hidden` : "",
+				d.parentContext
+					? `- **Parent:** ${d.parentContext.tagName}${d.parentContext.id ? `#${d.parentContext.id}` : ""}${d.parentContext.classes.length > 0 ? `.${d.parentContext.classes.join(".")}` : ""}`
+					: "",
+				d.accessibility
+					? `- **Accessibility:** role="${d.accessibility.role}" name="${d.accessibility.name}" tabIndex=${d.accessibility.tabIndex}`
+					: "",
+				d.overflowClipped
+					? `- **⚠ Overflow Clipped:** Element is visually clipped by a parent with overflow: hidden`
+					: "",
 				d.renderedFont ? `- **Rendered Font:** ${d.renderedFont}` : "",
-				d.imageDimensions ? `- **Image Dimensions:** natural=${d.imageDimensions.naturalWidth}x${d.imageDimensions.naturalHeight}, rendered=${d.imageDimensions.renderedWidth}x${d.imageDimensions.renderedHeight}` : "",
-				d.formState ? `- **Form State:** valid=${d.formState.valid}${d.formState.required ? ", required" : ""}${d.formState.message ? `, message="${d.formState.message}"` : ""}` : "",
-				d.pseudoContent ? `- **Pseudo Elements:**${d.pseudoContent.before ? ` ::before=${d.pseudoContent.before}` : ""}${d.pseudoContent.after ? ` ::after=${d.pseudoContent.after}` : ""}` : "",
+				d.imageDimensions
+					? `- **Image Dimensions:** natural=${d.imageDimensions.naturalWidth}x${d.imageDimensions.naturalHeight}, rendered=${d.imageDimensions.renderedWidth}x${d.imageDimensions.renderedHeight}`
+					: "",
+				d.formState
+					? `- **Form State:** valid=${d.formState.valid}${d.formState.required ? ", required" : ""}${d.formState.message ? `, message="${d.formState.message}"` : ""}`
+					: "",
+				d.pseudoContent
+					? `- **Pseudo Elements:**${d.pseudoContent.before ? ` ::before=${d.pseudoContent.before}` : ""}${d.pseudoContent.after ? ` ::after=${d.pseudoContent.after}` : ""}`
+					: "",
 				d.attributes && Object.keys(d.attributes).length > 0 ? `- **Attributes:**` : "",
 				...(d.attributes ? Object.entries(d.attributes).map(([k, v]) => `  - ${k}: ${v}`) : []),
 				Object.keys(d.computedStyles).length > 0 ? `- **Computed Styles:**` : "",
@@ -85,7 +97,9 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				`- **Text:** "${d.text}"`,
 				`- **Position:** (${d.position.x.toFixed(0)}, ${d.position.y.toFixed(0)})`,
 				d.nearestElementXPath ? `- **Nearest Element XPath:** \`${d.nearestElementXPath}\`` : "",
-				d.nearestElementCssSelector ? `- **Nearest Element CSS Selector:** \`${d.nearestElementCssSelector}\`` : "",
+				d.nearestElementCssSelector
+					? `- **Nearest Element CSS Selector:** \`${d.nearestElementCssSelector}\``
+					: "",
 				...formatReactContext(d.nearestReactContext),
 			]
 				.filter(Boolean)
@@ -100,7 +114,9 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				`- **Position:** (${md.position.x.toFixed(0)}, ${md.position.y.toFixed(0)})`,
 				md.nearestElementTagName ? `- **Nearest Element:** ${md.nearestElementTagName}` : "",
 				md.nearestElementXPath ? `- **Nearest Element XPath:** \`${md.nearestElementXPath}\`` : "",
-				md.nearestElementCssSelector ? `- **Nearest Element CSS Selector:** \`${md.nearestElementCssSelector}\`` : "",
+				md.nearestElementCssSelector
+					? `- **Nearest Element CSS Selector:** \`${md.nearestElementCssSelector}\``
+					: "",
 				...formatReactContext(md.nearestReactContext),
 			]
 				.filter(Boolean)
@@ -174,10 +190,14 @@ export const defaultPromptTemplate: PromptTemplate = (context) => {
 		`- **Route:** ${context.route.pathname}${context.route.search}${context.route.hash}`,
 		`- **Title:** ${context.title}`,
 		`- **Viewport:** ${context.viewport.width}x${context.viewport.height} @${context.devicePixelRatio}x`,
-		cap.mediaPreferences ? `- **Color Scheme:** ${context.colorScheme}${context.reducedMotion ? " (reduced motion)" : ""}` : "",
+		cap.mediaPreferences
+			? `- **Color Scheme:** ${context.colorScheme}${context.reducedMotion ? " (reduced motion)" : ""}`
+			: "",
 		cap.mediaPreferences ? `- **Language:** ${context.language}` : "",
 		`- **User Agent:** ${context.userAgent}`,
-	].filter(Boolean).join("\n");
+	]
+		.filter(Boolean)
+		.join("\n");
 
 	return `# Bug Report
 

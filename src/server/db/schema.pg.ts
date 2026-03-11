@@ -634,9 +634,7 @@ export const apiKeys: any = pgTable(
 			.notNull()
 			.$defaultFn(() => new Date()),
 	},
-	(table) => [
-		index("idx_deloop_api_keys_org_id").on(table.organizationId),
-	],
+	(table) => [index("idx_deloop_api_keys_org_id").on(table.organizationId)],
 );
 
 export type ApiKey = typeof apiKeys.$inferSelect;

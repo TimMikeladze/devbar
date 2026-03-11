@@ -132,7 +132,10 @@ const RELEVANT_ATTRIBUTES = [
 	"rel",
 ];
 
-export function extractElementData(el: Element, capture: CaptureConfig = DEFAULT_CAPTURE_CONFIG): ElementData {
+export function extractElementData(
+	el: Element,
+	capture: CaptureConfig = DEFAULT_CAPTURE_CONFIG,
+): ElementData {
 	const rect = el.getBoundingClientRect();
 	const computed = window.getComputedStyle(el);
 
@@ -217,7 +220,10 @@ export function extractElementData(el: Element, capture: CaptureConfig = DEFAULT
 	let renderedFont = "";
 	if (capture.renderedFont) {
 		try {
-			const families = computed.getPropertyValue("font-family").split(",").map((f) => f.trim().replace(/^["']|["']$/g, ""));
+			const families = computed
+				.getPropertyValue("font-family")
+				.split(",")
+				.map((f) => f.trim().replace(/^["']|["']$/g, ""));
 			for (const family of families) {
 				if (document.fonts.check(`12px "${family}"`)) {
 					renderedFont = family;

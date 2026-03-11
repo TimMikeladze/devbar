@@ -30,7 +30,9 @@ function useTheme() {
 			if (meta) meta.setAttribute("content", isDark ? "#0a0a0a" : "#fafafa");
 		};
 		apply();
-		try { localStorage.setItem("deloop-theme", theme); } catch {}
+		try {
+			localStorage.setItem("deloop-theme", theme);
+		} catch {}
 
 		if (theme === "system") {
 			const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -142,11 +144,11 @@ function Header() {
 	return (
 		<header className="fixed top-0 left-0 right-0 z-50 bg-bg/70 backdrop-blur-xl border-b border-border/50">
 			<div className="max-w-6xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
-				<a href="/" className="text-fg font-semibold tracking-tight">
+				<a href="/" className="text-fg font-semibold tracking-tight text-[15px]">
 					deloop.dev
 				</a>
 
-				<nav className="hidden sm:flex items-center gap-5 text-[13px]">
+				<nav className="hidden sm:flex items-center gap-6 text-[13px]">
 					{links.map((l) => (
 						<a
 							key={l.href}
@@ -161,11 +163,8 @@ function Header() {
 					<a href="/login" className="text-fg hover:text-fg/80 transition-colors font-medium">
 						Sign In
 					</a>
-					<a
-						href="/login?signup=1"
-						className="text-bg bg-fg rounded-md px-3 py-1 font-medium hover:bg-fg/85 transition-colors"
-					>
-						Sign Up
+					<a href="/login?signup=1" className="btn-warm text-[13px] !py-1.5 !px-4">
+						Get Started
 					</a>
 				</nav>
 
@@ -203,11 +202,8 @@ function Header() {
 						<a href="/login" className="text-[14px] text-fg font-medium">
 							Sign In
 						</a>
-						<a
-							href="/login?signup=1"
-							className="text-[13px] text-bg bg-fg rounded-md px-3 py-1.5 font-medium hover:bg-fg/85 transition-colors"
-						>
-							Sign Up
+						<a href="/login?signup=1" className="btn-warm text-[13px] !py-1.5 !px-4">
+							Get Started
 						</a>
 					</div>
 				</nav>
@@ -222,37 +218,57 @@ function Header() {
 
 function Hero() {
 	return (
-		<section className="mb-16 sm:mb-20 flex flex-col lg:flex-row lg:items-start lg:gap-12">
-			<div className="flex-1 min-w-0">
-				<h1 className="text-[2.5rem] sm:text-5xl lg:text-[3.5rem] font-bold tracking-[-0.025em] leading-[1.08] mb-4">
-					<span className="font-display italic text-[2.8rem] sm:text-[3.4rem] lg:text-[4rem] tracking-[-0.02em]">
-						Annotate
-					</span>{" "}
-					any website,
-					<br />
-					<span className="gradient-agent">prompt any LLM.</span>
-				</h1>
-				<p className="text-dim text-[15px] sm:text-base leading-[1.7] mb-4 max-w-xl">
-					Stop describing UI bugs in words. Click what's broken, and deloop captures the XPath,
-					computed styles, React component tree, source file path, and a screenshot — structured
-					and ready for any LLM.
-				</p>
-				<p className="text-dim text-[15px] sm:text-base leading-[1.7] mb-6 max-w-xl">
-					Use it solo while you vibe — paste straight into Claude, ChatGPT, or Cursor. Or roll it
-					out to your team and pipe everything through MCP, webhooks, or the hosted dashboard.
-				</p>
-				<div className="max-w-xl">
-					<CodeBlock lang="bash" code={`bun add deloop.dev`} />
+		<section className="mb-24 sm:mb-32 pt-4 sm:pt-8">
+			<div className="hero-frame px-6 py-12 sm:px-12 sm:py-16 lg:px-16 lg:py-20">
+				<div className="hero-frame-glow" />
+				<div className="relative text-center max-w-4xl mx-auto">
+					<p className="text-[13px] sm:text-sm font-medium tracking-widest uppercase text-muted mb-4">
+						Open&#8209;source&nbsp;visual&nbsp;feedback&nbsp;toolkit
+					</p>
+					<h1 className="text-[2.5rem] sm:text-[3.5rem] lg:text-[4.5rem] font-bold tracking-[-0.03em] leading-[1.08] mb-6">
+						<span className="font-display italic text-[2.8rem] sm:text-[4rem] lg:text-[5rem] tracking-[-0.02em]">
+							Annotate it.
+						</span>{" "}
+						<span className="gradient-warm">Ship it.</span>
+					</h1>
+					<p className="text-dim text-[15px] sm:text-lg leading-[1.7] mb-4 max-w-2xl mx-auto">
+						Click any element on your site and deloop captures XPaths, computed styles, React
+						component trees, source file paths, and screenshots — structured context ready for
+						your AI coding assistant, design reviews, QA reports, or team feedback loops.
+					</p>
+					<div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-[13px] text-muted mb-8">
+						<span>Prompt Claude, Cursor &amp; ChatGPT</span>
+						<span className="text-border hidden sm:inline">|</span>
+						<span>Design review &amp; QA</span>
+						<span className="text-border hidden sm:inline">|</span>
+						<span>Team feedback loops</span>
+						<span className="text-border hidden sm:inline">|</span>
+						<span>MCP &amp; webhook pipelines</span>
+					</div>
+					<div className="max-w-sm mx-auto mb-6">
+						<CodeBlock lang="bash" code={`bun add deloop.dev`} />
+					</div>
+					<div className="flex items-center justify-center gap-4">
+						<a href="#how-it-works" className="btn-warm">
+							Get started — it's free
+						</a>
+						<a
+							href="https://github.com/TimMikeladze/deloop"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-[14px] text-muted hover:text-fg transition-colors font-medium"
+						>
+							View on GitHub &rarr;
+						</a>
+					</div>
 				</div>
 			</div>
 
 			{/* Real Deloop toolbar — rendered here, floats freely via position:fixed */}
 			<Deloop />
-
 		</section>
 	);
 }
-
 
 /* ═══════════════════════════════════════════
    How It Works
@@ -266,7 +282,7 @@ function HowItWorks() {
 			number: 1,
 			title: "Annotate",
 			color: "accent",
-			desc: "Interact with any page using familiar tools — click to select elements, draw freehand, drop numbered markers, or capture screenshots. Add comments to explain each issue.",
+			desc: "Anyone on the team spots something off — click it, circle it, draw on it, or drop a marker. Designers, QA, PMs, and developers all use the same toolbar. No DevTools required.",
 			items: [
 				"Element selection",
 				"Freehand drawing",
@@ -279,7 +295,7 @@ function HowItWorks() {
 			number: 2,
 			title: "Auto-capture",
 			color: "emerald",
-			desc: "Every annotation automatically extracts rich structured data from the page — no manual copying, no asking for more details.",
+			desc: "deloop automatically extracts XPaths, CSS selectors, computed styles, React component trees, and source file paths. Everyone's annotation becomes the same structured context — ready for any collaborator, human or AI.",
 			items: [
 				"XPaths & CSS selectors",
 				"Computed styles",
@@ -290,15 +306,15 @@ function HowItWorks() {
 		},
 		{
 			number: 3,
-			title: "Export",
+			title: "Share",
 			color: "cyan",
-			desc: "One click turns everything into a structured report. Paste into ChatGPT or Claude while you build, or pipe to your team's agent via MCP, webhook, or the shared dashboard.",
+			desc: "Route structured context to whoever needs it — paste into Claude, share with your team on the dashboard, pipe to an agent via MCP, or push to Slack, Jira, and Linear.",
 			items: [
-				"Clipboard paste into any LLM",
-				"MCP server for AI agents",
+				"Shared team dashboard",
+				"Paste into any LLM or coding assistant",
+				"MCP server for AI agent workflows",
 				"Webhook to Slack, Jira, Linear",
 				"JSON & Markdown download",
-				"Hosted dashboard for teams",
 			],
 		},
 	];
@@ -315,24 +331,18 @@ function HowItWorks() {
 		cyan: "text-cyan",
 	};
 
-	const lineColorMap: Record<string, string> = {
-		accent: "section-label text-accent before:bg-accent",
-		emerald: "section-label text-emerald before:bg-emerald",
-		cyan: "section-label text-cyan before:bg-cyan",
-	};
-	void lineColorMap;
-
 	return (
-		<section ref={ref} id="how-it-works" className="mb-16 sm:mb-20 scroll-mt-20 reveal">
-			<p className="section-label text-accent before:bg-accent">How it works</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
-				See it, annotate it, ship the fix
-			</h2>
-			<p className="text-[13px] text-muted mb-8 max-w-2xl">
-				Three steps from spotting a bug to a structured report you can paste into any LLM, hand
-				to a teammate, or pipe to an AI agent. Works the same whether you're building alone or
-				reviewing with a team.
-			</p>
+		<section ref={ref} id="how-it-works" className="mb-24 sm:mb-32 scroll-mt-20 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-amber before:bg-amber justify-center">How it works</p>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					One workflow, <span className="gradient-warm">everyone aligned</span>
+				</h2>
+				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
+					Anyone on the team spots an issue and annotates it. deloop captures structured context
+					that developers, designers, and AI agents can all act on — no translation needed.
+				</p>
+			</div>
 
 			<div className="flex flex-col sm:flex-row items-stretch gap-4 sm:gap-0">
 				{steps.map((step, i) => (
@@ -384,7 +394,7 @@ function Examples() {
 			label: "React",
 			color: "bg-accent",
 			title: "React",
-			desc: "One component. Everything captured on submit.",
+			desc: "One component. Your team and your AI agent get the same structured context.",
 		},
 		{
 			label: "Script tag",
@@ -402,13 +412,13 @@ function Examples() {
 			label: "Markdown",
 			color: "bg-emerald",
 			title: "Markdown output",
-			desc: "What gets copied to clipboard — paste into any LLM.",
+			desc: "What gets copied to clipboard — paste into Claude, Cursor, or any coding assistant.",
 		},
 		{
 			label: "JSON",
 			color: "bg-rose",
 			title: "JSON output",
-			desc: "The full structured payload — download or POST to a webhook.",
+			desc: "The full structured payload — download, POST to a webhook, or feed to your agent pipeline.",
 		},
 	];
 
@@ -587,7 +597,7 @@ Include code changes where applicable.`,
 	];
 
 	return (
-		<section className="mb-16 sm:mb-20">
+		<section className="mb-24 sm:mb-32">
 			<div className="flex items-center gap-1 mb-3 overflow-x-auto tabs-scroll pb-1 -mx-5 px-5 sm:mx-0 sm:px-0">
 				{tabs.map((t, i) => (
 					<button
@@ -620,16 +630,20 @@ Include code changes where applicable.`,
 function CapturedData() {
 	const ref = useReveal();
 	return (
-		<section ref={ref} className="mb-16 sm:mb-20 reveal">
-			<p className="section-label text-emerald before:bg-emerald">What gets captured</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
-				Everything an LLM needs to fix it — in one click
-			</h2>
-			<p className="text-[13px] text-muted mb-8 max-w-2xl">
-				Click an element and deloop captures its full DOM context, computed styles, React component
-				tree with source file locations, and a screenshot. Paste the output into any LLM and it
-				knows exactly what to fix and where — or send it to a teammate who can.
-			</p>
+		<section ref={ref} className="mb-24 sm:mb-32 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-emerald before:bg-emerald justify-center">
+					What gets captured
+				</p>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					Shared context, <span className="gradient-warm">zero ambiguity</span>
+				</h2>
+				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
+					Every annotation produces the same structured output — DOM selectors, computed styles,
+					React component trees, source file paths, and screenshots. Whether a designer filed it or
+					QA did, the developer and the AI agent both get exactly what they need.
+				</p>
+			</div>
 
 			<div className="grid lg:grid-cols-2 gap-6">
 				{/* Left: the readout card */}
@@ -724,31 +738,31 @@ function CapturedData() {
 							color: "text-accent",
 							dot: "bg-accent",
 							title: "DOM selectors",
-							desc: "XPath and CSS selector for every element — the most reliable way for an LLM to locate and reference specific nodes in code.",
+							desc: "XPath and CSS selector for every annotated element — the universal reference that developers and AI agents both use to locate the exact node.",
 						},
 						{
 							color: "text-cyan",
 							dot: "bg-cyan",
 							title: "Computed CSS",
-							desc: "The actual rendered values, not what's in the stylesheet. Background color, font size, padding, display mode — exactly what the browser computed.",
+							desc: "Actual rendered values, not what's in the stylesheet. Designers and developers see the same precise colors and spacing — no more \"it looks different on my screen.\"",
 						},
 						{
 							color: "text-emerald",
 							dot: "bg-emerald",
 							title: "React component context",
-							desc: "The full component hierarchy with props and source file locations. An LLM can go directly to the file and line that renders the problematic element.",
+							desc: "Full component hierarchy with props and source file locations. Anyone on the team files the annotation — the developer or agent goes straight to the right file and line.",
 						},
 						{
 							color: "text-amber",
 							dot: "bg-amber",
 							title: "Layout & bounding rect",
-							desc: "Element dimensions, position on screen, inner text, and outer HTML — everything needed to understand the element in context.",
+							desc: "Element dimensions, position on screen, inner text, and outer HTML — full spatial context for layout issues and design reviews.",
 						},
 						{
 							color: "text-rose",
 							dot: "bg-rose",
 							title: "Context screenshot",
-							desc: "A screenshot of the surrounding area is captured with every drawing annotation, so there's always visual reference alongside the structured data.",
+							desc: "Visual reference captured with every annotation. Everyone who acts on it — teammate or AI — sees exactly what the reporter saw.",
 						},
 					].map((item) => (
 						<div key={item.title} className="flex items-start gap-3">
@@ -772,19 +786,19 @@ function CapturedData() {
 function BeforeAfter() {
 	const ref = useReveal();
 	return (
-		<section ref={ref} className="mb-16 sm:mb-20 reveal">
-			<p className="section-label text-rose before:bg-rose">The problem</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
-				You're still describing UI bugs in sentences
-			</h2>
-			<p className="text-[13px] text-muted mb-3 max-w-2xl">
-				Vibing solo? You screenshot a bug, open DevTools, copy the selector, find the component,
-				paste it all into ChatGPT — and it still asks which element you mean.
-			</p>
-			<p className="text-[13px] text-muted mb-8 max-w-2xl">
-				On a team? Someone posts a blurry screenshot in Slack. Three follow-ups later, you still
-				can't reproduce it. The context is gone. The bug is stale. Everyone's frustrated.
-			</p>
+		<section ref={ref} className="mb-24 sm:mb-32 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-rose before:bg-rose justify-center">The problem</p>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					Collaboration breaks when{" "}
+					<span className="gradient-warm">context is missing</span>
+				</h2>
+				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
+					A designer posts a blurry screenshot in Slack. A PM writes "the button on that page." Your
+					AI agent asks which element you mean. Every handoff — human or AI — loses context. Three
+					follow-ups later, nobody can act.
+				</p>
+			</div>
 
 			<div className="grid sm:grid-cols-2 gap-4">
 				{/* The Old Way */}
@@ -817,6 +831,7 @@ function BeforeAfter() {
 							<p className="text-muted italic">
 								&quot;hey the button on the dashboard is the wrong color, can someone look at
 								it?&quot;
+
 							</p>
 							<div className="mt-2 rounded border border-border bg-bg h-16 flex items-center justify-center text-[10px] text-muted/50">
 								blurry-screenshot.png
@@ -845,7 +860,7 @@ function BeforeAfter() {
 							</p>
 						</div>
 						<p className="text-[11px] text-rose/80 font-medium">
-							4 messages. 20 minutes wasted. Still no actionable context.
+							4 messages. 20 minutes. Nobody — dev, designer, or agent — has what they need.
 						</p>
 					</div>
 				</div>
@@ -905,7 +920,7 @@ function BeforeAfter() {
 							</div>
 						</div>
 						<p className="text-[11px] text-emerald/80 font-medium font-sans mt-3">
-							One interaction. Every detail captured. Ready for an LLM or a developer.
+							One click. Structured context. Ready for a developer, designer review, or AI agent.
 						</p>
 					</div>
 				</div>
@@ -957,15 +972,17 @@ function Integrations() {
 	];
 
 	return (
-		<section ref={ref} className="mb-16 sm:mb-20 reveal">
-			<p className="section-label text-amber before:bg-amber">Integration</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
-				Add it anywhere in under a minute
-			</h2>
-			<p className="text-[13px] text-muted mb-8 max-w-2xl">
-				React component, CDN tag, Chrome extension, or programmatic init. Pick what fits your
-				stack — every method gives your team and your AI agents the same structured output.
-			</p>
+		<section ref={ref} className="mb-24 sm:mb-32 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-amber before:bg-amber justify-center">Integration</p>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					Connect your team <span className="gradient-warm">in under a minute</span>
+				</h2>
+				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
+					React component, CDN tag, Chrome extension, or programmatic init. Every integration method
+					gives your whole team — and your AI agents — the same structured collaboration surface.
+				</p>
+			</div>
 
 			<div className="grid sm:grid-cols-2 gap-4">
 				{methods.map((m) => (
@@ -1056,21 +1073,22 @@ app.post("/api/deloop", async (req) => {
 	];
 
 	return (
-		<section ref={ref} className="mb-16 sm:mb-20 reveal">
-			<p className="section-label text-rose before:bg-rose">Pipelines</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
-				Connect to anything with webhooks
-			</h2>
-			<p className="text-[13px] text-muted mb-3 max-w-2xl">
-				Set a{" "}
-				<code className="text-fg font-mono text-[12px] bg-bg-code px-1.5 py-0.5 rounded">
-					server
-				</code>{" "}
-				URL and deloop POSTs the full structured payload on every export. Write a small handler to
-				route it wherever your team works — Slack, Jira, GitHub, Linear, or your own custom
-				pipeline.
-			</p>
-			<div className="flex items-center gap-2 mb-8">
+		<section ref={ref} className="mb-24 sm:mb-32 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-rose before:bg-rose justify-center">Pipelines</p>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					Route feedback <span className="gradient-warm">to every collaborator</span>
+				</h2>
+				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
+					Set a{" "}
+					<code className="text-fg font-mono text-[12px] bg-bg-code px-1.5 py-0.5 rounded">
+						server
+					</code>{" "}
+					URL and deloop POSTs the full structured payload on every export.
+				</p>
+			</div>
+
+			<div className="max-w-xl mx-auto mb-8">
 				<CodeBlock lang="tsx" code={`<Deloop server="https://api.yourapp.com/deloop" />`} />
 			</div>
 
@@ -1095,8 +1113,8 @@ app.post("/api/deloop", async (req) => {
 						onSubmit
 					</code>{" "}
 					callback instead of a server URL. You receive the full typed payload and can do anything —
-					chain multiple services, transform the data, run it through your own AI pipeline, or
-					conditionally route based on labels.
+					chain multiple services, transform the data, notify your team, feed it into your AI agent,
+					or route feedback to every collaborator simultaneously.
 				</p>
 				<CodeBlock
 					lang="tsx"
@@ -1131,20 +1149,20 @@ function UseCases() {
 		{
 			color: "bg-accent",
 			colorText: "text-accent",
-			role: "Vibe coding & building",
-			desc: "Spot something off, annotate it, paste the structured context into Claude, ChatGPT, or Cursor. The LLM gets XPaths, component trees, and source file paths — it can jump straight to the fix. No DevTools, no copy-pasting selectors.",
+			role: "Developer + AI agent",
+			desc: "Collaborate with your coding assistant the way you'd collaborate with a teammate. Annotate what's wrong, hit export, and the structured prompt lands in Claude, Cursor, or ChatGPT — XPaths, component trees, source file paths included. Your agent opens the file and ships the fix.",
 		},
 		{
 			color: "bg-emerald",
 			colorText: "text-emerald",
-			role: "AI agents & MCP",
-			desc: "Connect via the built-in MCP server, webhooks, or onSubmit callbacks. Annotate a bug and the structured payload flows directly into your agentic pipeline. Source file locations let the agent open the right file immediately.",
+			role: "Self-review & iteration",
+			desc: "Review your own work in the browser and annotate what needs to change. The report captures exact CSS values, bounding rects, and screenshots — fix it yourself or hand the context to your agent. Same structured output either way.",
 		},
 		{
 			color: "bg-cyan",
 			colorText: "text-cyan",
-			role: "Designing in the browser",
-			desc: "Tweak spacing, colors, or layout — annotate what's wrong and the report includes exact computed CSS values, bounding rects, and screenshots. No guessing which shade of blue it is.",
+			role: "AI agent pipelines & MCP",
+			desc: "Wire deloop into your agent via MCP, a webhook, or onSubmit callback. Every annotation from anyone on the team becomes a structured payload your agent can act on — source file locations and all.",
 		},
 	];
 
@@ -1152,41 +1170,43 @@ function UseCases() {
 		{
 			color: "bg-amber",
 			colorText: "text-amber",
-			role: "Designers & QA",
-			desc: "File bug reports with exact CSS values, bounding rects, screenshots, and reproduction context. Developers fix the right thing on the first try. No \"works on my machine.\"",
+			role: "Design feedback & handoff",
+			desc: "Designers annotate what needs to change with exact CSS values, bounding rects, and screenshots. Developers and AI agents see the precise spec — not a vague Slack message. One annotation replaces three follow-up questions.",
 		},
 		{
 			color: "bg-rose",
 			colorText: "text-rose",
-			role: "Product managers & reviewers",
-			desc: "Give feedback directly on staging without leaving the browser. The toolbar captures everything a developer or AI agent needs — no follow-up questions, no re-explanation.",
+			role: "QA & stakeholder review",
+			desc: "QA files structured, reproducible reports. PMs review staging in the browser. Everyone's feedback arrives in the same format — developers and agents can act on it immediately, no re-explanation needed.",
 		},
 		{
 			color: "bg-fg",
 			colorText: "text-fg",
-			role: "Shared dashboards & history",
-			desc: "Pipe all annotations to the hosted dashboard for shared report history, search, and org-level settings. Every bug report is searchable and traceable, not lost in Slack threads.",
+			role: "Shared dashboard & history",
+			desc: "Every annotation flows to the hosted dashboard — one searchable history of visual feedback across the whole team. Structured, traceable, and ready for any collaborator, not buried in Slack threads.",
 		},
 	];
 
 	return (
-		<section ref={ref} className="mb-16 sm:mb-20 reveal">
-			<p className="section-label text-cyan before:bg-cyan">Who it&apos;s for</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
-				Solo or team. Same toolbar.
-			</h2>
-			<p className="text-[13px] text-muted mb-8 max-w-2xl">
-				Use it locally while you build — paste annotations straight into any LLM. Or roll it out
-				to your whole team so designers, QA, PMs, and developers share the same structured
-				feedback loop.
-			</p>
+		<section ref={ref} className="mb-24 sm:mb-32 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-cyan before:bg-cyan justify-center">Built for collaboration</p>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					Every role, <span className="gradient-warm">one shared language</span>
+				</h2>
+				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
+					Designers give pixel-perfect feedback. QA files structured reports. PMs review staging
+					in the browser. Developers paste context into their AI agent. Everyone uses the same
+					toolbar, and every annotation arrives in the same format — zero follow-ups.
+				</p>
+			</div>
 
 			<div className="grid sm:grid-cols-2 gap-6">
 				{/* Solo column */}
 				<div>
 					<p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-accent mb-4 flex items-center gap-2">
 						<span className="block w-3 h-[1.5px] bg-accent" />
-						Solo &amp; local
+						You &amp; your AI
 					</p>
 					<div className="space-y-4">
 						{soloUses.map((r) => (
@@ -1208,7 +1228,7 @@ function UseCases() {
 				<div>
 					<p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-amber mb-4 flex items-center gap-2">
 						<span className="block w-3 h-[1.5px] bg-amber" />
-						Teams &amp; orgs
+						Your whole team
 					</p>
 					<div className="space-y-4">
 						{teamUses.map((r) => (
@@ -1240,7 +1260,7 @@ function Features() {
 		{
 			color: "bg-accent",
 			label: "Element inspector",
-			desc: "Click any element to capture its XPath, CSS selector, computed styles, bounding rect, inner text, and outer HTML — everything an LLM needs to locate and fix it",
+			desc: "Click any element to capture its XPath, CSS selector, computed styles, bounding rect, inner text, and outer HTML — everything any collaborator needs to act",
 		},
 		{
 			color: "bg-cyan",
@@ -1250,7 +1270,7 @@ function Features() {
 		{
 			color: "bg-emerald",
 			label: "Freehand drawing",
-			desc: "Circle a problem, underline text, or sketch what the layout should look like. Each drawing includes a context screenshot of the surrounding area",
+			desc: "Circle a problem, underline text, or sketch the expected layout. Perfect for design feedback — each drawing includes a context screenshot of the surrounding area",
 		},
 		{
 			color: "bg-amber",
@@ -1265,12 +1285,12 @@ function Features() {
 		{
 			color: "bg-cyan",
 			label: "Comments & threads",
-			desc: "Add comments to any annotation to explain the issue. Comments are included in the exported report for full context",
+			desc: "Add context to any annotation — explain what's wrong or what you expect. Comments travel with the report so every collaborator gets the full picture",
 		},
 		{
 			color: "bg-emerald",
-			label: "LLM-ready Markdown",
-			desc: "One-click export as structured Markdown with page URL, viewport size, user agent, and every annotation — ready to paste into any LLM chat",
+			label: "Structured Markdown export",
+			desc: "One-click export as structured Markdown with page URL, viewport, user agent, and every annotation — share with teammates, paste into Claude or Cursor, or feed to any LLM",
 		},
 		{
 			color: "bg-accent",
@@ -1280,12 +1300,12 @@ function Features() {
 		{
 			color: "bg-amber",
 			label: "MCP, webhooks & clipboard",
-			desc: "Expose annotations via MCP for agentic workflows, POST to any webhook URL, or copy to clipboard for instant pasting into any LLM chat",
+			desc: "Route feedback to AI agents via MCP, POST to any webhook for team workflows, or copy to clipboard for instant sharing",
 		},
 		{
 			color: "bg-rose",
 			label: "Custom prompt templates",
-			desc: "Pass your own template function to control exactly what the LLM sees. Receives all annotations, page context, and settings",
+			desc: "Control exactly what gets exported. Pass a template function that shapes the output for your team's review workflow or AI agent pipeline",
 		},
 		{
 			color: "bg-cyan",
@@ -1300,7 +1320,7 @@ function Features() {
 		{
 			color: "bg-accent",
 			label: "Plugin system",
-			desc: "Extend the toolbar with custom tools, panels, and buttons. Add performance metrics, accessibility checks, or whatever your team needs",
+			desc: "Extend the toolbar with custom tools, panels, and buttons. Tailor the collaboration workflow to your team's specific needs",
 		},
 		{
 			color: "bg-amber",
@@ -1310,17 +1330,18 @@ function Features() {
 	];
 
 	return (
-		<section ref={ref} className="mb-16 sm:mb-20 reveal">
-			<p className="section-label text-accent before:bg-accent">Features</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
-				Everything captured, nothing lost
-			</h2>
-			<p className="text-[13px] text-muted mb-6 max-w-2xl">
-				Every annotation automatically captures the surrounding context — selectors, styles,
-				components, screenshots — so the person or AI agent fixing the bug has everything they need
-				without asking.
-			</p>
-			<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-4">
+		<section ref={ref} className="mb-24 sm:mb-32 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-accent before:bg-accent justify-center">Features</p>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					Built for <span className="gradient-warm">collaborative feedback</span>
+				</h2>
+				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
+					Every annotation automatically captures the surrounding context so whoever acts on it —
+					a teammate, a reviewer, or an AI agent — has everything they need on the first try.
+				</p>
+			</div>
+			<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-5">
 				{features.map((f) => (
 					<div key={f.label} className="flex items-start gap-3">
 						<span className={`mt-[7px] block w-1.5 h-1.5 rounded-full ${f.color} shrink-0`} />
@@ -1342,22 +1363,24 @@ function Features() {
 function Pricing() {
 	const ref = useReveal();
 	return (
-		<section ref={ref} id="pricing" className="mb-16 sm:mb-20 scroll-mt-20 reveal">
-			<p className="section-label text-emerald before:bg-emerald">Pricing</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
-				Every feature included. Even on free.
-			</h2>
-			<p className="text-[13px] text-muted mb-6 max-w-2xl">
-				Self-host with the full feature set at no cost. Add the hosted dashboard when your team
-				needs shared report history, search, and org-level settings.
-			</p>
+		<section ref={ref} id="pricing" className="mb-24 sm:mb-32 scroll-mt-20 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-emerald before:bg-emerald justify-center">Pricing</p>
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					Start collaborating. <span className="gradient-warm">Free.</span>
+				</h2>
+				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
+					Every collaboration feature is free and open source. When your team needs shared report
+					history, search, and org-wide settings, add the hosted dashboard.
+				</p>
+			</div>
 			<PricingCards />
 		</section>
 	);
 }
 
 /* ═══════════════════════════════════════════
-   CodeBlock
+   CodeBlock (Shiki syntax highlighter — output is trusted, not user-controlled)
    ═══════════════════════════════════════════ */
 
 function CodeBlock({ code, lang }: { code: string; lang: string }) {
@@ -1424,6 +1447,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 			{html ? (
 				<div
 					className="[&_pre]:p-4 [&_pre]:sm:p-5 [&_pre]:overflow-x-auto [&_pre]:text-[12px] [&_pre]:sm:text-[13px] [&_pre]:leading-[1.7] [&_pre]:!bg-bg-code [&_code]:font-mono"
+					// eslint-disable-next-line react/no-danger -- Shiki output is trusted (code-controlled, not user input)
 					dangerouslySetInnerHTML={{ __html: html }}
 				/>
 			) : (
@@ -1442,51 +1466,58 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 function FAQ() {
 	const faqs = [
 		{
-			q: "How does this work with AI agents?",
-			a: "Connect via the built-in MCP server, an onSubmit callback, or a webhook URL. When anyone on the team annotates a bug, the structured payload — XPaths, styles, component trees, screenshots — flows directly into Claude, Cursor, or your own agentic pipeline. The agent gets exact source file paths so it can jump straight to the code.",
+			q: "How does team collaboration work?",
+			a: "Everyone — designers, QA, PMs, developers — uses the same toolbar. Each annotation produces identical structured output regardless of who created it. Feedback flows to the shared dashboard, Slack, Jira, or directly to your AI agent. Zero follow-up messages needed.",
 		},
 		{
-			q: "Who is this for?",
-			a: "Anyone who works on a website. Developers feed annotations to AI agents and coding assistants. Designers flag styling issues with exact CSS values. QA files structured, reproducible reports. PMs and reviewers annotate staging without leaving the browser.",
+			q: "How does this work with AI agents?",
+			a: "Connect via the built-in MCP server, an onSubmit callback, or a webhook URL. When anyone on your team annotates a visual issue, the structured payload — XPaths, styles, component trees, source file paths, screenshots — flows directly into Claude, Cursor, or your own agentic pipeline.",
+		},
+		{
+			q: "Who on my team can use it?",
+			a: "Anyone. Designers give pixel-perfect feedback with exact CSS values. QA files structured bug reports. PMs review staging in the browser. Developers paste into their coding assistant. No DevTools knowledge required — the toolbar handles the technical capture.",
 		},
 		{
 			q: "How does React context extraction work?",
-			a: "When you select an element, deloop reads the React fiber node attached to the DOM element and walks up the tree. It captures every parent component's name, props, and source file location. This all happens locally in your browser — nothing is sent to a server until you click submit.",
+			a: "When anyone selects an element, deloop reads the React fiber node and walks up the tree, capturing every component's name, props, and source file location. A designer's annotation includes the same source paths a developer needs — all locally in the browser.",
 		},
 		{
 			q: "Does it work without React?",
-			a: "Yes. Element selection, XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any website. React context is captured automatically when React is detected and gracefully skipped otherwise.",
+			a: "Yes. Element selection, XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any website. React context is captured automatically when detected and gracefully skipped otherwise.",
 		},
 		{
 			q: "What output formats are supported?",
-			a: "Clipboard copy as Markdown (paste straight into ChatGPT or Claude), downloadable JSON or Markdown files, and webhook POST to any URL. Images can be embedded as base64 or exported as separate PNG files.",
+			a: "Clipboard copy as Markdown (share with teammates or paste into Claude), downloadable JSON or Markdown files, and webhook POST to any URL. Images can be embedded as base64 or exported as separate PNG files.",
 		},
 		{
-			q: "Can I customize what gets sent to the LLM?",
-			a: "Yes. Pass a promptTemplate function that receives all annotations, page URL, viewport, user agent, and settings. Return any string — Markdown, XML, plain text, or a format tailored to your agentic workflow.",
+			q: "Can I customize the exported output?",
+			a: "Yes. Pass a promptTemplate function that receives all annotations, page URL, viewport, user agent, and settings. Shape the output for your team's review workflow, agent pipeline, or project management integration.",
 		},
 		{
 			q: "How do I use it on sites I don't own?",
-			a: "Install the Chrome extension. It injects the toolbar into any page — staging environments, competitor sites, third-party tools — without modifying source code.",
+			a: "Install the Chrome extension. It injects the toolbar into any page — staging environments, competitor sites, third-party tools. Your whole team can annotate without modifying source code.",
 		},
 		{
 			q: "Does it affect my app's performance?",
-			a: "No. The toolbar renders in its own isolated DOM container. It only reads the page when you interact with a tool — no polling, no mutation observers, no background overhead.",
+			a: "No. The toolbar renders in its own isolated DOM container. It only reads the page when someone interacts with a tool — no polling, no mutation observers, no background overhead.",
 		},
 		{
 			q: "Why not just use browser DevTools?",
-			a: "DevTools is built for developers. deloop is a toolbar you embed in your app so anyone — designers, PMs, QA, reviewers — can capture rich, structured context without knowing what an XPath is or how to open the inspector.",
+			a: "DevTools is built for developers debugging alone. deloop is a collaboration surface — anyone on your team captures rich, structured context without knowing what an XPath is. The same output works for design reviews, team handoffs, and AI agents.",
 		},
 	];
 
 	const ref = useReveal();
 	return (
-		<section ref={ref} id="faq" className="mb-16 sm:mb-20 scroll-mt-20 reveal">
-			<p className="section-label text-cyan before:bg-cyan">FAQ</p>
-			<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-6">
-				Frequently asked questions
-			</h2>
-			<div className="grid sm:grid-cols-2 gap-x-16 gap-y-5">
+		<section ref={ref} id="faq" className="mb-24 sm:mb-32 scroll-mt-20 reveal">
+			<div className="text-center mb-10 sm:mb-12">
+				<p className="section-label text-cyan before:bg-cyan justify-center">FAQ</p>
+
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+					Frequently asked <span className="gradient-warm">questions</span>
+				</h2>
+			</div>
+			<div className="grid sm:grid-cols-2 gap-x-16 gap-y-6">
 				{faqs.map((f) => (
 					<div key={f.q}>
 						<p className="text-sm font-medium text-fg mb-1">{f.q}</p>
@@ -1530,12 +1561,12 @@ function Contact() {
 	};
 
 	return (
-		<section ref={ref} id="contact" className="mb-16 sm:mb-20 scroll-mt-20 reveal">
+		<section ref={ref} id="contact" className="mb-24 sm:mb-32 scroll-mt-20 reveal">
 			<div className="grid sm:grid-cols-2 gap-6 items-start">
 				{/* Left: copy */}
 				<div>
 					<p className="section-label text-accent before:bg-accent">Contact</p>
-					<h2 className="text-xl sm:text-2xl font-bold text-fg tracking-[-0.02em] mb-2">
+					<h2 className="text-2xl sm:text-3xl font-bold text-fg tracking-[-0.025em] mb-3">
 						Get in touch
 					</h2>
 					<p className="text-[13px] text-muted leading-relaxed mb-5 max-w-sm">
@@ -1646,7 +1677,7 @@ function Contact() {
 							<button
 								type="submit"
 								disabled={status === "sending" || status === "sent"}
-								className="inline-flex items-center gap-2 text-bg bg-fg rounded-lg px-4 py-2 text-[13px] font-medium hover:bg-fg/85 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+								className="btn-warm disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								{status === "sending" ? (
 									<>
@@ -1791,7 +1822,11 @@ function Footer() {
 
 function ToolbarCTA() {
 	const [hidden, setHidden] = useState(() => {
-		try { return sessionStorage.getItem("deloop-cta-dismissed") === "1"; } catch { return false; }
+		try {
+			return sessionStorage.getItem("deloop-cta-dismissed") === "1";
+		} catch {
+			return false;
+		}
 	});
 
 	useEffect(() => {
@@ -1810,13 +1845,19 @@ function ToolbarCTA() {
 	if (hidden) return null;
 
 	return (
-		<div className="fixed bottom-4 left-0 right-0 z-40 pointer-events-none animate-[fadeIn_0.2s_ease-out_both]" style={{ height: "44px" }}>
+		<div
+			className="fixed bottom-4 left-0 right-0 z-40 pointer-events-none animate-[fadeIn_0.2s_ease-out_both]"
+			style={{ height: "44px" }}
+		>
 			{/* Left arrow */}
-			<div className="absolute flex items-center toolbar-cta-bob" style={{ right: "calc(50% + 270px)", top: "50%", transform: "translateY(-50%)" }}>
+			<div
+				className="absolute flex items-center toolbar-cta-bob"
+				style={{ right: "calc(50% + 270px)", top: "50%", transform: "translateY(-50%)" }}
+			>
 				<span
 					className="text-[18px] mr-2 whitespace-nowrap"
 					style={{
-						color: "#fb7185",
+						color: "#3b82f6",
 						fontFamily: "var(--font-display)",
 						fontStyle: "italic",
 						transform: "rotate(-4deg)",
@@ -1828,20 +1869,35 @@ function ToolbarCTA() {
 				<svg width="160" height="56" viewBox="0 0 160 56" fill="none">
 					<path
 						d="M4 40C30 44 65 46 90 36C115 26 130 14 150 18"
-						stroke="#fb7185"
+						stroke="#3b82f6"
 						strokeWidth="3"
 						strokeLinecap="round"
 						fill="none"
 					/>
-					<path d="M140 10L152 18L140 26" stroke="#fb7185" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+					<path
+						d="M140 10L152 18L140 26"
+						stroke="#3b82f6"
+						strokeWidth="3"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						fill="none"
+					/>
 				</svg>
 			</div>
 			{/* Right arrow */}
-			<div className="absolute flex items-center flex-row-reverse toolbar-cta-bob" style={{ left: "calc(50% + 200px)", top: "50%", transform: "translateY(-50%)", animationDelay: "0.3s" }}>
+			<div
+				className="absolute flex items-center flex-row-reverse toolbar-cta-bob"
+				style={{
+					left: "calc(50% + 200px)",
+					top: "50%",
+					transform: "translateY(-50%)",
+					animationDelay: "0.3s",
+				}}
+			>
 				<span
 					className="text-[18px] ml-2 whitespace-nowrap"
 					style={{
-						color: "#fb7185",
+						color: "#3b82f6",
 						fontFamily: "var(--font-display)",
 						fontStyle: "italic",
 						transform: "rotate(4deg)",
@@ -1853,12 +1909,19 @@ function ToolbarCTA() {
 				<svg width="160" height="56" viewBox="0 0 160 56" fill="none">
 					<path
 						d="M156 40C130 44 95 46 70 36C45 26 30 14 10 18"
-						stroke="#fb7185"
+						stroke="#3b82f6"
 						strokeWidth="3"
 						strokeLinecap="round"
 						fill="none"
 					/>
-					<path d="M20 10L8 18L20 26" stroke="#fb7185" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+					<path
+						d="M20 10L8 18L20 26"
+						stroke="#3b82f6"
+						strokeWidth="3"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						fill="none"
+					/>
 				</svg>
 			</div>
 		</div>
@@ -1880,7 +1943,16 @@ function ThemeToggle({ theme, onCycle }: { theme: Theme; onCycle: () => void }) 
 			title={`Theme: ${label}`}
 		>
 			{theme === "light" ? (
-				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+				<svg
+					width="15"
+					height="15"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="1.5"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
 					<circle cx="12" cy="12" r="5" />
 					<line x1="12" y1="1" x2="12" y2="3" />
 					<line x1="12" y1="21" x2="12" y2="23" />
@@ -1892,11 +1964,29 @@ function ThemeToggle({ theme, onCycle }: { theme: Theme; onCycle: () => void }) 
 					<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
 				</svg>
 			) : theme === "dark" ? (
-				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+				<svg
+					width="15"
+					height="15"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="1.5"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
 					<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
 				</svg>
 			) : (
-				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+				<svg
+					width="15"
+					height="15"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="1.5"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
 					<rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
 					<line x1="8" y1="21" x2="16" y2="21" />
 					<line x1="12" y1="17" x2="12" y2="21" />

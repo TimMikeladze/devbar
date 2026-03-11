@@ -17,7 +17,12 @@ export type ElementData = {
 	outerHTML: string;
 	overflowClipped: boolean;
 	renderedFont: string;
-	imageDimensions: { naturalWidth: number; naturalHeight: number; renderedWidth: number; renderedHeight: number } | null;
+	imageDimensions: {
+		naturalWidth: number;
+		naturalHeight: number;
+		renderedWidth: number;
+		renderedHeight: number;
+	} | null;
 	formState: { valid: boolean; message: string; required: boolean } | null;
 	pseudoContent: { before: string; after: string } | null;
 	reactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;

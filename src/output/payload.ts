@@ -1,4 +1,10 @@
-import type { Annotation, CaptureConfig, DeloopPayload, DeloopSettings, PromptTemplate } from "@/session/types";
+import type {
+	Annotation,
+	CaptureConfig,
+	DeloopPayload,
+	DeloopSettings,
+	PromptTemplate,
+} from "@/session/types";
 import { DEFAULT_CAPTURE_CONFIG } from "@/session/types";
 import { defaultPromptTemplate } from "./prompt";
 
@@ -9,7 +15,11 @@ const originalConsoleError = console.error;
 
 try {
 	console.error = (...args: unknown[]) => {
-		const msg = args.map((a) => (typeof a === "string" ? a : a instanceof Error ? `${a.name}: ${a.message}` : String(a))).join(" ");
+		const msg = args
+			.map((a) =>
+				typeof a === "string" ? a : a instanceof Error ? `${a.name}: ${a.message}` : String(a),
+			)
+			.join(" ");
 		consoleErrors.push(msg.slice(0, 300));
 		if (consoleErrors.length > MAX_CONSOLE_ERRORS) consoleErrors.shift();
 		originalConsoleError.apply(console, args);
@@ -38,7 +48,9 @@ export function buildPayload(
 	const cap = settings?.capture ?? DEFAULT_CAPTURE_CONFIG;
 
 	const colorScheme: "light" | "dark" = cap.mediaPreferences
-		? (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light")
+		? window.matchMedia?.("(prefers-color-scheme: dark)")?.matches
+			? "dark"
+			: "light"
 		: "light";
 	const reducedMotion = cap.mediaPreferences
 		? (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false)

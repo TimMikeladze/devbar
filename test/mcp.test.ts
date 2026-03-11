@@ -71,7 +71,11 @@ function makePayload(overrides: Record<string, unknown> = {}): string {
 					reactContext: {
 						componentPath: "App > Form > SubmitButton",
 						components: [
-							{ name: "SubmitButton", props: { disabled: true }, source: { fileName: "SubmitButton.tsx", lineNumber: 12 } },
+							{
+								name: "SubmitButton",
+								props: { disabled: true },
+								source: { fileName: "SubmitButton.tsx", lineNumber: 12 },
+							},
 						],
 					},
 				},
@@ -103,7 +107,13 @@ async function seedTestData() {
 	await db.insert(apiKeys).values([
 		{ id: "key-a", organizationId: ORG_A, key: API_KEY_A, label: "Test Key A" },
 		{ id: "key-b", organizationId: ORG_B, key: API_KEY_B, label: "Test Key B" },
-		{ id: "key-revoked", organizationId: ORG_A, key: API_KEY_REVOKED, label: "Revoked Key", revokedAt: new Date() },
+		{
+			id: "key-revoked",
+			organizationId: ORG_A,
+			key: API_KEY_REVOKED,
+			label: "Revoked Key",
+			revokedAt: new Date(),
+		},
 	]);
 
 	// Reports for Org A
@@ -144,8 +154,20 @@ async function seedTestData() {
 
 	// Comments on report A1
 	await db.insert(comments).values([
-		{ id: "comment-1", reportId: REPORT_A1_ID, userId: "user-1", authorName: "Alice", text: "Still broken" },
-		{ id: "comment-2", reportId: REPORT_A1_ID, userId: "user-3", authorName: "Charlie", text: "I can reproduce" },
+		{
+			id: "comment-1",
+			reportId: REPORT_A1_ID,
+			userId: "user-1",
+			authorName: "Alice",
+			text: "Still broken",
+		},
+		{
+			id: "comment-2",
+			reportId: REPORT_A1_ID,
+			userId: "user-3",
+			authorName: "Charlie",
+			text: "I can reproduce",
+		},
 	]);
 }
 
@@ -172,7 +194,7 @@ async function mcpRequest(
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
-			"Accept": "application/json, text/event-stream",
+			Accept: "application/json, text/event-stream",
 			...headers,
 		},
 		body: JSON.stringify(body),
@@ -287,9 +309,7 @@ afterAll(async () => {
 describe("MCP Session Management", () => {
 	test("initializes a session without API key (local mode)", async () => {
 		const sessionId = await initSession();
-		expect(sessionId).toMatch(
-			/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-		);
+		expect(sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 	});
 
 	test("initializes a session with valid API key", async () => {
@@ -507,7 +527,12 @@ describe("get_report", () => {
 
 	test("enforces org scoping — Org A cannot see Org B reports", async () => {
 		const sessionId = await initSession(API_KEY_A);
-		const { result } = await callTool(sessionId, "get_report", { report_id: REPORT_B1_ID }, API_KEY_A);
+		const { result } = await callTool(
+			sessionId,
+			"get_report",
+			{ report_id: REPORT_B1_ID },
+			API_KEY_A,
+		);
 
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toContain("not found");
@@ -535,7 +560,9 @@ describe("search_reports", () => {
 
 	test("returns empty for no matches", async () => {
 		const sessionId = await initSession();
-		const { result } = await callTool(sessionId, "search_reports", { query: "zzz_nonexistent_zzz" });
+		const { result } = await callTool(sessionId, "search_reports", {
+			query: "zzz_nonexistent_zzz",
+		});
 		const data = parseToolText(result);
 
 		expect(data.reports.length).toBe(0);
@@ -552,7 +579,10 @@ describe("search_reports", () => {
 
 	test("includes total count for pagination", async () => {
 		const sessionId = await initSession();
-		const { result } = await callTool(sessionId, "search_reports", { query: "example.com", limit: 1 });
+		const { result } = await callTool(sessionId, "search_reports", {
+			query: "example.com",
+			limit: 1,
+		});
 		const data = parseToolText(result);
 
 		expect(data.reports.length).toBe(1);
