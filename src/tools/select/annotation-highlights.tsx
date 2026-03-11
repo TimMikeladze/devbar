@@ -21,7 +21,7 @@ export function AnnotationHighlights({
 	onFocusAnnotation,
 	onUpdateAnnotation,
 	selectMode,
-}: AnnotationHighlightsProps) {
+}: AnnotationHighlightsProps): React.ReactNode {
 	const elementContainerRef = useRef<HTMLDivElement>(null);
 	const markerContainerRef = useRef<HTMLDivElement>(null);
 	const drawingContainerRef = useRef<HTMLDivElement>(null);

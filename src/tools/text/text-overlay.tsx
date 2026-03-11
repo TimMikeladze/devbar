@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Annotation } from "@/session/types";
+import type { Annotation, CaptureConfig } from "@/session/types";
 import { getXPath, getCssSelector } from "@/tools/select/element-data";
 import { extractReactContext } from "@/tools/select/react-fiber";
 import { TextPin } from "./text-pin";
@@ -8,9 +8,10 @@ type TextOverlayProps = {
 	onCapture: (annotation: Annotation) => void;
 	onDone: () => void;
 	annotations: Annotation[];
+	capture?: CaptureConfig;
 };
 
-export function TextOverlay({ onCapture, onDone, annotations }: TextOverlayProps): React.ReactNode {
+export function TextOverlay({ onCapture, onDone, annotations, capture }: TextOverlayProps): React.ReactNode {
 	const [inputPos, setInputPos] = useState<{
 		x: number;
 		y: number;
@@ -31,9 +32,9 @@ export function TextOverlay({ onCapture, onDone, annotations }: TextOverlayProps
 			e.stopPropagation();
 
 			const el = document.elementFromPoint(e.clientX, e.clientY);
-			const xpath = el ? getXPath(el) : "";
-			const cssSelector = el ? getCssSelector(el) : "";
-			const reactContext = el ? extractReactContext(el) : null;
+			const xpath = el && capture?.xpath !== false ? getXPath(el) : "";
+			const cssSelector = el && capture?.cssSelector !== false ? getCssSelector(el) : "";
+			const reactContext = el && capture?.reactContext !== false ? extractReactContext(el) : null;
 
 			setInputPos({ x: e.clientX, y: e.clientY, xpath, cssSelector, reactContext });
 			setText("");

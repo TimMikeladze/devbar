@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Annotation, MarkerData } from "@/session/types";
+import type { Annotation, CaptureConfig, MarkerData } from "@/session/types";
 import { getXPath, getCssSelector } from "@/tools/select/element-data";
 import { extractReactContext } from "@/tools/select/react-fiber";
 
@@ -8,6 +8,7 @@ type MarkerOverlayProps = {
 	onDone: () => void;
 	annotations: Annotation[];
 	onFocusAnnotation?: (id: string) => void;
+	capture?: CaptureConfig;
 };
 
 const MARKER_COLORS = [
@@ -28,12 +29,14 @@ export function MarkerOverlay({
 	onDone,
 	annotations,
 	onFocusAnnotation,
+	capture,
 }: MarkerOverlayProps): React.ReactNode {
 	const [commentInput, setCommentInput] = useState<{
 		x: number;
 		y: number;
 		scrollX: number;
 		scrollY: number;
+		tagName: string;
 		xpath: string;
 		cssSelector: string;
 		reactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
@@ -55,15 +58,17 @@ export function MarkerOverlay({
 			e.stopPropagation();
 
 			const el = document.elementFromPoint(e.clientX, e.clientY);
-			const xpath = el ? getXPath(el) : "";
-			const cssSelector = el ? getCssSelector(el) : "";
-			const reactContext = el ? extractReactContext(el) : null;
+			const tagName = el ? el.tagName.toLowerCase() : "";
+			const xpath = el && capture?.xpath !== false ? getXPath(el) : "";
+			const cssSelector = el && capture?.cssSelector !== false ? getCssSelector(el) : "";
+			const reactContext = el && capture?.reactContext !== false ? extractReactContext(el) : null;
 
 			setCommentInput({
 				x: e.clientX,
 				y: e.clientY,
 				scrollX: window.scrollX,
 				scrollY: window.scrollY,
+				tagName,
 				xpath,
 				cssSelector,
 				reactContext,
@@ -114,6 +119,7 @@ export function MarkerOverlay({
 				scrollOffset: { x: commentInput.scrollX, y: commentInput.scrollY },
 				color: commentInput.color,
 				number: commentInput.number,
+				nearestElementTagName: commentInput.tagName,
 				nearestElementXPath: commentInput.xpath,
 				nearestElementCssSelector: commentInput.cssSelector,
 				nearestReactContext: commentInput.reactContext,

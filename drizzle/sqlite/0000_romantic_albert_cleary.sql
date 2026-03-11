@@ -16,6 +16,17 @@ CREATE TABLE `account` (
 );
 --> statement-breakpoint
 CREATE INDEX `account_userId_idx` ON `account` (`user_id`);--> statement-breakpoint
+CREATE TABLE `deloop_api_keys` (
+	`id` text PRIMARY KEY NOT NULL,
+	`organization_id` text NOT NULL,
+	`key` text NOT NULL,
+	`label` text,
+	`revoked_at` integer,
+	`created_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `deloop_api_keys_key_unique` ON `deloop_api_keys` (`key`);--> statement-breakpoint
+CREATE INDEX `idx_deloop_api_keys_org_id` ON `deloop_api_keys` (`organization_id`);--> statement-breakpoint
 CREATE TABLE `deloop_comments` (
 	`id` text PRIMARY KEY NOT NULL,
 	`report_id` text NOT NULL,
@@ -25,6 +36,7 @@ CREATE TABLE `deloop_comments` (
 	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
+CREATE INDEX `idx_deloop_comments_report_id` ON `deloop_comments` (`report_id`);--> statement-breakpoint
 CREATE TABLE `invitation` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text NOT NULL,
@@ -71,6 +83,10 @@ CREATE TABLE `deloop_reports` (
 	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
+CREATE INDEX `idx_deloop_reports_org_id` ON `deloop_reports` (`organization_id`);--> statement-breakpoint
+CREATE INDEX `idx_deloop_reports_user_id` ON `deloop_reports` (`user_id`);--> statement-breakpoint
+CREATE INDEX `idx_deloop_reports_url` ON `deloop_reports` (`url`);--> statement-breakpoint
+CREATE INDEX `idx_deloop_reports_created_at` ON `deloop_reports` (`created_at`);--> statement-breakpoint
 CREATE TABLE `session` (
 	`id` text PRIMARY KEY NOT NULL,
 	`expires_at` integer NOT NULL,
@@ -86,6 +102,21 @@ CREATE TABLE `session` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `session_token_unique` ON `session` (`token`);--> statement-breakpoint
 CREATE INDEX `session_userId_idx` ON `session` (`user_id`);--> statement-breakpoint
+CREATE TABLE `deloop_subscriptions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`organization_id` text NOT NULL,
+	`stripe_customer_id` text NOT NULL,
+	`stripe_subscription_id` text,
+	`stripe_price_id` text,
+	`plan` text DEFAULT 'free' NOT NULL,
+	`status` text,
+	`current_period_end` integer,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `deloop_subscriptions_organization_id_unique` ON `deloop_subscriptions` (`organization_id`);--> statement-breakpoint
+CREATE INDEX `idx_deloop_subscriptions_stripe_customer` ON `deloop_subscriptions` (`stripe_customer_id`);--> statement-breakpoint
 CREATE TABLE `user` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,

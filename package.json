@@ -71,10 +71,11 @@
 	"dependencies": {
 		"@drizzle-team/brocli": "^0.11.0",
 		"@libsql/client": "^0.17.0",
+		"@modelcontextprotocol/sdk": "^1.27.1",
 		"better-auth": "^1.5.4",
 		"drizzle-orm": "^0.45.1",
 		"hono": "^4.12.5",
-		"html2canvas": "^1.4.1",
+		"html-to-image": "^1.11.13",
 		"postgres": "^3.4.8",
 		"stripe": "^20.4.1"
 	},

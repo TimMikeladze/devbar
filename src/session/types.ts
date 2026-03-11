@@ -1,6 +1,6 @@
 export type { ReactComponentContext, ReactComponentInfo } from "@/tools/select/react-fiber";
 
-export type AnnotationType = "element" | "drawing" | "text" | "screenshot" | "marker";
+export type AnnotationType = "element" | "drawing" | "text" | "screenshot" | "marker" | "recording";
 
 export type ElementData = {
 	xpath: string;
@@ -8,10 +8,18 @@ export type ElementData = {
 	tagName: string;
 	id: string;
 	classes: string[];
+	attributes: Record<string, string>;
+	accessibility: { role: string; name: string; tabIndex: number } | null;
+	parentContext: { tagName: string; id: string; classes: string[] } | null;
 	computedStyles: Record<string, string>;
 	innerText: string;
 	boundingRect: { x: number; y: number; width: number; height: number };
 	outerHTML: string;
+	overflowClipped: boolean;
+	renderedFont: string;
+	imageDimensions: { naturalWidth: number; naturalHeight: number; renderedWidth: number; renderedHeight: number } | null;
+	formState: { valid: boolean; message: string; required: boolean } | null;
+	pseudoContent: { before: string; after: string } | null;
 	reactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
 };
 
@@ -36,11 +44,19 @@ export type ScreenshotData = {
 	fullPage: boolean;
 };
 
+export type RecordingData = {
+	videoBlobUrl: string;
+	thumbnailDataUri: string;
+	duration: number;
+	mimeType: string;
+};
+
 export type MarkerData = {
 	position: { x: number; y: number };
 	scrollOffset?: { x: number; y: number };
 	color: string;
 	number: number;
+	nearestElementTagName: string;
 	nearestElementXPath: string;
 	nearestElementCssSelector: string;
 	nearestReactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
@@ -57,12 +73,12 @@ export type Annotation = {
 	id: string;
 	type: AnnotationType;
 	timestamp: number;
-	data: ElementData | DrawingData | TextData | ScreenshotData | MarkerData;
+	data: ElementData | DrawingData | TextData | ScreenshotData | MarkerData | RecordingData;
 	comments: Comment[];
 	label?: string;
 };
 
-export type ToolMode = "select" | "draw" | "capture" | "marker" | null;
+export type ToolMode = "select" | "draw" | "capture" | "marker" | "record" | null;
 
 export type DeloopTheme = "light" | "dark" | "auto";
 
@@ -77,6 +93,11 @@ export type PromptTemplate = (context: {
 	};
 	title: string;
 	viewport: { width: number; height: number };
+	devicePixelRatio: number;
+	colorScheme: "light" | "dark";
+	reducedMotion: boolean;
+	language: string;
+	consoleErrors: string[];
 	userAgent: string;
 	annotations: Annotation[];
 	settings?: DeloopSettings;
@@ -87,6 +108,49 @@ export type SidePanelSide = "left" | "right";
 
 export type ToolbarOrientation = "horizontal" | "vertical";
 
+export type CaptureConfig = {
+	// Element selectors
+	xpath: boolean;
+	cssSelector: boolean;
+	// Element metadata
+	attributes: boolean;
+	accessibility: boolean;
+	parentContext: boolean;
+	computedStyles: boolean;
+	innerText: boolean;
+	outerHTML: boolean;
+	// Element diagnostics
+	overflowClipped: boolean;
+	renderedFont: boolean;
+	imageDimensions: boolean;
+	formState: boolean;
+	pseudoContent: boolean;
+	// React
+	reactContext: boolean;
+	// Page-level
+	consoleErrors: boolean;
+	mediaPreferences: boolean;
+};
+
+export const DEFAULT_CAPTURE_CONFIG: CaptureConfig = {
+	xpath: true,
+	cssSelector: true,
+	attributes: true,
+	accessibility: true,
+	parentContext: true,
+	computedStyles: true,
+	innerText: true,
+	outerHTML: true,
+	overflowClipped: true,
+	renderedFont: true,
+	imageDimensions: true,
+	formState: true,
+	pseudoContent: true,
+	reactContext: true,
+	consoleErrors: true,
+	mediaPreferences: true,
+};
+
 export type DeloopSettings = {
 	includeImages: boolean;
 	imageExportMode: "base64" | "files";
@@ -94,6 +158,7 @@ export type DeloopSettings = {
 	sidePanelSide: SidePanelSide;
 	enableScreenshots: boolean;
 	toolbarOrientation: ToolbarOrientation;
+	capture: CaptureConfig;
 };
 
 export type DeloopUser = {
@@ -123,6 +188,11 @@ export type DeloopPayload = {
 	};
 	title: string;
 	viewport: { width: number; height: number };
+	devicePixelRatio: number;
+	colorScheme: "light" | "dark";
+	reducedMotion: boolean;
+	language: string;
+	consoleErrors: string[];
 	userAgent: string;
 	timestamp: number;
 	annotations: Annotation[];

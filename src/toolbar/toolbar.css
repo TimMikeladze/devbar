@@ -784,8 +784,149 @@
 	transition: background 0.15s;
 }
 
-.deloop-annotation-item-wrapper.deloop-thread-expanded {
+.deloop-annotation-item-wrapper.deloop-thread-expanded,
+.deloop-annotation-item-wrapper.deloop-detail-expanded {
 	background: var(--deloop-bg-surface);
+}
+
+/* ── Annotation readout card ── */
+.deloop-readout {
+	margin: 0 8px 6px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-top: 2px solid var(--deloop-blue);
+	font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+	font-size: 11.5px;
+	line-height: 1.5;
+	animation: deloop-readout-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-thread-popover-body .deloop-readout {
+	margin: 0 0 4px;
+	border-radius: 0;
+	border-left: none;
+	border-right: none;
+	border-bottom-color: var(--deloop-border);
+}
+
+@keyframes deloop-readout-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.deloop-readout-header {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--deloop-blue);
+	margin-bottom: 8px;
+}
+
+.deloop-readout-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--deloop-blue);
+	flex-shrink: 0;
+}
+
+.deloop-readout-section {
+	padding: 6px 0;
+	border-top: 1px solid var(--deloop-border);
+}
+
+.deloop-readout-section:first-of-type {
+	border-top: none;
+	padding-top: 0;
+}
+
+.deloop-readout-row {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	padding: 1px 0;
+}
+
+.deloop-readout-key {
+	width: 40px;
+	flex-shrink: 0;
+	color: var(--deloop-text-muted);
+	font-size: 11px;
+}
+
+.deloop-readout-val {
+	color: var(--deloop-text);
+	word-break: break-all;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.deloop-readout-swatch {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	border: 1px solid var(--deloop-border);
+}
+
+.deloop-readout-heading {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--deloop-text-muted);
+	margin-bottom: 4px;
+}
+
+.deloop-readout-react-path {
+	color: var(--deloop-green);
+	font-size: 11px;
+	word-break: break-all;
+}
+
+.deloop-readout-source {
+	color: var(--deloop-text-muted);
+	font-size: 10.5px;
+	margin-top: 2px;
+}
+
+.deloop-readout-props {
+	margin-top: 6px;
+	padding-top: 5px;
+	border-top: 1px dashed var(--deloop-border);
+}
+
+.deloop-readout-props .deloop-readout-key {
+	color: var(--deloop-blue);
+	opacity: 0.7;
+}
+
+.deloop-readout-text {
+	color: var(--deloop-text-secondary);
+	font-size: 11px;
+	word-break: break-word;
+	line-height: 1.5;
+}
+
+.deloop-readout-warning {
+	color: #f59e0b;
+	font-size: 10.5px;
+	font-weight: 500;
+	padding: 4px 0;
 }
 
 .deloop-annotation-thread-toggle {
@@ -1472,6 +1613,33 @@
 	border-bottom: none;
 }
 
+.deloop-settings-row-compact {
+	padding: 5px 0;
+}
+
+.deloop-settings-row-compact .deloop-settings-title {
+	font-size: 11.5px;
+}
+
+.deloop-settings-row-compact .deloop-settings-desc {
+	font-size: 10px;
+}
+
+.deloop-settings-divider {
+	height: 1px;
+	background: var(--deloop-border);
+	margin: 10px 0;
+}
+
+.deloop-settings-section-title {
+	font-size: 11.5px;
+	font-weight: 600;
+	color: var(--deloop-text);
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	margin-bottom: 2px;
+}
+
 .deloop-settings-label {
 	flex: 1;
 	min-width: 0;
@@ -1757,76 +1925,6 @@
 	opacity: 0.85;
 }
 
-/* ─── Capture dialog ─── */
-.deloop-capture-dialog {
-	position: fixed;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	background: var(--deloop-bg);
-	border: 1px solid var(--deloop-border);
-	border-radius: 16px;
-	padding: 24px;
-	box-shadow: var(--deloop-shadow-lg);
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	z-index: 2147483646;
-	min-width: 220px;
-	animation: deloop-popover-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.deloop-capture-dialog-title {
-	font-size: 14px;
-	font-weight: 600;
-	color: var(--deloop-text);
-	text-align: center;
-	margin-bottom: 4px;
-	letter-spacing: -0.02em;
-}
-
-.deloop-capture-dialog-btn {
-	font-family: inherit;
-	font-size: 13px;
-	font-weight: 500;
-	border-radius: 10px;
-	cursor: pointer;
-	transition: all 0.12s;
-	padding: 10px 24px;
-	border: 1px solid var(--deloop-border);
-	background: transparent;
-	color: var(--deloop-text);
-}
-
-.deloop-capture-dialog-btn:hover {
-	background: var(--deloop-accent-hover);
-	border-color: var(--deloop-border-hover);
-}
-
-.deloop-capture-dialog-btn-primary {
-	border: none;
-	background: var(--deloop-accent);
-	color: var(--deloop-bg);
-}
-
-.deloop-capture-dialog-btn-primary:hover {
-	opacity: 0.85;
-	background: var(--deloop-accent);
-}
-
-.deloop-capture-dialog-btn-cancel {
-	padding: 6px 12px;
-	border: none;
-	background: transparent;
-	color: var(--deloop-text-muted);
-	font-size: 12px;
-}
-
-.deloop-capture-dialog-btn-cancel:hover {
-	color: var(--deloop-text-secondary);
-	background: transparent;
-}
-
 /* ─── Capture note dialog ─── */
 .deloop-capture-note {
 	position: fixed;
@@ -1907,6 +2005,38 @@
 	50% {
 		opacity: 0.6;
 	}
+}
+
+/* ─── Recording indicator (inside overlay-toolbar) ─── */
+.deloop-record-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--deloop-red);
+	animation: deloop-record-blink 1s ease-in-out infinite;
+	flex-shrink: 0;
+}
+
+@keyframes deloop-record-blink {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.3; }
+}
+
+.deloop-record-time {
+	font-variant-numeric: tabular-nums;
+	font-size: 12.5px;
+	font-weight: 500;
+	color: var(--deloop-text);
+	min-width: 36px;
+}
+
+.deloop-record-stop {
+	background: var(--deloop-red) !important;
+	color: #fff !important;
+}
+
+.deloop-record-stop:hover {
+	opacity: 0.85;
 }
 
 /* ─── Selection region ─── */

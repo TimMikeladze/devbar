@@ -6,9 +6,11 @@ import type {
 	MarkerData,
 	PromptTemplate,
 	ReactComponentContext,
+	RecordingData,
 	ScreenshotData,
 	TextData,
 } from "@/session/types";
+import { DEFAULT_CAPTURE_CONFIG } from "@/session/types";
 
 function formatReactContext(ctx: ReactComponentContext | null | undefined, prefix = ""): string[] {
 	if (!ctx) return [];
@@ -31,6 +33,8 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 			? annotation.comments.map((c) => `> **${c.author}:** ${c.text}`).join("\n")
 			: "";
 
+	const cap = settings.capture ?? DEFAULT_CAPTURE_CONFIG;
+
 	switch (annotation.type) {
 		case "element": {
 			const d = annotation.data as ElementData;
@@ -40,13 +44,22 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				`- **Tag:** ${d.tagName}`,
 				d.id ? `- **ID:** ${d.id}` : "",
 				d.classes.length > 0 ? `- **Classes:** ${d.classes.join(", ")}` : "",
-				`- **XPath:** \`${d.xpath}\``,
-				`- **CSS Selector:** \`${d.cssSelector}\``,
+				d.xpath ? `- **XPath:** \`${d.xpath}\`` : "",
+				d.cssSelector ? `- **CSS Selector:** \`${d.cssSelector}\`` : "",
 				`- **Bounding Rect:** ${d.boundingRect.width.toFixed(0)}x${d.boundingRect.height.toFixed(0)} at (${d.boundingRect.x.toFixed(0)}, ${d.boundingRect.y.toFixed(0)})`,
-				`- **Computed Styles:**`,
+				d.parentContext ? `- **Parent:** ${d.parentContext.tagName}${d.parentContext.id ? `#${d.parentContext.id}` : ""}${d.parentContext.classes.length > 0 ? `.${d.parentContext.classes.join(".")}` : ""}` : "",
+				d.accessibility ? `- **Accessibility:** role="${d.accessibility.role}" name="${d.accessibility.name}" tabIndex=${d.accessibility.tabIndex}` : "",
+				d.overflowClipped ? `- **⚠ Overflow Clipped:** Element is visually clipped by a parent with overflow: hidden` : "",
+				d.renderedFont ? `- **Rendered Font:** ${d.renderedFont}` : "",
+				d.imageDimensions ? `- **Image Dimensions:** natural=${d.imageDimensions.naturalWidth}x${d.imageDimensions.naturalHeight}, rendered=${d.imageDimensions.renderedWidth}x${d.imageDimensions.renderedHeight}` : "",
+				d.formState ? `- **Form State:** valid=${d.formState.valid}${d.formState.required ? ", required" : ""}${d.formState.message ? `, message="${d.formState.message}"` : ""}` : "",
+				d.pseudoContent ? `- **Pseudo Elements:**${d.pseudoContent.before ? ` ::before=${d.pseudoContent.before}` : ""}${d.pseudoContent.after ? ` ::after=${d.pseudoContent.after}` : ""}` : "",
+				d.attributes && Object.keys(d.attributes).length > 0 ? `- **Attributes:**` : "",
+				...(d.attributes ? Object.entries(d.attributes).map(([k, v]) => `  - ${k}: ${v}`) : []),
+				Object.keys(d.computedStyles).length > 0 ? `- **Computed Styles:**` : "",
 				...Object.entries(d.computedStyles).map(([k, v]) => `  - ${k}: ${v}`),
-				`- **Text:** ${d.innerText.slice(0, 200)}`,
-				`- **HTML:** \`\`\`\n${d.outerHTML}\n\`\`\``,
+				d.innerText ? `- **Text:** ${d.innerText.slice(0, 200)}` : "",
+				d.outerHTML ? `- **HTML:** \`\`\`\n${d.outerHTML}\n\`\`\`` : "",
 				...formatReactContext(d.reactContext),
 			]
 				.filter(Boolean)
@@ -71,8 +84,8 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				header,
 				`- **Text:** "${d.text}"`,
 				`- **Position:** (${d.position.x.toFixed(0)}, ${d.position.y.toFixed(0)})`,
-				`- **Nearest Element XPath:** \`${d.nearestElementXPath}\``,
-				`- **Nearest Element CSS Selector:** \`${d.nearestElementCssSelector}\``,
+				d.nearestElementXPath ? `- **Nearest Element XPath:** \`${d.nearestElementXPath}\`` : "",
+				d.nearestElementCssSelector ? `- **Nearest Element CSS Selector:** \`${d.nearestElementCssSelector}\`` : "",
 				...formatReactContext(d.nearestReactContext),
 			]
 				.filter(Boolean)
@@ -85,8 +98,9 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				comments,
 				`- **Marker #${md.number}**`,
 				`- **Position:** (${md.position.x.toFixed(0)}, ${md.position.y.toFixed(0)})`,
-				`- **Nearest Element XPath:** \`${md.nearestElementXPath}\``,
-				`- **Nearest Element CSS Selector:** \`${md.nearestElementCssSelector}\``,
+				md.nearestElementTagName ? `- **Nearest Element:** ${md.nearestElementTagName}` : "",
+				md.nearestElementXPath ? `- **Nearest Element XPath:** \`${md.nearestElementXPath}\`` : "",
+				md.nearestElementCssSelector ? `- **Nearest Element CSS Selector:** \`${md.nearestElementCssSelector}\`` : "",
 				...formatReactContext(md.nearestReactContext),
 			]
 				.filter(Boolean)
@@ -109,6 +123,26 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				.filter(Boolean)
 				.join("\n");
 		}
+		case "recording": {
+			const rd = annotation.data as RecordingData;
+			const m = Math.floor(rd.duration / 60);
+			const s = Math.floor(rd.duration % 60);
+			const thumbnail =
+				settings.includeImages && rd.thumbnailDataUri
+					? `- **Thumbnail:** ![recording thumbnail](${rd.thumbnailDataUri})`
+					: "";
+			return [
+				header,
+				comments,
+				`- **Type:** Screen recording`,
+				`- **Duration:** ${m}:${s.toString().padStart(2, "0")}`,
+				`- **Format:** ${rd.mimeType}`,
+				thumbnail,
+				`- **Video:** *(available as blob, not embeddable in text)*`,
+			]
+				.filter(Boolean)
+				.join("\n");
+		}
 		default:
 			return header;
 	}
@@ -122,23 +156,37 @@ export const defaultPromptTemplate: PromptTemplate = (context) => {
 		sidePanelSide: "right" as const,
 		enableScreenshots: true,
 		toolbarOrientation: "horizontal" as const,
+		capture: { ...DEFAULT_CAPTURE_CONFIG },
 	};
 	const annotationText = context.annotations
 		.map((a, i) => formatAnnotation(a, i, settings))
 		.join("\n\n");
 
+	const cap = settings.capture ?? DEFAULT_CAPTURE_CONFIG;
+
+	const consoleSection =
+		cap.consoleErrors && context.consoleErrors.length > 0
+			? `\n\n## Console Errors\n\n${context.consoleErrors.map((e) => `- \`${e}\``).join("\n")}`
+			: "";
+
+	const pageInfoLines = [
+		`- **URL:** ${context.url}`,
+		`- **Route:** ${context.route.pathname}${context.route.search}${context.route.hash}`,
+		`- **Title:** ${context.title}`,
+		`- **Viewport:** ${context.viewport.width}x${context.viewport.height} @${context.devicePixelRatio}x`,
+		cap.mediaPreferences ? `- **Color Scheme:** ${context.colorScheme}${context.reducedMotion ? " (reduced motion)" : ""}` : "",
+		cap.mediaPreferences ? `- **Language:** ${context.language}` : "",
+		`- **User Agent:** ${context.userAgent}`,
+	].filter(Boolean).join("\n");
+
 	return `# Bug Report
 
 ## Page Information
-- **URL:** ${context.url}
-- **Route:** ${context.route.pathname}${context.route.search}${context.route.hash}
-- **Title:** ${context.title}
-- **Viewport:** ${context.viewport.width}x${context.viewport.height}
-- **User Agent:** ${context.userAgent}
+${pageInfoLines}
 
 ## Annotations
 
-${annotationText}
+${annotationText}${consoleSection}
 
 ## Request
 

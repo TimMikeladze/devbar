@@ -8,6 +8,7 @@ import commentRoutes from "./routes/comments";
 import reportRoutes from "./routes/reports";
 import stripeRoutes, { createWebhookRoute } from "./routes/stripe";
 import { addWebSocketRoute } from "./ws";
+import { createMcpRoutes } from "./mcp";
 
 export async function createDeloopServer(): Promise<{
 	app: Hono;
@@ -18,15 +19,16 @@ export async function createDeloopServer(): Promise<{
 	const auth = createAuth(db);
 	const app = new Hono();
 
-	// CORS
+	// CORS — apply to all routes except /mcp (M6: MCP uses API key auth,
+	// not cookies, and is accessed by agents/CLIs rather than browsers)
 	const trustedOrigins = process.env.DELOOP_TRUSTED_ORIGINS?.split(",").map((s) => s.trim());
-	app.use(
-		"*",
-		cors({
+	app.use("*", async (c, next) => {
+		if (c.req.path === "/mcp") return next();
+		return cors({
 			origin: trustedOrigins ?? ((origin) => origin),
 			credentials: true,
-		}),
-	);
+		})(c, next);
+	});
 
 	// Better Auth routes
 	app.on(["POST", "GET"], "/api/auth/*", (c) => {
@@ -74,6 +76,9 @@ export async function createDeloopServer(): Promise<{
 	app.route("/api", createWebhookRoute());
 
 	app.route("/api", api);
+
+	// MCP server (API key auth, no session required)
+	app.route("", createMcpRoutes());
 
 	// WebSocket collaboration
 	addWebSocketRoute(app, auth);

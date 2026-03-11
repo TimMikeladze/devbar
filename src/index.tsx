@@ -18,6 +18,7 @@ export type {
 	PromptTemplate,
 	ReactComponentContext,
 	ReactComponentInfo,
+	RecordingData,
 	ScreenshotData,
 	SidePanelMode,
 	TextData,

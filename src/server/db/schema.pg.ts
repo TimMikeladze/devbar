@@ -609,3 +609,35 @@ export const subscriptions: any = pgTable(
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
+
+// ============================================
+// API Keys table (for MCP server auth)
+// ============================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- MCP API key table
+export const apiKeys: any = pgTable(
+	"deloop_api_keys",
+	{
+		id: text("id")
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		organizationId: text("organization_id").notNull(),
+		// H1: .unique() creates an implicit index used by resolveAuthContext() lookups.
+		// No separate named index needed — the UNIQUE constraint handles it.
+		key: text("key")
+			.notNull()
+			.unique()
+			.$defaultFn(() => `dlp_${crypto.randomUUID().replace(/-/g, "")}`),
+		label: text("label"),
+		revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
+		createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => [
+		index("idx_deloop_api_keys_org_id").on(table.organizationId),
+	],
+);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;

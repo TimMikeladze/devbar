@@ -7,11 +7,24 @@
 		<title>deloop.dev — Annotate Any Website, Prompt Any LLM</title>
 		<meta
 			name="description"
-			content="Open-source drop-in toolbar that turns visual feedback into AI-ready context. Designers, QA, reviewers, and developers can select elements, draw, capture screenshots, and export structured prompts with XPaths, CSS selectors, computed styles, and React component trees — ready to paste into any LLM for instant code fixes."
+			content="Open-source toolbar that turns visual website annotations into structured, AI-ready bug reports. Captures XPaths, styles, React component trees, and screenshots."
 		/>
 
 		<link rel="canonical" href="https://deloop.dev" />
-		<meta name="theme-color" content="#fafafa" />
+		<meta name="theme-color" content="#0a0a0a" />
+
+		<!-- Prevent flash of wrong theme on load -->
+		<script>
+			(function () {
+				var t = 'system';
+				try { t = localStorage.getItem('deloop-theme') || 'system'; } catch (e) {}
+				var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+				if (dark) document.documentElement.classList.add('dark');
+				else document.documentElement.classList.remove('dark');
+				var meta = document.querySelector('meta[name="theme-color"]');
+				if (meta) meta.setAttribute('content', dark ? '#0a0a0a' : '#fafafa');
+			})();
+		</script>
 
 		<!-- Open Graph -->
 		<meta property="og:type" content="website" />
@@ -20,7 +33,7 @@
 		<meta property="og:title" content="deloop.dev — Annotate Any Website, Prompt Any LLM" />
 		<meta
 			property="og:description"
-			content="Turn visual feedback into AI-ready context. Anyone on your team — designers, QA, PMs, developers — can annotate issues and generate structured prompts with XPaths, React component trees, and screenshots. Paste into any LLM for instant fixes."
+			content="Turn visual feedback into AI-ready context. Annotate any website and generate structured prompts with XPaths, React trees, and screenshots."
 		/>
 		<meta property="og:site_name" content="deloop.dev" />
 		<meta property="og:image" content="https://deloop.dev/og.png" />
@@ -36,7 +49,7 @@
 		<meta name="twitter:title" content="deloop.dev — Annotate Any Website, Prompt Any LLM" />
 		<meta
 			name="twitter:description"
-			content="Turn visual feedback into AI-ready context. Anyone on your team — designers, QA, PMs, developers — can annotate issues and generate structured prompts with XPaths, React component trees, and screenshots. Paste into any LLM for instant fixes."
+			content="Turn visual feedback into AI-ready context. Annotate any website and generate structured prompts with XPaths, React trees, and screenshots."
 		/>
 		<meta name="twitter:image" content="https://deloop.dev/og.png" />
 		<meta name="twitter:image:alt" content="deloop.dev — annotate any website, prompt any LLM" />
@@ -48,7 +61,7 @@
 		/>
 		<meta name="author" content="Tim Mikeladze" />
 		<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-		<link rel="icon" type="image/svg+xml" href="/vite.svg" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
@@ -132,6 +145,51 @@
 	</head>
 	<body class="antialiased">
 		<div id="root"></div>
+		<noscript>
+			<h1>deloop.dev — Annotate Any Website, Prompt Any LLM</h1>
+			<p>Stop copy-pasting screenshots into Slack. Stop writing "the button on that page" in bug tickets.</p>
+			<p>Open-source toolbar that turns visual website annotations into structured, AI-ready bug reports. Captures XPaths, computed styles, React component trees, source file locations, and screenshots — ready for any LLM, MCP agent, or webhook pipeline.</p>
+			<h2>How it works</h2>
+			<ol>
+				<li><strong>Annotate</strong> — Select elements, draw freehand, drop numbered markers, or capture screenshots.</li>
+				<li><strong>Auto-capture</strong> — Every annotation extracts XPaths, CSS selectors, computed styles, React component trees, and source file locations.</li>
+				<li><strong>Export</strong> — One click turns everything into structured Markdown, JSON, or a webhook POST. Pipe to any LLM or AI agent via MCP.</li>
+			</ol>
+			<h2>Who it's for</h2>
+			<ul>
+				<li><strong>AI agents &amp; MCP</strong> — Connect via MCP server, webhooks, or callbacks for agentic workflows.</li>
+				<li><strong>Developers</strong> — Feed structured bug context directly into coding assistants.</li>
+				<li><strong>Designers &amp; QA</strong> — File bug reports with exact CSS values, bounding rects, and screenshots.</li>
+				<li><strong>Product managers</strong> — Give feedback on staging without leaving the browser.</li>
+			</ul>
+			<h2>Features</h2>
+			<ul>
+				<li>Element inspector with XPath &amp; CSS selector capture</li>
+				<li>React component tree extraction with source file locations</li>
+				<li>Freehand drawing with context screenshots</li>
+				<li>Screenshot capture (full page or region)</li>
+				<li>Numbered markers with nearest-element detection</li>
+				<li>LLM-ready Markdown and JSON export</li>
+				<li>MCP server, webhooks, and clipboard integration</li>
+				<li>Chrome extension for any website</li>
+				<li>Custom prompt templates</li>
+				<li>Plugin system</li>
+			</ul>
+			<h2>FAQ</h2>
+			<dl>
+				<dt>How does this work with AI agents?</dt>
+				<dd>Connect via the built-in MCP server, an onSubmit callback, or a webhook URL. Structured context flows directly into Claude, Cursor, or your own agentic pipeline.</dd>
+				<dt>Does it work without React?</dt>
+				<dd>Yes. XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any website.</dd>
+				<dt>How does React context extraction work?</dt>
+				<dd>deloop reads the React fiber node and walks up the tree, capturing every component's name, props, and source file location — all locally in your browser.</dd>
+			</dl>
+			<h2>Pricing</h2>
+			<p><strong>Free</strong> — Self-hosted, open source, $0 forever. All features included.</p>
+			<p><strong>Team</strong> — $10/month, up to 5 members. Cloud dashboard, report history, org settings.</p>
+			<p><strong>Organization</strong> — $50/month, unlimited members.</p>
+			<p><a href="https://github.com/TimMikeladze/deloop">View on GitHub</a></p>
+		</noscript>
 		<script type="module" src="/src/main.tsx"></script>
 		<script
 			defer

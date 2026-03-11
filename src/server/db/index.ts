@@ -20,17 +20,22 @@ export type DeloopDb = LibSQLDatabase<typeof sqliteSchema>;
 
 type DbCloseFn = () => void | Promise<void>;
 
+type PgClient = { end: () => Promise<void> };
+
 type DbGlobalCache = {
 	__deloopDb?: DeloopDb | null;
 	__deloopDbClose?: DbCloseFn | null;
 	__deloopDbPromise?: Promise<DeloopDb> | null;
 	__deloopDbDriver?: DbDriver | null;
-	__deloopPgClient?: unknown | null;
+	__deloopPgClient?: PgClient | null;
+	__deloopMigrated?: boolean;
 };
 
 const globalCache = globalThis as unknown as DbGlobalCache;
 
-// Auto-detect driver from DATABASE_URL
+// L1: DB_DRIVER is resolved at module load time. Callers that need to override it
+// (e.g. tests) MUST set process.env.DB_DRIVER BEFORE importing this module.
+// Use dynamic imports to control ordering.
 function detectDriver(): DbDriver {
 	if (process.env.DB_DRIVER) {
 		return process.env.DB_DRIVER as DbDriver;
@@ -81,13 +86,21 @@ async function initDatabase(): Promise<DeloopDb> {
 
 		const client =
 			globalCache.__deloopDbDriver === "pg" && globalCache.__deloopPgClient
-				? (globalCache.__deloopPgClient as ReturnType<typeof postgres>)
+				? (globalCache.__deloopPgClient as ReturnType<typeof postgres> & PgClient)
 				: postgres(connectionString);
 
 		globalCache.__deloopDbDriver = "pg";
 		globalCache.__deloopPgClient = client;
 
 		_db = drizzle(client, { schema: pgSchema }) as unknown as DeloopDb;
+
+		if (!process.env.SKIP_MIGRATIONS && !globalCache.__deloopMigrated) {
+			const { migrate } = await import("drizzle-orm/postgres-js/migrator");
+			const { resolve } = await import("node:path");
+			await migrate(_db as any, { migrationsFolder: resolve(process.cwd(), "drizzle/pg") });
+			globalCache.__deloopMigrated = true;
+		}
+
 		_closeDb = async () => {
 			await client.end();
 		};
@@ -106,130 +119,24 @@ async function initDatabase(): Promise<DeloopDb> {
 			authToken: process.env.TURSO_AUTH_TOKEN,
 		});
 
-		// Production SQLite performance pragmas
+		// Production SQLite performance pragmas + FK enforcement (H2)
 		await client.executeMultiple(`
       PRAGMA journal_mode = WAL;
       PRAGMA synchronous = NORMAL;
       PRAGMA cache_size = -64000;
       PRAGMA busy_timeout = 5000;
       PRAGMA temp_store = MEMORY;
+      PRAGMA foreign_keys = ON;
     `);
-
-		// Create tables (SQLite has no migration runner in this setup)
-		await client.executeMultiple(`
-      CREATE TABLE IF NOT EXISTS "user" (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        email_verified INTEGER NOT NULL DEFAULT 0,
-        image TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS "session" (
-        id TEXT PRIMARY KEY,
-        expires_at INTEGER NOT NULL,
-        token TEXT NOT NULL UNIQUE,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        ip_address TEXT,
-        user_agent TEXT,
-        user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE
-      );
-      CREATE TABLE IF NOT EXISTS "account" (
-        id TEXT PRIMARY KEY,
-        account_id TEXT NOT NULL,
-        provider_id TEXT NOT NULL,
-        user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-        access_token TEXT,
-        refresh_token TEXT,
-        id_token TEXT,
-        access_token_expires_at INTEGER,
-        refresh_token_expires_at INTEGER,
-        scope TEXT,
-        password TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS "verification" (
-        id TEXT PRIMARY KEY,
-        identifier TEXT NOT NULL,
-        value TEXT NOT NULL,
-        expires_at INTEGER NOT NULL,
-        created_at INTEGER,
-        updated_at INTEGER
-      );
-      CREATE TABLE IF NOT EXISTS "organization" (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL UNIQUE,
-        logo TEXT,
-        metadata TEXT,
-        created_at INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS "member" (
-        id TEXT PRIMARY KEY,
-        organization_id TEXT NOT NULL REFERENCES "organization"(id) ON DELETE CASCADE,
-        user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-        role TEXT NOT NULL,
-        created_at INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS "invitation" (
-        id TEXT PRIMARY KEY,
-        email TEXT NOT NULL,
-        inviter_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
-        organization_id TEXT NOT NULL REFERENCES "organization"(id) ON DELETE CASCADE,
-        role TEXT NOT NULL,
-        status TEXT NOT NULL,
-        expires_at INTEGER NOT NULL,
-        created_at INTEGER
-      );
-      CREATE TABLE IF NOT EXISTS "deloop_reports" (
-        id TEXT PRIMARY KEY,
-        organization_id TEXT,
-        user_id TEXT,
-        author_name TEXT,
-        author_email TEXT,
-        author_avatar TEXT,
-        payload TEXT NOT NULL,
-        url TEXT NOT NULL,
-        title TEXT NOT NULL,
-        created_at INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS "deloop_comments" (
-        id TEXT PRIMARY KEY,
-        report_id TEXT NOT NULL,
-        user_id TEXT,
-        author_name TEXT,
-        text TEXT NOT NULL,
-        created_at INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS "deloop_subscriptions" (
-        id TEXT PRIMARY KEY,
-        organization_id TEXT NOT NULL UNIQUE,
-        stripe_customer_id TEXT NOT NULL,
-        stripe_subscription_id TEXT,
-        stripe_price_id TEXT,
-        plan TEXT NOT NULL DEFAULT 'free',
-        status TEXT,
-        current_period_end INTEGER,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      );
-    `);
-
-		// Apply indexes
-		for (const sql of sqliteSchema.reportIndexes) {
-			await client.execute(sql);
-		}
-		for (const sql of sqliteSchema.commentIndexes) {
-			await client.execute(sql);
-		}
-		for (const sql of sqliteSchema.subscriptionIndexes) {
-			await client.execute(sql);
-		}
 
 		_db = drizzle(client, { schema: sqliteSchema });
+
+		if (!process.env.SKIP_MIGRATIONS && !globalCache.__deloopMigrated) {
+			const { migrate } = await import("drizzle-orm/libsql/migrator");
+			const { resolve } = await import("node:path");
+			await migrate(_db, { migrationsFolder: resolve(process.cwd(), "drizzle/sqlite") });
+			globalCache.__deloopMigrated = true;
+		}
 		_closeDb = () => {
 			client.close();
 		};
@@ -293,6 +200,10 @@ export async function closeDatabase(): Promise<void> {
 // Export tables that work for both drivers.
 // When using pg, we assert the pg table to the sqlite table type.
 // Both schemas are structurally identical at runtime.
+//
+// M1 NOTE: The one semantic difference is the `payload` column — SQLite returns
+// a JSON string, PG returns an already-parsed object. All consumers MUST use
+// the `parsePayload()` helper in mcp/index.ts (or equivalent) to normalize this.
 export const reports: typeof sqliteSchema.reports =
 	DB_DRIVER === "sqlite"
 		? sqliteSchema.reports
@@ -307,6 +218,11 @@ export const subscriptions: typeof sqliteSchema.subscriptions =
 	DB_DRIVER === "sqlite"
 		? sqliteSchema.subscriptions
 		: (pgSchema.subscriptions as unknown as typeof sqliteSchema.subscriptions);
+
+export const apiKeys: typeof sqliteSchema.apiKeys =
+	DB_DRIVER === "sqlite"
+		? sqliteSchema.apiKeys
+		: (pgSchema.apiKeys as unknown as typeof sqliteSchema.apiKeys);
 
 // ============================================
 // Schema modules for migrations/advanced use

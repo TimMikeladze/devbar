@@ -3,6 +3,7 @@ import type {
 	DeloopPayload,
 	DeloopSettings,
 	DrawingData,
+	RecordingData,
 	ScreenshotData,
 } from "@/session/types";
 
@@ -51,6 +52,14 @@ function exportImageFiles(annotations: Annotation[], timestamp: string): void {
 			if (d.imageDataUri) {
 				downloadDataUri(d.imageDataUri, `deloop-screenshot-${timestamp}-${++imageIndex}.png`);
 			}
+		} else if (a.type === "recording") {
+			const d = a.data as RecordingData;
+			if (d.videoBlobUrl) {
+				downloadBlobUrl(d.videoBlobUrl, `deloop-recording-${timestamp}-${++imageIndex}.webm`);
+			}
+			if (d.thumbnailDataUri) {
+				downloadDataUri(d.thumbnailDataUri, `deloop-recording-thumb-${timestamp}-${imageIndex}.png`);
+			}
 		}
 	}
 }
@@ -81,6 +90,19 @@ function stripBase64FromPayload(payload: DeloopPayload, timestamp: string): Delo
 				},
 			};
 		}
+		if (a.type === "recording") {
+			const d = a.data as RecordingData;
+			return {
+				...a,
+				data: {
+					...d,
+					videoBlobUrl: `deloop-recording-${timestamp}-${++imageIndex}.webm`,
+					thumbnailDataUri: d.thumbnailDataUri
+						? `deloop-recording-thumb-${timestamp}-${imageIndex}.png`
+						: "",
+				},
+			};
+		}
 		return a;
 	});
 	return { ...payload, annotations: strippedAnnotations };
@@ -89,6 +111,15 @@ function stripBase64FromPayload(payload: DeloopPayload, timestamp: string): Delo
 function downloadDataUri(dataUri: string, filename: string): void {
 	const a = document.createElement("a");
 	a.href = dataUri;
+	a.download = filename;
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+}
+
+function downloadBlobUrl(blobUrl: string, filename: string): void {
+	const a = document.createElement("a");
+	a.href = blobUrl;
 	a.download = filename;
 	document.body.appendChild(a);
 	a.click();

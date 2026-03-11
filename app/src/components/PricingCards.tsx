@@ -90,7 +90,7 @@ export function PricingCards({
 					<p className="text-[13px] text-muted mt-0.5">Up to 5 members</p>
 				</div>
 				<p className="text-2xl font-bold text-fg mb-1">
-					$5<span className="text-[13px] font-normal text-muted"> / month</span>
+					$10<span className="text-[13px] font-normal text-muted"> / month</span>
 				</p>
 				<p className="text-[13px] text-muted mb-4">7-day free trial</p>
 				<div className="flex-1">
@@ -115,7 +115,7 @@ export function PricingCards({
 					<p className="text-[13px] text-muted mt-0.5">More than 5 members</p>
 				</div>
 				<p className="text-2xl font-bold text-fg mb-1">
-					$25<span className="text-[13px] font-normal text-muted"> / month</span>
+					$50<span className="text-[13px] font-normal text-muted"> / month</span>
 				</p>
 				<p className="text-[13px] text-muted mb-4">7-day free trial</p>
 				<div className="flex-1">

@@ -2,19 +2,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
 	Annotation,
+	CaptureConfig,
 	Comment,
 	DeloopPayload,
 	DeloopPosition,
 	DeloopSettings,
 	DeloopTheme,
 	DeloopUser,
+	DrawingData,
 	ElementData,
 	ExportMethod,
 	MarkerData,
 	PromptTemplate,
+	RecordingData,
 	ScreenshotData,
+	TextData,
 	ToolMode,
 } from "@/session/types";
+import { DEFAULT_CAPTURE_CONFIG } from "@/session/types";
+import type { ReactComponentContext } from "@/tools/select/react-fiber";
 import { buildPayload } from "@/output/payload";
 import { copyToClipboard } from "@/output/clipboard";
 import { exportToFile } from "@/output/file-export";
@@ -22,6 +28,7 @@ import { SelectOverlay } from "@/tools/select/select-overlay";
 import { AnnotationHighlights } from "@/tools/select/annotation-highlights";
 import { DrawOverlay } from "@/tools/draw/draw-overlay";
 import { CaptureOverlay } from "@/tools/capture/capture-overlay";
+import { RecordOverlay } from "@/tools/record/record-overlay";
 import { MarkerOverlay } from "@/tools/marker/marker-overlay";
 import { AuthModal } from "@/server/auth-modal";
 import { useCollaboration, type CollaborationCallbacks } from "@/collaboration/use-collaboration";
@@ -60,6 +67,8 @@ import {
 	SendIcon,
 	LabelIcon,
 	HistoryIcon,
+	RecordIcon,
+	RecordItemIcon,
 } from "./icons";
 
 export type DeloopPlugin = {
@@ -101,6 +110,7 @@ const TOOLS: ToolDef[] = [
 	{ key: "marker", icon: MarkerIcon, label: "Marker", shortcut: "Alt+M" },
 	{ key: "draw", icon: DrawIcon, label: "Draw", shortcut: "Alt+D" },
 	{ key: "capture", icon: CaptureIcon, label: "Capture", shortcut: "Alt+C" },
+	{ key: "record", icon: RecordIcon, label: "Record", shortcut: "Alt+R" },
 ];
 
 const ITEM_ICONS: Record<string, () => React.ReactNode> = {
@@ -108,6 +118,7 @@ const ITEM_ICONS: Record<string, () => React.ReactNode> = {
 	drawing: DrawItemIcon,
 	screenshot: ScreenshotItemIcon,
 	marker: MarkerItemIcon,
+	recording: RecordItemIcon,
 };
 
 function annotationLabel(a: Annotation): string {
@@ -129,12 +140,277 @@ function annotationLabel(a: Annotation): string {
 			const md = a.data as { number: number };
 			return `Marker #${md.number}`;
 		}
+		case "recording": {
+			const rd = a.data as { duration: number };
+			const m = Math.floor(rd.duration / 60);
+			const s = Math.floor(rd.duration % 60);
+			return `Recording (${m}:${s.toString().padStart(2, "0")})`;
+		}
 		default:
 			return a.type;
 	}
 }
 
-const ALL_TOOLS: ToolMode[] = ["select", "marker", "draw", "capture"];
+function ReadoutRow({ label, value, swatch }: { label: string; value: React.ReactNode; swatch?: string }) {
+	return (
+		<div className="deloop-readout-row">
+			<span className="deloop-readout-key">{label}</span>
+			<span className="deloop-readout-val">
+				{swatch && <span className="deloop-readout-swatch" style={{ background: swatch }} />}
+				{value}
+			</span>
+		</div>
+	);
+}
+
+function ReactTreeReadout({ ctx }: { ctx: ReactComponentContext }) {
+	const leaf = ctx.components.length > 0 ? ctx.components[ctx.components.length - 1] : null;
+	const leafProps = leaf?.props ? Object.entries(leaf.props).filter(([k]) => k !== "children") : [];
+	return (
+		<div className="deloop-readout-section">
+			<div className="deloop-readout-heading">React tree</div>
+			<div className="deloop-readout-react-path">{ctx.componentPath}</div>
+			{leaf?.source && (
+				<div className="deloop-readout-source">
+					{leaf.source.fileName}:{leaf.source.lineNumber}
+				</div>
+			)}
+			{leafProps.length > 0 && (
+				<div className="deloop-readout-props">
+					{leafProps.slice(0, 8).map(([k, v]) => (
+						<ReadoutRow key={k} label={k} value={typeof v === "string" ? v : typeof v === "object" ? JSON.stringify(v).slice(0, 60) : String(v)} />
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
+
+function AnnotationReadout({ annotation }: { annotation: Annotation }) {
+	const typeLabels: Record<string, string> = {
+		element: "Element annotation",
+		marker: "Marker annotation",
+		drawing: "Drawing annotation",
+		screenshot: "Screenshot annotation",
+		text: "Text annotation",
+		recording: "Screen recording",
+	};
+
+	switch (annotation.type) {
+		case "element": {
+			const d = annotation.data as ElementData;
+			const ident = d.id ? `${d.tagName}#${d.id}` : d.classes.length > 0 ? `${d.tagName}.${d.classes[0]}` : d.tagName;
+			const s = d.computedStyles;
+			const bg = s["background-color"];
+			const color = s.color;
+			const fontSize = s["font-size"];
+			const fontWeight = s["font-weight"];
+			const fontFamily = s["font-family"];
+			const display = s.display;
+			const position = s.position;
+			const padding = s.padding;
+			const margin = s.margin;
+			const borderRadius = s["border-radius"];
+			const boxShadow = s["box-shadow"];
+			const rect = d.boundingRect;
+			const attrs = d.attributes ?? {};
+			const attrEntries = Object.entries(attrs);
+			const text = d.innerText?.trim();
+			const a11y = d.accessibility;
+			const parent = d.parentContext;
+			return (
+				<div className="deloop-readout">
+					<div className="deloop-readout-header">
+						<span className="deloop-readout-dot" />
+						{typeLabels.element}
+					</div>
+					<div className="deloop-readout-section">
+						<ReadoutRow label="tag" value={ident} />
+						{d.classes.length > 1 && <ReadoutRow label="class" value={d.classes.join(" ")} />}
+						<ReadoutRow label="xpath" value={d.xpath} />
+						<ReadoutRow label="css" value={d.cssSelector} />
+						{parent && (
+							<ReadoutRow label="parent" value={`${parent.tagName}${parent.id ? `#${parent.id}` : ""}${parent.classes.length > 0 ? `.${parent.classes[0]}` : ""}`} />
+						)}
+					</div>
+					{a11y && (
+						<div className="deloop-readout-section">
+							<div className="deloop-readout-heading">Accessibility</div>
+							{a11y.role && <ReadoutRow label="role" value={a11y.role} />}
+							{a11y.name && <ReadoutRow label="name" value={a11y.name} />}
+							{a11y.tabIndex >= 0 && <ReadoutRow label="tab" value={String(a11y.tabIndex)} />}
+						</div>
+					)}
+					{attrEntries.length > 0 && (
+						<div className="deloop-readout-section">
+							<div className="deloop-readout-heading">Attributes</div>
+							{attrEntries.map(([k, v]) => (
+								<ReadoutRow key={k} label={k} value={v || '""'} />
+							))}
+						</div>
+					)}
+					{d.overflowClipped && (
+						<div className="deloop-readout-section deloop-readout-warning">
+							Element is clipped by overflow: hidden parent
+						</div>
+					)}
+					{d.imageDimensions && (
+						<div className="deloop-readout-section">
+							<div className="deloop-readout-heading">Image</div>
+							<ReadoutRow label="natural" value={`${d.imageDimensions.naturalWidth}×${d.imageDimensions.naturalHeight}`} />
+							<ReadoutRow label="render" value={`${d.imageDimensions.renderedWidth}×${d.imageDimensions.renderedHeight}`} />
+						</div>
+					)}
+					{d.formState && (
+						<div className="deloop-readout-section">
+							<div className="deloop-readout-heading">Form state</div>
+							<ReadoutRow label="valid" value={d.formState.valid ? "yes" : "no"} />
+							{d.formState.required && <ReadoutRow label="req" value="required" />}
+							{d.formState.message && <ReadoutRow label="error" value={d.formState.message} />}
+						</div>
+					)}
+					<div className="deloop-readout-section">
+						{bg && bg !== "rgba(0, 0, 0, 0)" && <ReadoutRow label="bg" value={bg} swatch={bg} />}
+						{color && <ReadoutRow label="color" value={color} swatch={color} />}
+						{fontSize && <ReadoutRow label="font" value={`${fontSize}${fontWeight && fontWeight !== "400" ? ` / ${fontWeight}` : ""}`} />}
+						{d.renderedFont && fontFamily && d.renderedFont !== fontFamily.split(",")[0]?.trim().replace(/^["']|["']$/g, "") && (
+							<ReadoutRow label="actual" value={d.renderedFont} />
+						)}
+						{fontFamily && <ReadoutRow label="family" value={fontFamily.split(",")[0]?.trim()} />}
+						{display && <ReadoutRow label="display" value={display} />}
+						{position && position !== "static" && <ReadoutRow label="pos" value={position} />}
+						{padding && padding !== "0px" && <ReadoutRow label="pad" value={padding} />}
+						{margin && margin !== "0px" && <ReadoutRow label="margin" value={margin} />}
+						{borderRadius && borderRadius !== "0px" && <ReadoutRow label="radius" value={borderRadius} />}
+						{boxShadow && boxShadow !== "none" && <ReadoutRow label="shadow" value={boxShadow} />}
+						<ReadoutRow label="rect" value={`${Math.round(rect.width)}×${Math.round(rect.height)} @ (${Math.round(rect.x)}, ${Math.round(rect.y)})`} />
+					</div>
+					{d.pseudoContent && (
+						<div className="deloop-readout-section">
+							<div className="deloop-readout-heading">Pseudo elements</div>
+							{d.pseudoContent.before && <ReadoutRow label="::before" value={d.pseudoContent.before} />}
+							{d.pseudoContent.after && <ReadoutRow label="::after" value={d.pseudoContent.after} />}
+						</div>
+					)}
+					{text && (
+						<div className="deloop-readout-section">
+							<div className="deloop-readout-heading">Text content</div>
+							<div className="deloop-readout-text">{text.length > 120 ? `${text.slice(0, 120)}…` : text}</div>
+						</div>
+					)}
+					{d.reactContext && <ReactTreeReadout ctx={d.reactContext} />}
+				</div>
+			);
+		}
+		case "marker": {
+			const d = annotation.data as MarkerData;
+			return (
+				<div className="deloop-readout">
+					<div className="deloop-readout-header">
+						<span className="deloop-readout-dot" style={{ background: d.color }} />
+						{typeLabels.marker} #{d.number}
+					</div>
+					<div className="deloop-readout-section">
+						<ReadoutRow label="pos" value={`(${Math.round(d.position.x)}, ${Math.round(d.position.y)})`} />
+						{d.nearestElementTagName && <ReadoutRow label="element" value={d.nearestElementTagName} />}
+						{d.nearestElementXPath && <ReadoutRow label="xpath" value={d.nearestElementXPath} />}
+						{d.nearestElementCssSelector && <ReadoutRow label="css" value={d.nearestElementCssSelector} />}
+					</div>
+					{d.nearestReactContext && <ReactTreeReadout ctx={d.nearestReactContext} />}
+				</div>
+			);
+		}
+		case "text": {
+			const d = annotation.data as TextData;
+			return (
+				<div className="deloop-readout">
+					<div className="deloop-readout-header">
+						<span className="deloop-readout-dot" />
+						{typeLabels.text}
+					</div>
+					<div className="deloop-readout-section">
+						<ReadoutRow label="text" value={d.text.length > 80 ? `${d.text.slice(0, 80)}…` : d.text} />
+						<ReadoutRow label="pos" value={`(${Math.round(d.position.x)}, ${Math.round(d.position.y)})`} />
+						{d.nearestElementXPath && <ReadoutRow label="xpath" value={d.nearestElementXPath} />}
+						{d.nearestElementCssSelector && <ReadoutRow label="css" value={d.nearestElementCssSelector} />}
+					</div>
+					{d.nearestReactContext && <ReactTreeReadout ctx={d.nearestReactContext} />}
+				</div>
+			);
+		}
+		case "drawing": {
+			const d = annotation.data as DrawingData;
+			return (
+				<div className="deloop-readout">
+					<div className="deloop-readout-header">
+						<span className="deloop-readout-dot" />
+						{typeLabels.drawing}
+					</div>
+					<div className="deloop-readout-section">
+						<ReadoutRow label="size" value={`${d.dimensions.width}×${d.dimensions.height}`} />
+						<ReadoutRow label="offset" value={`(${Math.round(d.viewportOffset.x)}, ${Math.round(d.viewportOffset.y)})`} />
+					</div>
+				</div>
+			);
+		}
+		case "screenshot": {
+			const d = annotation.data as ScreenshotData;
+			return (
+				<div className="deloop-readout">
+					<div className="deloop-readout-header">
+						<span className="deloop-readout-dot" />
+						{typeLabels.screenshot}
+					</div>
+					<div className="deloop-readout-section">
+						<ReadoutRow label="type" value={d.fullPage ? "Full page" : "Region"} />
+						{d.region && (
+							<ReadoutRow label="region" value={`${Math.round(d.region.width)}×${Math.round(d.region.height)} @ (${Math.round(d.region.x)}, ${Math.round(d.region.y)})`} />
+						)}
+					</div>
+				</div>
+			);
+		}
+		case "recording": {
+			const d = annotation.data as RecordingData;
+			const m = Math.floor(d.duration / 60);
+			const s = Math.floor(d.duration % 60);
+			return (
+				<div className="deloop-readout">
+					<div className="deloop-readout-header">
+						<span className="deloop-readout-dot" style={{ background: "var(--deloop-red)" }} />
+						{typeLabels.recording}
+					</div>
+					<div className="deloop-readout-section">
+						<ReadoutRow label="duration" value={`${m}:${s.toString().padStart(2, "0")}`} />
+						<ReadoutRow label="format" value={d.mimeType} />
+					</div>
+					{d.thumbnailDataUri && (
+						<div className="deloop-readout-section">
+							<img
+								src={d.thumbnailDataUri}
+								alt="Recording thumbnail"
+								style={{ width: "100%", borderRadius: 4, marginTop: 4 }}
+							/>
+						</div>
+					)}
+					{d.videoBlobUrl && (
+						<div className="deloop-readout-section">
+							<video
+								src={d.videoBlobUrl}
+								controls
+								style={{ width: "100%", borderRadius: 4, marginTop: 4 }}
+							/>
+						</div>
+					)}
+				</div>
+			);
+		}
+		default:
+			return null;
+	}
+}
+
+const ALL_TOOLS: ToolMode[] = ["select", "marker", "draw", "capture", "record"];
 
 const METHOD_ICONS: Record<ExportMethod, () => React.ReactNode> = {
 	clipboard: CopyIcon,
@@ -438,6 +714,7 @@ export function Deloop({
 	const [theme, setTheme] = useState<DeloopTheme>(initialTheme);
 	const [collapsed, setCollapsed] = useState(false);
 	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
+	const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null);
 	const [newCommentText, setNewCommentText] = useState("");
 	const [authorName, setAuthorName] = useState(() => localStorage.getItem("deloop-author") ?? "");
 	const [badgePulse, setBadgePulse] = useState(false);
@@ -450,18 +727,27 @@ export function Deloop({
 	const panelOpenAboveRef = useRef(true);
 	const [previewMode, setPreviewMode] = useState<"off" | "md" | "json">("off");
 	const [settings, setSettings] = useState<DeloopSettings>(() => {
-		try {
-			const saved = localStorage.getItem("deloop-settings");
-			if (saved) return JSON.parse(saved) as DeloopSettings;
-		} catch {}
-		return {
+		const defaults: DeloopSettings = {
 			includeImages: true,
 			imageExportMode: "base64",
 			sidePanelMode: "overlay",
 			sidePanelSide: "right",
 			enableScreenshots: true,
 			toolbarOrientation: "horizontal",
+			capture: { ...DEFAULT_CAPTURE_CONFIG },
 		};
+		try {
+			const saved = localStorage.getItem("deloop-settings");
+			if (saved) {
+				const parsed = JSON.parse(saved) as Partial<DeloopSettings>;
+				return {
+					...defaults,
+					...parsed,
+					capture: { ...DEFAULT_CAPTURE_CONFIG, ...parsed.capture },
+				};
+			}
+		} catch {}
+		return defaults;
 	});
 	const [labelDraft, setLabelDraft] = useState(state.activeLabel ?? "");
 	const [showLabels, setShowLabels] = useState(false);
@@ -469,6 +755,10 @@ export function Deloop({
 	const [expandedExportId, setExpandedExportId] = useState<string | null>(null);
 	const [showExportMenu, setShowExportMenu] = useState(false);
 	const exportMenuRef = useRef<HTMLDivElement>(null);
+	const [toolMenu, setToolMenu] = useState<"capture" | "record" | null>(null);
+	const toolMenuRef = useRef<HTMLDivElement>(null);
+	const [captureSubMode, setCaptureSubMode] = useState<"fullpage" | "region" | null>(null);
+	const [recordSubMode, setRecordSubMode] = useState<"tab" | "screen" | null>(null);
 	const [savedLabels, setSavedLabels] = useState<string[]>(() => {
 		try {
 			const stored = localStorage.getItem("deloop-labels");
@@ -616,6 +906,17 @@ export function Deloop({
 		return () => window.removeEventListener("mousedown", onClick);
 	}, [showExportMenu]);
 
+	// Close tool menu on outside click
+	useEffect(() => {
+		if (!toolMenu) return;
+		const onClick = (e: MouseEvent) => {
+			if (toolMenuRef.current?.contains(e.target as Node)) return;
+			setToolMenu(null);
+		};
+		window.addEventListener("mousedown", onClick);
+		return () => window.removeEventListener("mousedown", onClick);
+	}, [toolMenu]);
+
 	// Keyboard shortcuts
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
@@ -649,7 +950,9 @@ export function Deloop({
 
 			// Toggle collapse: Escape (no modifier needed)
 			if (key === "escape") {
-				if (showLabels) {
+				if (toolMenu) {
+					setToolMenu(null);
+				} else if (showLabels) {
 					setShowLabels(false);
 				} else if (showSettings) {
 					setShowSettings(false);
@@ -732,7 +1035,11 @@ export function Deloop({
 			for (const tool of toolDefs) {
 				if (key === tool.shortcut.replace("Alt+", "").toLowerCase()) {
 					e.preventDefault();
-					state.activateTool(tool.key);
+					if (tool.key === "capture" || tool.key === "record") {
+						setToolMenu((prev) => (prev === tool.key ? null : (tool.key as "capture" | "record")));
+					} else {
+						state.activateTool(tool.key);
+					}
 					setPanelOpen(false);
 					return;
 				}
@@ -751,6 +1058,7 @@ export function Deloop({
 		showHelp,
 		showSettings,
 		showLabels,
+		toolMenu,
 	]);
 
 	const showToast = useCallback((msg: string) => {
@@ -763,6 +1071,40 @@ export function Deloop({
 		await copyToClipboard(payload);
 		setCopied(true);
 		showToast("Copied to clipboard!");
+		setTimeout(() => setCopied(false), 1500);
+		onSubmit?.(payload);
+		if (!onSubmit) {
+			localArchiveAndClear("clipboard");
+			setPanelOpen(false);
+			setSidePanelOpen(false);
+		}
+	}, [
+		state.annotations,
+		promptTemplate,
+		settings,
+		state.activeLabel,
+		onSubmit,
+		showToast,
+		localArchiveAndClear,
+	]);
+
+	const handleCopyJson = useCallback(async () => {
+		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
+		const json = JSON.stringify(payload, null, 2);
+		try {
+			await navigator.clipboard.writeText(json);
+		} catch {
+			const textarea = document.createElement("textarea");
+			textarea.value = json;
+			textarea.style.position = "fixed";
+			textarea.style.opacity = "0";
+			document.body.appendChild(textarea);
+			textarea.select();
+			document.execCommand("copy");
+			document.body.removeChild(textarea);
+		}
+		setCopied(true);
+		showToast("Copied JSON to clipboard!");
 		setTimeout(() => setCopied(false), 1500);
 		onSubmit?.(payload);
 		if (!onSubmit) {
@@ -864,6 +1206,11 @@ export function Deloop({
 
 	const handleToolClick = useCallback(
 		(tool: ToolMode) => {
+			// Capture and record show dropdown menus instead of activating directly
+			if (tool === "capture" || tool === "record") {
+				setToolMenu((prev) => (prev === tool ? null : tool));
+				return;
+			}
 			if (state.activeMode === tool) {
 				state.deactivateTool();
 				collab.sendToolChange(null);
@@ -931,7 +1278,9 @@ export function Deloop({
 
 	const updateSettings = useCallback((patch: Partial<DeloopSettings>) => {
 		setSettings((prev) => {
-			const next = { ...prev, ...patch };
+			const next = patch.capture
+				? { ...prev, ...patch, capture: { ...prev.capture, ...patch.capture } }
+				: { ...prev, ...patch };
 			localStorage.setItem("deloop-settings", JSON.stringify(next));
 			return next;
 		});
@@ -1121,6 +1470,17 @@ export function Deloop({
 				type="button"
 				className="deloop-export-menu-item"
 				onClick={() => {
+					handleCopyJson();
+					setShowExportMenu(false);
+				}}
+			>
+				<CopyIcon /> Copy as JSON
+			</button>
+			<div className="deloop-export-menu-divider" />
+			<button
+				type="button"
+				className="deloop-export-menu-item"
+				onClick={() => {
 					handleExport("md");
 					setShowExportMenu(false);
 				}}
@@ -1216,6 +1576,111 @@ export function Deloop({
 	const renderToolButtons = (tooltipBelow?: boolean) =>
 		toolDefs.map((tool) => {
 			const Icon = tool.icon;
+			const hasMenu = tool.key === "capture" || tool.key === "record";
+			if (hasMenu) {
+				const isOpen = toolMenu === tool.key;
+				return (
+					<div key={tool.key} className="deloop-bar-export-wrap" ref={isOpen ? toolMenuRef : undefined}>
+						<button
+							type="button"
+							className={`deloop-bar-btn ${isOpen || state.activeMode === tool.key ? "deloop-bar-btn-active" : ""}`}
+							onClick={() => handleToolClick(tool.key)}
+						>
+							<Icon />
+							<span
+								className="deloop-tooltip"
+								style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}
+							>
+								{tool.label}
+								<span className="deloop-tooltip-key">{tool.shortcut}</span>
+							</span>
+						</button>
+						{isOpen && (
+							<div
+								className={`deloop-export-menu deloop-theme-${theme}`}
+								style={
+									tooltipBelow
+										? { bottom: "auto", top: "100%", marginTop: 8 }
+										: isVertical
+											? { left: "100%", marginLeft: 8, bottom: 0 }
+											: drag.offset && drag.offset.y < window.innerHeight / 2
+												? { top: "100%", marginTop: 8 }
+												: { bottom: "100%", marginBottom: 8 }
+								}
+							>
+								{tool.key === "capture" && (
+									<>
+										<button
+											type="button"
+											className="deloop-export-menu-item"
+											onClick={() => {
+												setToolMenu(null);
+												setCaptureSubMode("fullpage");
+												state.activateTool("capture");
+												collab.sendToolChange("capture");
+												setPanelOpen(false);
+												setShowSettings(false);
+												setShowHelp(false);
+											}}
+										>
+											<CaptureIcon /> Full Page
+										</button>
+										<button
+											type="button"
+											className="deloop-export-menu-item"
+											onClick={() => {
+												setToolMenu(null);
+												setCaptureSubMode("region");
+												state.activateTool("capture");
+												collab.sendToolChange("capture");
+												setPanelOpen(false);
+												setShowSettings(false);
+												setShowHelp(false);
+											}}
+										>
+											<CaptureIcon /> Select Region
+										</button>
+									</>
+								)}
+								{tool.key === "record" && (
+									<>
+										<button
+											type="button"
+											className="deloop-export-menu-item"
+											onClick={() => {
+												setToolMenu(null);
+												setRecordSubMode("tab");
+												state.activateTool("record");
+												collab.sendToolChange("record");
+												setPanelOpen(false);
+												setShowSettings(false);
+												setShowHelp(false);
+											}}
+										>
+											<RecordIcon /> Record Tab
+										</button>
+										<button
+											type="button"
+											className="deloop-export-menu-item"
+											onClick={() => {
+												setToolMenu(null);
+												setRecordSubMode("screen");
+												state.activateTool("record");
+												collab.sendToolChange("record");
+												setPanelOpen(false);
+												setShowSettings(false);
+												setShowHelp(false);
+											}}
+										>
+											<RecordIcon /> Record Screen
+										</button>
+									</>
+								)}
+							</div>
+						)}
+					</div>
+				);
+			}
 			return (
 				<button
 					key={tool.key}
@@ -1425,6 +1890,50 @@ export function Deloop({
 					<div className="deloop-toggle-thumb" />
 				</button>
 			</div>
+			<div className="deloop-settings-divider" />
+			<div className="deloop-settings-section-title">Data capture</div>
+			<div className="deloop-settings-desc" style={{ marginBottom: 8 }}>
+				Control what element and page data is collected
+			</div>
+			{(
+				[
+					["xpath", "XPath selectors", "Generate XPath for selected elements"],
+					["cssSelector", "CSS selectors", "Generate CSS selector for selected elements"],
+					["attributes", "HTML attributes", "Capture href, src, alt, role, data-* attributes"],
+					["accessibility", "Accessibility info", "Role, accessible name, and tab index"],
+					["parentContext", "Parent context", "Tag, ID, and classes of the parent element"],
+					["computedStyles", "Computed styles", "Layout, color, typography, and box model styles"],
+					["innerText", "Inner text", "Text content of selected elements"],
+					["outerHTML", "Outer HTML", "Raw HTML markup of selected elements"],
+					["overflowClipped", "Overflow clipping", "Detect elements clipped by overflow: hidden"],
+					["renderedFont", "Rendered font", "Detect which font is actually rendering"],
+					["imageDimensions", "Image dimensions", "Natural vs rendered size for <img> elements"],
+					["formState", "Form validation", "Validity state and validation messages"],
+					["pseudoContent", "Pseudo-elements", "Content of ::before and ::after pseudo-elements"],
+					["reactContext", "React context", "React component tree, props, and source locations"],
+					["consoleErrors", "Console errors", "Capture console.error, window errors, and unhandled rejections"],
+					["mediaPreferences", "Media preferences", "Color scheme, reduced motion, and language"],
+				] as const
+			).map(([key, title, desc]) => (
+				<div className="deloop-settings-row deloop-settings-row-compact" key={key}>
+					<div className="deloop-settings-label">
+						<div className="deloop-settings-title">{title}</div>
+						<div className="deloop-settings-desc">{desc}</div>
+					</div>
+					<button
+						type="button"
+						className={`deloop-toggle ${(settings.capture ?? DEFAULT_CAPTURE_CONFIG)[key] ? "deloop-toggle-on" : ""}`}
+						onClick={() =>
+							updateSettings({
+								capture: { [key]: !(settings.capture ?? DEFAULT_CAPTURE_CONFIG)[key] } as Partial<CaptureConfig> as CaptureConfig,
+							})
+						}
+						title={`${(settings.capture ?? DEFAULT_CAPTURE_CONFIG)[key] ? "Disable" : "Enable"} ${title.toLowerCase()}`}
+					>
+						<div className="deloop-toggle-thumb" />
+					</button>
+				</div>
+			))}
 		</div>
 	);
 
@@ -1807,21 +2316,32 @@ export function Deloop({
 				state.annotations.map((a) => {
 					const ItemIcon = ITEM_ICONS[a.type];
 					const isExpanded = expandedThreadId === a.id;
+					const isDetailOpen = expandedDetailId === a.id;
 					const commentCount = a.comments.length;
 					const lastComment = commentCount > 0 ? a.comments[commentCount - 1] : null;
 					return (
 						<div
 							key={a.id}
-							className={`deloop-annotation-item-wrapper${isExpanded ? " deloop-thread-expanded" : ""}`}
+							className={`deloop-annotation-item-wrapper${isExpanded ? " deloop-thread-expanded" : ""}${isDetailOpen ? " deloop-detail-expanded" : ""}`}
 						>
 							<div
 								className="deloop-annotation-item"
 								onMouseEnter={() => setHoveredAnnotation(a.id)}
 								onMouseLeave={() => setHoveredAnnotation(null)}
 							>
-								<div className="deloop-annotation-icon">{ItemIcon ? <ItemIcon /> : null}</div>
+								<div
+									className="deloop-annotation-icon"
+									onClick={() => setExpandedDetailId((prev) => (prev === a.id ? null : a.id))}
+									style={{ cursor: "pointer" }}
+								>
+									{ItemIcon ? <ItemIcon /> : null}
+								</div>
 								<div className="deloop-annotation-info">
-									<div className="deloop-annotation-label">
+									<div
+										className="deloop-annotation-label"
+										onClick={() => setExpandedDetailId((prev) => (prev === a.id ? null : a.id))}
+										style={{ cursor: "pointer" }}
+									>
 										{annotationLabel(a)}
 										<span className="deloop-annotation-time">{timeAgo(a.timestamp)}</span>
 									</div>
@@ -1868,6 +2388,7 @@ export function Deloop({
 									&times;
 								</button>
 							</div>
+							{isDetailOpen && <AnnotationReadout annotation={a} />}
 							{isExpanded && (
 								<div className="deloop-thread">
 									{a.comments.map((c) => (
@@ -1994,7 +2515,7 @@ export function Deloop({
 					type="button"
 					className="deloop-submit-btn"
 					onClick={handleCopy}
-					title="Copy to clipboard (⌘↵)"
+					title="Copy as Markdown (⌘↵)"
 				>
 					{copied ? <CheckIcon /> : <CopyIcon />}
 					{copied ? "Copied" : "Copy"}
@@ -2002,8 +2523,18 @@ export function Deloop({
 				<button
 					type="button"
 					className="deloop-submit-btn deloop-submit-btn-secondary"
+					onClick={handleCopyJson}
+					title="Copy as JSON"
+					style={{ flex: "none", padding: "7px 10px" }}
+				>
+					<CopyIcon />
+					JSON
+				</button>
+				<button
+					type="button"
+					className="deloop-submit-btn deloop-submit-btn-secondary"
 					onClick={() => handleExport("md")}
-					title="Export as Markdown"
+					title="Save as Markdown file"
 				>
 					<SaveFileIcon />
 					.md
@@ -2012,7 +2543,7 @@ export function Deloop({
 					type="button"
 					className="deloop-submit-btn deloop-submit-btn-secondary"
 					onClick={() => handleExport("json")}
-					title="Export as JSON"
+					title="Save as JSON file"
 					style={{ flex: "none", padding: "7px 10px" }}
 				>
 					.json
@@ -2072,6 +2603,7 @@ export function Deloop({
 					onDone={handleToolDone}
 					annotations={state.annotations}
 					onFocusAnnotation={handleFocusAnnotation}
+					capture={settings.capture}
 				/>
 			)}
 			{state.activeMode === "draw" && (
@@ -2087,10 +2619,22 @@ export function Deloop({
 					onDone={handleToolDone}
 					annotations={state.annotations}
 					onFocusAnnotation={handleFocusAnnotation}
+					capture={settings.capture}
 				/>
 			)}
-			{state.activeMode === "capture" && (
-				<CaptureOverlay onCapture={handleCapture} onDone={handleToolDone} />
+			{state.activeMode === "capture" && captureSubMode && (
+				<CaptureOverlay
+					onCapture={handleCapture}
+					onDone={() => { setCaptureSubMode(null); handleToolDone(); }}
+					initialMode={captureSubMode}
+				/>
+			)}
+			{state.activeMode === "record" && recordSubMode && (
+				<RecordOverlay
+					onCapture={handleCapture}
+					onDone={() => { setRecordSubMode(null); handleToolDone(); }}
+					initialMode={recordSubMode}
+				/>
 			)}
 
 			{/* Annotations popup panel (toolbar mode only) */}
@@ -2435,6 +2979,7 @@ export function Deloop({
 								</button>
 							</div>
 							<div className="deloop-thread-popover-body">
+								<AnnotationReadout annotation={a} />
 								{a.comments.length === 0 && (
 									<div className="deloop-empty" style={{ padding: "12px 8px", fontSize: 11 }}>
 										No comments yet

@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3ca3c9fe-76d1-4027-853b-c713a48f9b79",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "35bbd55f-cba5-4fb5-b6f9-e39927c40d7f",
+  "prevId": "3ca3c9fe-76d1-4027-853b-c713a48f9b79",
   "tables": {
     "account": {
       "name": "account",
@@ -249,7 +249,21 @@
           "isUnique": false
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "deloop_comments_report_id_deloop_reports_id_fk": {
+          "name": "deloop_comments_report_id_deloop_reports_id_fk",
+          "tableFrom": "deloop_comments",
+          "tableTo": "deloop_reports",
+          "columnsFrom": [
+            "report_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}

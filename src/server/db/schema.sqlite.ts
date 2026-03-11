@@ -516,7 +516,12 @@ export const reports: ReportsTable = sqliteTable("deloop_reports", {
 	createdAt: integer("created_at", { mode: "timestamp_ms" })
 		.notNull()
 		.$defaultFn(() => new Date()),
-}) as ReportsTable;
+}, (table) => [
+	index("idx_deloop_reports_org_id").on(table.organizationId),
+	index("idx_deloop_reports_user_id").on(table.userId),
+	index("idx_deloop_reports_url").on(table.url),
+	index("idx_deloop_reports_created_at").on(table.createdAt),
+]) as ReportsTable;
 
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
@@ -529,8 +534,10 @@ export const comments: CommentsTable = sqliteTable("deloop_comments", {
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
 
-	/** FK to reports */
-	reportId: text("report_id").notNull(),
+	/** FK to reports — matches PG schema's .references() for consistency (H2) */
+	reportId: text("report_id")
+		.notNull()
+		.references(() => reports.id, { onDelete: "cascade" }),
 
 	/** FK to better-auth users, nullable */
 	userId: text("user_id"),
@@ -545,7 +552,9 @@ export const comments: CommentsTable = sqliteTable("deloop_comments", {
 	createdAt: integer("created_at", { mode: "timestamp_ms" })
 		.notNull()
 		.$defaultFn(() => new Date()),
-}) as CommentsTable;
+}, (table) => [
+	index("idx_deloop_comments_report_id").on(table.reportId),
+]) as CommentsTable;
 
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
@@ -571,29 +580,38 @@ export const subscriptions: any = sqliteTable("deloop_subscriptions", {
 	updatedAt: integer("updated_at", { mode: "timestamp_ms" })
 		.notNull()
 		.$defaultFn(() => new Date()),
-});
+}, (table) => [
+	index("idx_deloop_subscriptions_stripe_customer").on(table.stripeCustomerId),
+]);
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
 
-/**
- * Indexes for reports table - plain SQL strings for easy execution
- */
-export const reportIndexes = [
-	"CREATE INDEX IF NOT EXISTS idx_deloop_reports_user_id ON deloop_reports(user_id)",
-	"CREATE INDEX IF NOT EXISTS idx_deloop_reports_org_id ON deloop_reports(organization_id)",
-	"CREATE INDEX IF NOT EXISTS idx_deloop_reports_url ON deloop_reports(url)",
-	"CREATE INDEX IF NOT EXISTS idx_deloop_reports_created_at ON deloop_reports(created_at DESC)",
-] as const;
 
-/**
- * Indexes for comments table - plain SQL strings for easy execution
- */
-export const commentIndexes = [
-	"CREATE INDEX IF NOT EXISTS idx_deloop_comments_report_id ON deloop_comments(report_id)",
-] as const;
+// ============================================
+// API Keys table (for MCP server auth)
+// ============================================
 
-export const subscriptionIndexes = [
-	"CREATE UNIQUE INDEX IF NOT EXISTS idx_deloop_subscriptions_org_id ON deloop_subscriptions(organization_id)",
-	"CREATE INDEX IF NOT EXISTS idx_deloop_subscriptions_stripe_customer ON deloop_subscriptions(stripe_customer_id)",
-] as const;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- MCP API key table
+export const apiKeys: any = sqliteTable("deloop_api_keys", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	organizationId: text("organization_id").notNull(),
+	// H1: .unique() creates an implicit index used by resolveAuthContext() lookups.
+	// No separate named index needed — the UNIQUE constraint handles it.
+	key: text("key")
+		.notNull()
+		.unique()
+		.$defaultFn(() => `dlp_${crypto.randomUUID().replace(/-/g, "")}`),
+	label: text("label"),
+	revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+	createdAt: integer("created_at", { mode: "timestamp_ms" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+}, (table) => [
+	index("idx_deloop_api_keys_org_id").on(table.organizationId),
+]);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;

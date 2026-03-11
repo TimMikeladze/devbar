@@ -122,6 +122,24 @@ export function MarkerItemIcon(): React.ReactNode {
 	);
 }
 
+export function RecordIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<circle cx="12" cy="12" r="9" />
+			<circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
+		</svg>
+	);
+}
+
+export function RecordItemIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<circle cx="12" cy="12" r="9" />
+			<polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none" />
+		</svg>
+	);
+}
+
 export function DragHandleIcon(): React.ReactNode {
 	return (
 		<svg viewBox="0 0 24 24" {...S}>

@@ -26,6 +26,11 @@
 
 html {
 	scroll-behavior: smooth;
+	background: var(--color-bg);
+	color-scheme: light;
+}
+html.dark {
+	color-scheme: dark;
 }
 
 body {
@@ -549,7 +554,8 @@ html.dark .pricing-card:hover {
 .step-card:hover {
 	border-color: var(--color-muted);
 }
-.landing-dark .step-card:hover {
+.landing-dark .step-card:hover,
+html.dark .step-card:hover {
 	box-shadow: 0 0 24px rgba(255, 255, 255, 0.02);
 }
 .step-number {
@@ -677,33 +683,9 @@ html.dark .pricing-card:hover {
 	border-color: var(--color-muted);
 	transform: translateY(-2px);
 }
-.landing-dark .integration-card:hover {
+.landing-dark .integration-card:hover,
+html.dark .integration-card:hover {
 	box-shadow: 0 4px 24px rgba(255, 255, 255, 0.02);
-}
-
-/* ──────── Landing: Hero annotation card ──────── */
-@keyframes heroCardIn {
-	from {
-		opacity: 0;
-		transform: translateY(12px) rotate(1deg);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) rotate(0.5deg);
-	}
-}
-.hero-annotation-card {
-	animation: heroCardIn 0.6s ease-out 0.2s both;
-	transform: rotate(0.5deg);
-	border: 1px solid var(--color-border);
-	border-top: 2px solid var(--color-accent);
-	border-radius: 12px;
-	padding: 16px;
-	background: var(--color-bg-card);
-	font-family: var(--font-mono);
-	font-size: 11px;
-	line-height: 1.6;
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* ──────── Landing: Staggered step reveals ──────── */
@@ -721,4 +703,13 @@ html.dark .pricing-card:hover {
 }
 .reveal .step-arrow:nth-child(2) {
 	transition-delay: 0.12s;
+}
+
+/* ──────── Toolbar CTA ──────── */
+@keyframes ctaBob {
+	0%, 100% { transform: translateY(-50%) translateX(0); }
+	50% { transform: translateY(calc(-50% - 3px)) translateX(2px); }
+}
+.toolbar-cta-bob {
+	animation: ctaBob 2.5s ease-in-out infinite;
 }

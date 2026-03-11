@@ -5,23 +5,50 @@ import { captureFullPage, captureRegion } from "./screenshot";
 type CaptureOverlayProps = {
 	onCapture: (annotation: Annotation) => void;
 	onDone: () => void;
+	initialMode: "fullpage" | "region";
 };
 
-type CaptureMode = "choose" | "region" | "capturing" | "note";
+type CaptureMode = "region" | "capturing" | "note";
 
-export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): React.ReactNode {
-	const [captureMode, setCaptureMode] = useState<CaptureMode>("choose");
+export function CaptureOverlay({ onCapture, onDone, initialMode }: CaptureOverlayProps): React.ReactNode {
+	const [captureMode, setCaptureMode] = useState<CaptureMode>(
+		initialMode === "fullpage" ? "capturing" : "region",
+	);
 	const [regionStart, setRegionStart] = useState<{ x: number; y: number } | null>(null);
 	const [regionEnd, setRegionEnd] = useState<{ x: number; y: number } | null>(null);
 	const [pendingAnnotation, setPendingAnnotation] = useState<Annotation | null>(null);
 	const [noteText, setNoteText] = useState("");
 	const dragging = useRef(false);
+	const fullpageTriggered = useRef(false);
+
+	// Trigger full-page capture immediately on mount
+	useEffect(() => {
+		if (initialMode !== "fullpage" || fullpageTriggered.current) return;
+		fullpageTriggered.current = true;
+
+		(async () => {
+			try {
+				const imageDataUri = await captureFullPage();
+				const annotation: Annotation = {
+					id: crypto.randomUUID(),
+					type: "screenshot",
+					timestamp: Date.now(),
+					data: { imageDataUri, fullPage: true },
+					comments: [],
+				};
+				setPendingAnnotation(annotation);
+				setNoteText("");
+				setCaptureMode("note");
+			} catch {
+				onDone();
+			}
+		})();
+	}, [initialMode, onDone]);
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
 				if (captureMode === "note" && pendingAnnotation) {
-					// Submit without note on escape
 					onCapture(pendingAnnotation);
 					onDone();
 				} else {
@@ -32,12 +59,6 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
 	}, [onDone, captureMode, pendingAnnotation, onCapture]);
-
-	const showNoteInput = useCallback((annotation: Annotation) => {
-		setPendingAnnotation(annotation);
-		setNoteText("");
-		setCaptureMode("note");
-	}, []);
 
 	const submitNote = useCallback(() => {
 		if (!pendingAnnotation) return;
@@ -56,27 +77,10 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 		onDone();
 	}, [pendingAnnotation, noteText, onCapture, onDone]);
 
-	const handleFullPage = useCallback(async () => {
-		setCaptureMode("capturing");
-		const imageDataUri = await captureFullPage();
-		const annotation: Annotation = {
-			id: crypto.randomUUID(),
-			type: "screenshot",
-			timestamp: Date.now(),
-			data: { imageDataUri, fullPage: true },
-			comments: [],
-		};
-		showNoteInput(annotation);
-	}, [showNoteInput]);
-
-	const handleRegionStart = useCallback(() => {
-		setCaptureMode("region");
-	}, []);
-
 	const onMouseDown = useCallback(
 		(e: React.MouseEvent) => {
 			if (captureMode !== "region") return;
-			if ((e.target as HTMLElement).closest("[data-deloop-capture-toolbar]")) return;
+			if ((e.target as HTMLElement).closest("[data-deloop]")) return;
 			dragging.current = true;
 			setRegionStart({ x: e.clientX, y: e.clientY });
 			setRegionEnd({ x: e.clientX, y: e.clientY });
@@ -109,16 +113,24 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 
 		setCaptureMode("capturing");
 		const region = { x, y, width, height };
-		const imageDataUri = await captureRegion(region);
-		const annotation: Annotation = {
-			id: crypto.randomUUID(),
-			type: "screenshot",
-			timestamp: Date.now(),
-			data: { imageDataUri, region, fullPage: false },
-			comments: [],
-		};
-		showNoteInput(annotation);
-	}, [regionStart, regionEnd, showNoteInput]);
+		try {
+			const imageDataUri = await captureRegion(region);
+			const annotation: Annotation = {
+				id: crypto.randomUUID(),
+				type: "screenshot",
+				timestamp: Date.now(),
+				data: { imageDataUri, region, fullPage: false },
+				comments: [],
+			};
+			setPendingAnnotation(annotation);
+			setNoteText("");
+			setCaptureMode("note");
+		} catch {
+			setCaptureMode("region");
+			setRegionStart(null);
+			setRegionEnd(null);
+		}
+	}, [regionStart, regionEnd]);
 
 	const selectionRect =
 		regionStart && regionEnd
@@ -138,30 +150,6 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 			onMouseUp={onMouseUp}
 			className={`deloop-overlay ${captureMode === "region" ? "deloop-overlay-crosshair" : ""}`}
 		>
-			{captureMode === "choose" && <div className="deloop-overlay-scrim" />}
-			{captureMode === "choose" && (
-				<div data-deloop-capture-toolbar className="deloop-capture-dialog">
-					<div className="deloop-capture-dialog-title">Screenshot</div>
-					<button type="button" onClick={handleFullPage} className="deloop-capture-dialog-btn">
-						Full Page
-					</button>
-					<button
-						type="button"
-						onClick={handleRegionStart}
-						className="deloop-capture-dialog-btn deloop-capture-dialog-btn-primary"
-					>
-						Select Region
-					</button>
-					<button
-						type="button"
-						onClick={onDone}
-						className="deloop-capture-dialog-btn deloop-capture-dialog-btn-cancel"
-					>
-						Cancel
-					</button>
-				</div>
-			)}
-
 			{captureMode === "region" && selectionRect && selectionRect.width > 0 && (
 				<>
 					<div
@@ -185,12 +173,6 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 				</>
 			)}
 
-			{captureMode === "region" && (
-				<div className="deloop-instruction">
-					Click and drag to select a region &middot; <kbd>Esc</kbd> to cancel
-				</div>
-			)}
-
 			{captureMode === "capturing" && <div className="deloop-capture-status">Capturing...</div>}
 
 			{captureMode === "note" && (
@@ -209,7 +191,7 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 					<div className="deloop-capture-note-actions">
 						<button
 							type="button"
-							className="deloop-capture-dialog-btn deloop-capture-dialog-btn-primary"
+							className="deloop-overlay-btn deloop-overlay-btn-primary"
 							style={{ flex: 1 }}
 							onClick={submitNote}
 						>
@@ -217,7 +199,7 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 						</button>
 						<button
 							type="button"
-							className="deloop-capture-dialog-btn"
+							className="deloop-overlay-btn"
 							onClick={() => {
 								if (pendingAnnotation) onCapture(pendingAnnotation);
 								onDone();
@@ -226,6 +208,12 @@ export function CaptureOverlay({ onCapture, onDone }: CaptureOverlayProps): Reac
 							Skip
 						</button>
 					</div>
+				</div>
+			)}
+
+			{captureMode === "region" && (
+				<div className="deloop-instruction">
+					Click and drag to select a region &middot; <kbd>Esc</kbd> to cancel
 				</div>
 			)}
 		</div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Annotation, ElementData } from "@/session/types";
+import type { Annotation, CaptureConfig, ElementData } from "@/session/types";
 import { extractElementData } from "./element-data";
 
 type SelectOverlayProps = {
@@ -7,6 +7,7 @@ type SelectOverlayProps = {
 	onDone: () => void;
 	annotations?: Annotation[];
 	onFocusAnnotation?: (id: string) => void;
+	capture?: CaptureConfig;
 };
 
 export function SelectOverlay({
@@ -14,6 +15,7 @@ export function SelectOverlay({
 	onDone,
 	annotations = [],
 	onFocusAnnotation,
+	capture,
 }: SelectOverlayProps): React.ReactNode {
 	const [highlight, setHighlight] = useState<{
 		x: number;
@@ -86,7 +88,7 @@ export function SelectOverlay({
 				return;
 			}
 
-			const data = extractElementData(el);
+			const data = extractElementData(el, capture);
 			const annotation: Annotation = {
 				id: crypto.randomUUID(),
 				type: "element",
