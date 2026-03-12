@@ -233,8 +233,8 @@ function Hero() {
 					</h1>
 					<p className="text-dim text-[15px] sm:text-lg leading-[1.7] mb-4 max-w-2xl mx-auto">
 						Click any element on your site and deloop captures XPaths, computed styles, React
-						component trees, source file paths, and screenshots — structured context ready for
-						your AI coding assistant, design reviews, QA reports, or team feedback loops.
+						component trees, source file paths, and screenshots — structured context ready for your
+						AI coding assistant, design reviews, QA reports, or team feedback loops.
 					</p>
 					<div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-[13px] text-muted mb-8">
 						<span>Prompt Claude, Cursor &amp; ChatGPT</span>
@@ -744,7 +744,7 @@ function CapturedData() {
 							color: "text-cyan",
 							dot: "bg-cyan",
 							title: "Computed CSS",
-							desc: "Actual rendered values, not what's in the stylesheet. Designers and developers see the same precise colors and spacing — no more \"it looks different on my screen.\"",
+							desc: 'Actual rendered values, not what\'s in the stylesheet. Designers and developers see the same precise colors and spacing — no more "it looks different on my screen."',
 						},
 						{
 							color: "text-emerald",
@@ -790,8 +790,7 @@ function BeforeAfter() {
 			<div className="text-center mb-10 sm:mb-12">
 				<p className="section-label text-rose before:bg-rose justify-center">The problem</p>
 				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
-					Collaboration breaks when{" "}
-					<span className="gradient-warm">context is missing</span>
+					Collaboration breaks when <span className="gradient-warm">context is missing</span>
 				</h2>
 				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
 					A designer posts a blurry screenshot in Slack. A PM writes "the button on that page." Your
@@ -831,7 +830,6 @@ function BeforeAfter() {
 							<p className="text-muted italic">
 								&quot;hey the button on the dashboard is the wrong color, can someone look at
 								it?&quot;
-
 							</p>
 							<div className="mt-2 rounded border border-border bg-bg h-16 flex items-center justify-center text-[10px] text-muted/50">
 								blurry-screenshot.png
@@ -1190,14 +1188,16 @@ function UseCases() {
 	return (
 		<section ref={ref} className="mb-24 sm:mb-32 reveal">
 			<div className="text-center mb-10 sm:mb-12">
-				<p className="section-label text-cyan before:bg-cyan justify-center">Built for collaboration</p>
+				<p className="section-label text-cyan before:bg-cyan justify-center">
+					Built for collaboration
+				</p>
 				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
 					Every role, <span className="gradient-warm">one shared language</span>
 				</h2>
 				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					Designers give pixel-perfect feedback. QA files structured reports. PMs review staging
-					in the browser. Developers paste context into their AI agent. Everyone uses the same
-					toolbar, and every annotation arrives in the same format — zero follow-ups.
+					Designers give pixel-perfect feedback. QA files structured reports. PMs review staging in
+					the browser. Developers paste context into their AI agent. Everyone uses the same toolbar,
+					and every annotation arrives in the same format — zero follow-ups.
 				</p>
 			</div>
 
@@ -1337,8 +1337,8 @@ function Features() {
 					Built for <span className="gradient-warm">collaborative feedback</span>
 				</h2>
 				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					Every annotation automatically captures the surrounding context so whoever acts on it —
-					a teammate, a reviewer, or an AI agent — has everything they need on the first try.
+					Every annotation automatically captures the surrounding context so whoever acts on it — a
+					teammate, a reviewer, or an AI agent — has everything they need on the first try.
 				</p>
 			</div>
 			<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-5">

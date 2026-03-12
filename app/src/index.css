@@ -179,12 +179,7 @@ html.dark .hero-frame-glow {
 /* ──────── Landing: Gradient divider ──────── */
 .section-divider {
 	height: 1px;
-	background: linear-gradient(
-		90deg,
-		transparent 0%,
-		rgba(59, 130, 246, 0.2) 50%,
-		transparent 100%
-	);
+	background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.2) 50%, transparent 100%);
 	margin: 0 auto;
 	max-width: 200px;
 }
