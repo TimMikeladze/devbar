@@ -157,7 +157,7 @@
 	width: 26px;
 	height: 32px;
 	cursor: grab;
-	color: var(--deloop-text-muted);
+	color: var(--deloop-text-secondary);
 	transition:
 		color 0.2s,
 		background 0.2s;
@@ -177,7 +177,6 @@
 .deloop-bar-drag svg {
 	width: 13px;
 	height: 13px;
-	opacity: 0.7;
 }
 
 .deloop-bar-divider {

@@ -566,14 +566,68 @@ const THEME_LABELS: Record<DeloopTheme, string> = {
 	auto: "System",
 };
 
-function useBarDrag() {
-	const [offset, setOffset] = useState<{ x: number; y: number } | null>(() => {
-		try {
-			const saved = localStorage.getItem("deloop-bar-position");
-			if (saved) return JSON.parse(saved) as { x: number; y: number };
-		} catch {}
-		return null;
+function detectHostDark(): boolean {
+	const root = document.documentElement;
+	if (
+		root.classList.contains("dark") ||
+		root.getAttribute("data-theme") === "dark" ||
+		root.getAttribute("data-mode") === "dark"
+	)
+		return true;
+	if (root.getAttribute("data-theme") === "light" || root.getAttribute("data-mode") === "light")
+		return false;
+	// Sample the page background to detect dark vs light
+	for (const el of [document.body, root]) {
+		const bg = window.getComputedStyle(el).backgroundColor;
+		if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+			const m = bg.match(/\d+/g);
+			if (m && m.length >= 3) {
+				const lum = (0.299 * +m[0]! + 0.587 * +m[1]! + 0.114 * +m[2]!) / 255;
+				return lum < 0.5;
+			}
+		}
+	}
+	return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function useResolvedTheme(theme: DeloopTheme): "light" | "dark" {
+	const [resolved, setResolved] = useState<"light" | "dark">(() => {
+		if (theme !== "auto") return theme;
+		return detectHostDark() ? "dark" : "light";
 	});
+
+	useEffect(() => {
+		if (theme !== "auto") {
+			setResolved(theme);
+			return;
+		}
+		const sync = () => setResolved(detectHostDark() ? "dark" : "light");
+		sync();
+		const mq = window.matchMedia("(prefers-color-scheme: dark)");
+		mq.addEventListener("change", sync);
+		const observer = new MutationObserver(sync);
+		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["class", "data-theme", "data-mode"],
+		});
+		return () => {
+			mq.removeEventListener("change", sync);
+			observer.disconnect();
+		};
+	}, [theme]);
+
+	return resolved;
+}
+
+function clampToViewport(pos: { x: number; y: number }): { x: number; y: number } {
+	return {
+		x: Math.max(0, Math.min(pos.x, window.innerWidth - 260)),
+		y: Math.max(0, Math.min(pos.y, window.innerHeight - 60)),
+	};
+}
+
+function useBarDrag() {
+	const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
 	const dragging = useRef(false);
 	const dragStart = useRef({ x: 0, y: 0 });
 
@@ -614,11 +668,21 @@ function useBarDrag() {
 				});
 			}
 		};
+		const onResize = () => {
+			setOffset((current) => {
+				if (!current) return current;
+				// On narrow viewports, clear offset so bar falls back to CSS centering
+				if (window.innerWidth < 640) return null;
+				return clampToViewport(current);
+			});
+		};
 		window.addEventListener("mousemove", onMouseMove);
 		window.addEventListener("mouseup", onMouseUp);
+		window.addEventListener("resize", onResize);
 		return () => {
 			window.removeEventListener("mousemove", onMouseMove);
 			window.removeEventListener("mouseup", onMouseUp);
+			window.removeEventListener("resize", onResize);
 		};
 	}, []);
 
@@ -698,7 +762,7 @@ export function Deloop({
 	onSubmit,
 	promptTemplate,
 	tools: enabledTools,
-	theme: initialTheme = "dark",
+	theme: initialTheme = "auto",
 	plugins = [],
 	server,
 	user,
@@ -786,6 +850,7 @@ export function Deloop({
 	const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
 	const [toast, setToast] = useState<string | null>(null);
 	const [theme, setTheme] = useState<DeloopTheme>(initialTheme);
+	const resolvedTheme = useResolvedTheme(theme);
 	const [collapsed, setCollapsed] = useState(false);
 	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 	const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null);
@@ -1056,10 +1121,12 @@ export function Deloop({
 					}
 					return !v;
 				});
+				setSidePanelOpen(false);
 				setShowSettings(false);
 				setShowHelp(false);
 				setShowLabels(false);
-
+				setShowExportMenu(false);
+				setToolMenu(null);
 				return;
 			}
 
@@ -1068,6 +1135,11 @@ export function Deloop({
 				e.preventDefault();
 				setSidePanelOpen((v) => !v);
 				setPanelOpen(false);
+				setShowSettings(false);
+				setShowHelp(false);
+				setShowLabels(false);
+				setShowExportMenu(false);
+				setToolMenu(null);
 				return;
 			}
 
@@ -1082,9 +1154,12 @@ export function Deloop({
 					}
 					return !v;
 				});
-				setShowSettings(false);
-
 				setPanelOpen(false);
+				setSidePanelOpen(false);
+				setShowSettings(false);
+				setShowHelp(false);
+				setShowExportMenu(false);
+				setToolMenu(null);
 				return;
 			}
 
@@ -1099,10 +1174,12 @@ export function Deloop({
 					}
 					return !v;
 				});
+				setPanelOpen(false);
+				setSidePanelOpen(false);
 				setShowSettings(false);
 				setShowLabels(false);
-
-				setPanelOpen(false);
+				setShowExportMenu(false);
+				setToolMenu(null);
 				return;
 			}
 
@@ -1115,6 +1192,11 @@ export function Deloop({
 						state.activateTool(tool.key);
 					}
 					setPanelOpen(false);
+					setSidePanelOpen(false);
+					setShowSettings(false);
+					setShowHelp(false);
+					setShowLabels(false);
+					setShowExportMenu(false);
 					return;
 				}
 			}
@@ -1278,11 +1360,27 @@ export function Deloop({
 		localArchiveAndClear,
 	]);
 
+	const closeAllPanels = useCallback(() => {
+		setPanelOpen(false);
+		setSidePanelOpen(false);
+		setShowSettings(false);
+		setShowHelp(false);
+		setShowLabels(false);
+		setShowExportMenu(false);
+		setToolMenu(null);
+	}, []);
+
 	const handleToolClick = useCallback(
 		(tool: ToolMode) => {
 			// Capture and record show dropdown menus instead of activating directly
 			if (tool === "capture" || tool === "record") {
 				setToolMenu((prev) => (prev === tool ? null : tool));
+				setPanelOpen(false);
+				setSidePanelOpen(false);
+				setShowSettings(false);
+				setShowHelp(false);
+				setShowLabels(false);
+				setShowExportMenu(false);
 				return;
 			}
 			if (state.activeMode === tool) {
@@ -1291,12 +1389,16 @@ export function Deloop({
 			} else {
 				state.activateTool(tool);
 				collab.sendToolChange(tool);
-				setPanelOpen(false);
-				setShowSettings(false);
-				setShowHelp(false);
+				closeAllPanels();
 			}
 		},
-		[state.activeMode, state.activateTool, state.deactivateTool, collab.sendToolChange],
+		[
+			state.activeMode,
+			state.activateTool,
+			state.deactivateTool,
+			collab.sendToolChange,
+			closeAllPanels,
+		],
 	);
 
 	const handleCapture = useCallback(
@@ -1338,9 +1440,12 @@ export function Deloop({
 			}
 			return !v;
 		});
+		setSidePanelOpen(false);
 		setShowSettings(false);
 		setShowHelp(false);
 		setShowLabels(false);
+		setShowExportMenu(false);
+		setToolMenu(null);
 	}, [drag.offset]);
 
 	const toggleSidePanel = useCallback(() => {
@@ -1348,6 +1453,9 @@ export function Deloop({
 		setPanelOpen(false);
 		setShowSettings(false);
 		setShowHelp(false);
+		setShowLabels(false);
+		setShowExportMenu(false);
+		setToolMenu(null);
 	}, []);
 
 	const updateSettings = useCallback((patch: Partial<DeloopSettings>) => {
@@ -1502,7 +1610,6 @@ export function Deloop({
 			onClick={() => {
 				setShowSettings((v) => {
 					if (!v) {
-						// Lock panel direction when opening
 						panelOpenAboveRef.current = drag.offset
 							? drag.offset.y >= window.innerHeight / 2
 							: true;
@@ -1510,8 +1617,11 @@ export function Deloop({
 					return !v;
 				});
 				setPanelOpen(false);
+				setSidePanelOpen(false);
 				setShowHelp(false);
 				setShowLabels(false);
+				setShowExportMenu(false);
+				setToolMenu(null);
 			}}
 			title="Settings"
 		>
@@ -1609,7 +1719,15 @@ export function Deloop({
 			<button
 				type="button"
 				className={`deloop-bar-btn ${showExportMenu ? "deloop-bar-btn-active" : ""}`}
-				onClick={() => setShowExportMenu((v) => !v)}
+				onClick={() => {
+					setShowExportMenu((v) => !v);
+					setPanelOpen(false);
+					setSidePanelOpen(false);
+					setShowSettings(false);
+					setShowHelp(false);
+					setShowLabels(false);
+					setToolMenu(null);
+				}}
 				style={
 					copied
 						? { color: "var(--deloop-green, #4ade80)" }
@@ -1629,7 +1747,7 @@ export function Deloop({
 			</button>
 			{showExportMenu && (
 				<div
-					className={`deloop-export-menu deloop-theme-${theme}`}
+					className={`deloop-export-menu deloop-theme-${resolvedTheme}`}
 					style={
 						tooltipBelow
 							? { bottom: "auto", top: "100%", marginTop: 8 }
@@ -1675,7 +1793,7 @@ export function Deloop({
 						</button>
 						{isOpen && (
 							<div
-								className={`deloop-export-menu deloop-theme-${theme}`}
+								className={`deloop-export-menu deloop-theme-${resolvedTheme}`}
 								style={
 									tooltipBelow
 										? { bottom: "auto", top: "100%", marginTop: 8 }
@@ -1791,14 +1909,15 @@ export function Deloop({
 								? drag.offset.y >= window.innerHeight / 2
 								: true;
 						}
-						setShowSettings(false);
-						setShowHelp(false);
 					}
 					return !v;
 				});
-				if (!tooltipBelow) {
-					setPanelOpen(false);
-				}
+				setPanelOpen(false);
+				setSidePanelOpen(false);
+				setShowSettings(false);
+				setShowHelp(false);
+				setShowExportMenu(false);
+				setToolMenu(null);
 			}}
 			title={state.activeLabel ? `Label: ${state.activeLabel}` : "Labels"}
 		>
@@ -2730,7 +2849,7 @@ export function Deloop({
 			{/* Annotations popup panel (toolbar mode only) */}
 			{uiMode === "toolbar" && panelOpen && !state.activeMode && !sidePanelOpen && (
 				<div
-					className={`deloop-panel deloop-theme-${theme}`}
+					className={`deloop-panel deloop-theme-${resolvedTheme}`}
 					style={floatingPanelStyle}
 					ref={panelRef}
 				>
@@ -2764,7 +2883,7 @@ export function Deloop({
 					const isLeft = settings.sidePanelSide === "left";
 					const panel = (
 						<div
-							className={`deloop-side-panel ${isPush ? "deloop-side-panel-push" : ""} ${isLeft ? "deloop-side-panel-left" : ""} deloop-theme-${theme}`}
+							className={`deloop-side-panel ${isPush ? "deloop-side-panel-push" : ""} ${isLeft ? "deloop-side-panel-left" : ""} deloop-theme-${resolvedTheme}`}
 						>
 							{/* Compact icon bar matching toolbar layout */}
 							<div className="deloop-side-panel-bar">
@@ -2866,8 +2985,16 @@ export function Deloop({
 			{/* Panel mode: floating icon to toggle side panel */}
 			{uiMode === "panel" && !state.activeMode && !sidePanelOpen && (
 				<div
-					className={`deloop-dot deloop-theme-${theme}`}
-					onClick={() => setSidePanelOpen(true)}
+					className={`deloop-dot deloop-theme-${resolvedTheme}`}
+					onClick={() => {
+						setSidePanelOpen(true);
+						setPanelOpen(false);
+						setShowSettings(false);
+						setShowHelp(false);
+						setShowLabels(false);
+						setShowExportMenu(false);
+						setToolMenu(null);
+					}}
 					onMouseDown={drag.onMouseDown}
 					title="Open panel"
 					style={
@@ -2892,7 +3019,7 @@ export function Deloop({
 
 			{/* Mini bar (visible during tool mode) */}
 			{state.activeMode && (
-				<div className={`deloop-minibar deloop-theme-${theme}`}>
+				<div className={`deloop-minibar deloop-theme-${resolvedTheme}`}>
 					{activeToolDef && (
 						<div className="deloop-minibar-active-icon">{activeToolDef.icon()}</div>
 					)}
@@ -2920,7 +3047,7 @@ export function Deloop({
 			{/* Collapsed dot (toolbar mode only) */}
 			{uiMode === "toolbar" && collapsed && !state.activeMode && !sidePanelOpen && (
 				<div
-					className={`deloop-dot deloop-theme-${theme}`}
+					className={`deloop-dot deloop-theme-${resolvedTheme}`}
 					onClick={() => setCollapsed(false)}
 					onMouseDown={drag.onMouseDown}
 					title="Expand toolbar (drag to move)"
@@ -2947,7 +3074,7 @@ export function Deloop({
 			{/* Bottom bar — only in toolbar mode, hidden when side panel is open */}
 			{uiMode === "toolbar" && !state.activeMode && !collapsed && !sidePanelOpen && (
 				<div
-					className={`deloop-bar deloop-theme-${theme}${showSettings || showHelp || showLabels ? " deloop-bar-panel-open" : ""}${settings.toolbarOrientation === "vertical" ? " deloop-bar-vertical" : ""}`}
+					className={`deloop-bar deloop-theme-${resolvedTheme}${showSettings || showHelp || showLabels ? " deloop-bar-panel-open" : ""}${settings.toolbarOrientation === "vertical" ? " deloop-bar-vertical" : ""}`}
 					style={
 						drag.offset
 							? {
@@ -3054,7 +3181,7 @@ export function Deloop({
 					return (
 						<div
 							data-deloop="thread-popover"
-							className={`deloop-thread-popover deloop-theme-${theme}`}
+							className={`deloop-thread-popover deloop-theme-${resolvedTheme}`}
 							style={{ left: popX, top: popY }}
 						>
 							<div className="deloop-thread-popover-header">
@@ -3196,7 +3323,7 @@ export function Deloop({
 			{/* Labels panel (floating, toolbar mode only) */}
 			{showLabels && !state.activeMode && !sidePanelOpen && (
 				<div
-					className={`deloop-panel deloop-theme-${theme}`}
+					className={`deloop-panel deloop-theme-${resolvedTheme}`}
 					style={{
 						...floatingPanelStyle,
 						width: 280,
@@ -3220,7 +3347,7 @@ export function Deloop({
 			{/* Settings panel (floating, toolbar mode only) */}
 			{showSettings && !state.activeMode && !sidePanelOpen && (
 				<div
-					className={`deloop-panel deloop-theme-${theme}`}
+					className={`deloop-panel deloop-theme-${resolvedTheme}`}
 					style={{
 						...floatingPanelStyle,
 						width: 300,
@@ -3244,7 +3371,7 @@ export function Deloop({
 			{/* Keyboard shortcuts help (floating, toolbar mode only) */}
 			{showHelp && !state.activeMode && !sidePanelOpen && (
 				<div
-					className={`deloop-panel deloop-theme-${theme}`}
+					className={`deloop-panel deloop-theme-${resolvedTheme}`}
 					style={{
 						...floatingPanelStyle,
 						width: 300,
