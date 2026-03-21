@@ -6,7 +6,6 @@ const FREE_FEATURES = [
 	"Clipboard, JSON & Markdown export",
 	"Webhook integration",
 	"Custom prompt templates",
-	"Chrome extension",
 	"CDN script tag",
 	"Plugin system",
 ];
