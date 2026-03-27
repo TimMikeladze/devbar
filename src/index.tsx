@@ -20,7 +20,6 @@ export type {
 	ReactComponentInfo,
 	RecordingData,
 	ScreenshotData,
-	SidePanelMode,
 	TextData,
 	ToolMode,
 } from "@/session/types";

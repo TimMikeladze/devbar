@@ -168,8 +168,6 @@ export const defaultPromptTemplate: PromptTemplate = (context) => {
 	const settings = context.settings ?? {
 		includeImages: true,
 		imageExportMode: "base64" as const,
-		sidePanelMode: "overlay" as const,
-		sidePanelSide: "right" as const,
 		enableScreenshots: true,
 		toolbarOrientation: "horizontal" as const,
 		capture: { ...DEFAULT_CAPTURE_CONFIG },

@@ -108,9 +108,6 @@ export type PromptTemplate = (context: {
 	settings?: DeloopSettings;
 }) => string;
 
-export type SidePanelMode = "overlay" | "push";
-export type SidePanelSide = "left" | "right";
-
 export type ToolbarOrientation = "horizontal" | "vertical";
 
 export type CaptureConfig = {
@@ -159,8 +156,6 @@ export const DEFAULT_CAPTURE_CONFIG: CaptureConfig = {
 export type DeloopSettings = {
 	includeImages: boolean;
 	imageExportMode: "base64" | "files";
-	sidePanelMode: SidePanelMode;
-	sidePanelSide: SidePanelSide;
 	enableScreenshots: boolean;
 	toolbarOrientation: ToolbarOrientation;
 	capture: CaptureConfig;

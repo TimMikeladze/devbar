@@ -198,15 +198,6 @@ export function SaveFileIcon(): React.ReactNode {
 	);
 }
 
-export function SidePanelIcon(): React.ReactNode {
-	return (
-		<svg viewBox="0 0 24 24" {...S}>
-			<rect x="3" y="3" width="18" height="18" rx="2" />
-			<path d="M15 3v18" />
-		</svg>
-	);
-}
-
 export function ChevronRightIcon(): React.ReactNode {
 	return (
 		<svg viewBox="0 0 24 24" {...S}>

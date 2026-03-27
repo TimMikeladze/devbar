@@ -56,7 +56,6 @@ import {
 	MonitorIcon,
 	CopyIcon,
 	SaveFileIcon,
-	SidePanelIcon,
 	ChevronRightIcon,
 	ChevronDownIcon,
 	ChevronUpIcon,
@@ -846,8 +845,6 @@ export function Deloop({
 
 	const [uiMode, setUiMode] = useState<"toolbar" | "panel">("toolbar");
 	const [panelOpen, setPanelOpen] = useState(false);
-	const [sidePanelOpen, setSidePanelOpen] = useState(false);
-	const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
 	const [toast, setToast] = useState<string | null>(null);
 	const [theme, setTheme] = useState<DeloopTheme>(initialTheme);
 	const resolvedTheme = useResolvedTheme(theme);
@@ -869,8 +866,6 @@ export function Deloop({
 		const defaults: DeloopSettings = {
 			includeImages: true,
 			imageExportMode: "base64",
-			sidePanelMode: "overlay",
-			sidePanelSide: "right",
 			enableScreenshots: true,
 			toolbarOrientation: "horizontal",
 			capture: { ...DEFAULT_CAPTURE_CONFIG },
@@ -957,54 +952,6 @@ export function Deloop({
 	}, [state.annotations.length]);
 
 	// Push mode: portal container lives as a sibling of <body> on <html>.
-	// <html> becomes a flex container so body naturally shrinks — no margin
-	// or transform hacks that break position:fixed elements on the host page.
-	const pushPortalContainer = useMemo(() => {
-		const el = document.createElement("div");
-		el.setAttribute("data-deloop", "push-panel");
-		return el;
-	}, []);
-
-	useEffect(() => {
-		const isPush = sidePanelOpen && settings.sidePanelMode === "push";
-		const html = document.documentElement;
-		if (isPush) {
-			html.style.display = "flex";
-			html.style.height = "100vh";
-			html.style.overflow = "hidden";
-			document.body.style.flex = "1";
-			document.body.style.overflow = "auto";
-			document.body.style.minWidth = "0";
-			document.body.style.height = "100vh";
-			// Hide the body scrollbar gutter so it doesn't show a light strip
-			// between the page content and the push panel
-			const style = document.createElement("style");
-			style.setAttribute("data-deloop", "push-scrollbar");
-			style.textContent =
-				"body::-webkit-scrollbar { width: 0; background: transparent; } body { scrollbar-width: none; -ms-overflow-style: none; }";
-			document.head.appendChild(style);
-			if (settings.sidePanelSide === "left") {
-				html.insertBefore(pushPortalContainer, document.body);
-			} else {
-				html.appendChild(pushPortalContainer);
-			}
-		}
-		return () => {
-			html.style.display = "";
-			html.style.height = "";
-			html.style.overflow = "";
-			document.body.style.flex = "";
-			document.body.style.overflow = "";
-			document.body.style.minWidth = "";
-			document.body.style.height = "";
-			const style = document.querySelector('style[data-deloop="push-scrollbar"]');
-			if (style) style.remove();
-			if (pushPortalContainer.parentNode) {
-				pushPortalContainer.parentNode.removeChild(pushPortalContainer);
-			}
-		};
-	}, [sidePanelOpen, settings.sidePanelMode, settings.sidePanelSide, pushPortalContainer]);
-
 	// Close panel on outside click
 	useEffect(() => {
 		if (!panelOpen) return;
@@ -1097,8 +1044,6 @@ export function Deloop({
 					setShowSettings(false);
 				} else if (showHelp) {
 					setShowHelp(false);
-				} else if (sidePanelOpen) {
-					setSidePanelOpen(false);
 				} else if (panelOpen) {
 					setPanelOpen(false);
 				} else {
@@ -1121,20 +1066,6 @@ export function Deloop({
 					}
 					return !v;
 				});
-				setSidePanelOpen(false);
-				setShowSettings(false);
-				setShowHelp(false);
-				setShowLabels(false);
-				setShowExportMenu(false);
-				setToolMenu(null);
-				return;
-			}
-
-			// Toggle side panel: Alt+P
-			if (key === "p") {
-				e.preventDefault();
-				setSidePanelOpen((v) => !v);
-				setPanelOpen(false);
 				setShowSettings(false);
 				setShowHelp(false);
 				setShowLabels(false);
@@ -1155,7 +1086,6 @@ export function Deloop({
 					return !v;
 				});
 				setPanelOpen(false);
-				setSidePanelOpen(false);
 				setShowSettings(false);
 				setShowHelp(false);
 				setShowExportMenu(false);
@@ -1175,7 +1105,6 @@ export function Deloop({
 					return !v;
 				});
 				setPanelOpen(false);
-				setSidePanelOpen(false);
 				setShowSettings(false);
 				setShowLabels(false);
 				setShowExportMenu(false);
@@ -1192,7 +1121,6 @@ export function Deloop({
 						state.activateTool(tool.key);
 					}
 					setPanelOpen(false);
-					setSidePanelOpen(false);
 					setShowSettings(false);
 					setShowHelp(false);
 					setShowLabels(false);
@@ -1210,7 +1138,6 @@ export function Deloop({
 		state.annotations,
 		localRemoveAnnotation,
 		panelOpen,
-		sidePanelOpen,
 		showHelp,
 		showSettings,
 		showLabels,
@@ -1232,7 +1159,6 @@ export function Deloop({
 		if (!onSubmit) {
 			localArchiveAndClear("clipboard");
 			setPanelOpen(false);
-			setSidePanelOpen(false);
 		}
 	}, [
 		state.annotations,
@@ -1266,7 +1192,6 @@ export function Deloop({
 		if (!onSubmit) {
 			localArchiveAndClear("clipboard");
 			setPanelOpen(false);
-			setSidePanelOpen(false);
 		}
 	}, [
 		state.annotations,
@@ -1287,7 +1212,6 @@ export function Deloop({
 			if (!onSubmit) {
 				localArchiveAndClear(format === "md" ? "file-md" : "file-json");
 				setPanelOpen(false);
-				setSidePanelOpen(false);
 			}
 		},
 		[
@@ -1339,7 +1263,6 @@ export function Deloop({
 				onSubmit?.(payload);
 				localArchiveAndClear("server");
 				setPanelOpen(false);
-				setSidePanelOpen(false);
 			} else {
 				showToast("Submit failed");
 			}
@@ -1362,7 +1285,6 @@ export function Deloop({
 
 	const closeAllPanels = useCallback(() => {
 		setPanelOpen(false);
-		setSidePanelOpen(false);
 		setShowSettings(false);
 		setShowHelp(false);
 		setShowLabels(false);
@@ -1376,7 +1298,6 @@ export function Deloop({
 			if (tool === "capture" || tool === "record") {
 				setToolMenu((prev) => (prev === tool ? null : tool));
 				setPanelOpen(false);
-				setSidePanelOpen(false);
 				setShowSettings(false);
 				setShowHelp(false);
 				setShowLabels(false);
@@ -1440,23 +1361,12 @@ export function Deloop({
 			}
 			return !v;
 		});
-		setSidePanelOpen(false);
 		setShowSettings(false);
 		setShowHelp(false);
 		setShowLabels(false);
 		setShowExportMenu(false);
 		setToolMenu(null);
 	}, [drag.offset]);
-
-	const toggleSidePanel = useCallback(() => {
-		setSidePanelOpen((v) => !v);
-		setPanelOpen(false);
-		setShowSettings(false);
-		setShowHelp(false);
-		setShowLabels(false);
-		setShowExportMenu(false);
-		setToolMenu(null);
-	}, []);
 
 	const updateSettings = useCallback((patch: Partial<DeloopSettings>) => {
 		setSettings((prev) => {
@@ -1561,7 +1471,7 @@ export function Deloop({
 					animation: `${floatingPanelAnim} 0.15s cubic-bezier(0.16, 1, 0.3, 1)`,
 				};
 
-	// Shared auth buttons — used in both toolbar bar and side panel header
+	// Shared auth buttons
 	const renderAuthButtons = (btnClass: string, withTooltip: boolean) => (
 		<>
 			{server && authEnabled && !user && !auth.authUser && (
@@ -1597,7 +1507,7 @@ export function Deloop({
 		</>
 	);
 
-	// Shared settings button — used in both toolbar bar and side panel header
+	// Shared settings button
 	const renderSettingsButton = (
 		btnClass: string,
 		activeClass: string,
@@ -1617,7 +1527,6 @@ export function Deloop({
 					return !v;
 				});
 				setPanelOpen(false);
-				setSidePanelOpen(false);
 				setShowHelp(false);
 				setShowLabels(false);
 				setShowExportMenu(false);
@@ -1637,7 +1546,7 @@ export function Deloop({
 		</button>
 	);
 
-	// Shared export menu items — used in both toolbar bar and side panel bar
+	// Shared export menu items
 	const renderExportMenuItems = () => (
 		<>
 			<button
@@ -1713,7 +1622,7 @@ export function Deloop({
 		</>
 	);
 
-	// Shared export button + dropdown — used in both toolbar bar and side panel bar
+	// Shared export button + dropdown
 	const renderExportButton = (tooltipBelow?: boolean) => (
 		<div className="deloop-bar-export-wrap" ref={exportMenuRef}>
 			<button
@@ -1722,7 +1631,6 @@ export function Deloop({
 				onClick={() => {
 					setShowExportMenu((v) => !v);
 					setPanelOpen(false);
-					setSidePanelOpen(false);
 					setShowSettings(false);
 					setShowHelp(false);
 					setShowLabels(false);
@@ -1764,7 +1672,7 @@ export function Deloop({
 		</div>
 	);
 
-	// Shared tool buttons — used in both toolbar bar and side panel bar
+	// Shared tool buttons
 	const renderToolButtons = (tooltipBelow?: boolean) =>
 		toolDefs.map((tool) => {
 			const Icon = tool.icon;
@@ -1896,7 +1804,7 @@ export function Deloop({
 			);
 		});
 
-	// Shared label button — used in both toolbar bar and side panel bar
+	// Shared label button
 	const renderLabelButton = (tooltipBelow?: boolean) => (
 		<button
 			type="button"
@@ -1913,7 +1821,6 @@ export function Deloop({
 					return !v;
 				});
 				setPanelOpen(false);
-				setSidePanelOpen(false);
 				setShowSettings(false);
 				setShowHelp(false);
 				setShowExportMenu(false);
@@ -2026,50 +1933,6 @@ export function Deloop({
 						onClick={() => updateSettings({ imageExportMode: "files" })}
 					>
 						Files
-					</button>
-				</div>
-			</div>
-			<div className="deloop-settings-row">
-				<div className="deloop-settings-label">
-					<div className="deloop-settings-title">Side panel layout</div>
-					<div className="deloop-settings-desc">Overlay on top or push page content aside</div>
-				</div>
-				<div className="deloop-settings-segmented">
-					<button
-						type="button"
-						className={`deloop-settings-seg-btn ${settings.sidePanelMode === "overlay" ? "deloop-settings-seg-btn-active" : ""}`}
-						onClick={() => updateSettings({ sidePanelMode: "overlay" })}
-					>
-						Overlay
-					</button>
-					<button
-						type="button"
-						className={`deloop-settings-seg-btn ${settings.sidePanelMode === "push" ? "deloop-settings-seg-btn-active" : ""}`}
-						onClick={() => updateSettings({ sidePanelMode: "push" })}
-					>
-						Push
-					</button>
-				</div>
-			</div>
-			<div className="deloop-settings-row">
-				<div className="deloop-settings-label">
-					<div className="deloop-settings-title">Side panel position</div>
-					<div className="deloop-settings-desc">Which side of the screen the panel opens on</div>
-				</div>
-				<div className="deloop-settings-segmented">
-					<button
-						type="button"
-						className={`deloop-settings-seg-btn ${settings.sidePanelSide === "left" ? "deloop-settings-seg-btn-active" : ""}`}
-						onClick={() => updateSettings({ sidePanelSide: "left" })}
-					>
-						Left
-					</button>
-					<button
-						type="button"
-						className={`deloop-settings-seg-btn ${settings.sidePanelSide === "right" ? "deloop-settings-seg-btn-active" : ""}`}
-						onClick={() => updateSettings({ sidePanelSide: "right" })}
-					>
-						Right
 					</button>
 				</div>
 			</div>
@@ -2277,7 +2140,6 @@ export function Deloop({
 				["Alt+M", "Marker tool"],
 				["Alt+C", "Capture tool"],
 				["Alt+A", "Toggle annotations"],
-				["Alt+P", "Toggle side panel"],
 				["Alt+L", "Labels"],
 				["Alt+/", "This help"],
 				["Esc", "Close / Minimize"],
@@ -2774,7 +2636,6 @@ export function Deloop({
 						}
 						localClearAnnotations();
 						setPanelOpen(false);
-						setSidePanelOpen(false);
 						setClearConfirm(false);
 					}}
 					style={
@@ -2847,7 +2708,7 @@ export function Deloop({
 			)}
 
 			{/* Annotations popup panel (toolbar mode only) */}
-			{uiMode === "toolbar" && panelOpen && !state.activeMode && !sidePanelOpen && (
+			{uiMode === "toolbar" && panelOpen && !state.activeMode && (
 				<div
 					className={`deloop-panel deloop-theme-${resolvedTheme}`}
 					style={floatingPanelStyle}
@@ -2868,152 +2729,6 @@ export function Deloop({
 					</div>
 					{previewMode !== "off" ? renderPreview() : renderAnnotationList()}
 					{renderFooter()}
-				</div>
-			)}
-
-			{/* Side panel backdrop (overlay mode only) */}
-			{sidePanelOpen && settings.sidePanelMode === "overlay" && (
-				<div className="deloop-side-panel-backdrop" onClick={() => setSidePanelOpen(false)} />
-			)}
-
-			{/* Side panel drawer — portaled outside <body> in push mode */}
-			{sidePanelOpen &&
-				(() => {
-					const isPush = settings.sidePanelMode === "push";
-					const isLeft = settings.sidePanelSide === "left";
-					const panel = (
-						<div
-							className={`deloop-side-panel ${isPush ? "deloop-side-panel-push" : ""} ${isLeft ? "deloop-side-panel-left" : ""} deloop-theme-${resolvedTheme}`}
-						>
-							{/* Compact icon bar matching toolbar layout */}
-							<div className="deloop-side-panel-bar">
-								{renderToolButtons(true)}
-								{renderLabelButton(true)}
-								{renderExportButton(true)}
-								{renderSettingsButton("deloop-bar-btn", "deloop-bar-btn-active", true, true)}
-								<button
-									type="button"
-									className="deloop-bar-btn"
-									onClick={() => setSidePanelCollapsed((v) => !v)}
-								>
-									{sidePanelCollapsed ? <ChevronDownIcon /> : <ChevronUpIcon />}
-									<span
-										className="deloop-tooltip"
-										style={{ bottom: "auto", top: "calc(100% + 10px)" }}
-									>
-										{sidePanelCollapsed ? "Expand" : "Collapse"}
-									</span>
-								</button>
-								<button
-									type="button"
-									className="deloop-bar-btn"
-									onClick={() => setSidePanelOpen(false)}
-								>
-									<ChevronRightIcon />
-									<span
-										className="deloop-tooltip"
-										style={{ bottom: "auto", top: "calc(100% + 10px)" }}
-									>
-										Close<span className="deloop-tooltip-key">Esc</span>
-									</span>
-								</button>
-							</div>
-
-							{/* Inline labels in side panel */}
-							{!sidePanelCollapsed && showLabels && (
-								<div className="deloop-side-panel-section">
-									<div className="deloop-side-panel-section-label">Labels</div>
-									{renderLabelsContent()}
-								</div>
-							)}
-
-							{/* Inline settings in side panel */}
-							{!sidePanelCollapsed && showSettings && (
-								<div className="deloop-side-panel-section">
-									<div className="deloop-side-panel-section-label">Settings</div>
-									{renderSettingsContent()}
-								</div>
-							)}
-
-							{/* Inline help in side panel */}
-							{!sidePanelCollapsed && showHelp && (
-								<div className="deloop-side-panel-section">
-									<div className="deloop-side-panel-section-label">Keyboard Shortcuts</div>
-									{renderHelpContent()}
-								</div>
-							)}
-
-							{/* Annotations / Preview section */}
-							{!sidePanelCollapsed &&
-								!showLabels &&
-								!showSettings &&
-								!showHelp &&
-								(previewMode !== "off" ? (
-									<div className="deloop-side-panel-section" style={{ flex: 1, minHeight: 0 }}>
-										<div className="deloop-side-panel-section-label">Preview</div>
-										{renderPreview("none")}
-									</div>
-								) : (
-									<>
-										<div className="deloop-side-panel-section">
-											<div className="deloop-side-panel-section-label">
-												Annotations
-												{state.annotations.length > 0 ? ` (${state.annotations.length})` : ""}
-											</div>
-											{renderAnnotationList("none")}
-											{renderFooter()}
-										</div>
-
-										{/* Plugin panels */}
-										{plugins
-											.filter((p) => p.panel)
-											.map((plugin) => (
-												<div key={plugin.key} className="deloop-side-panel-section">
-													<div className="deloop-side-panel-section-label">{plugin.label}</div>
-													<div className="deloop-panel-body" style={{ maxHeight: "none" }}>
-														{plugin.panel!()}
-													</div>
-												</div>
-											))}
-									</>
-								))}
-						</div>
-					);
-					return isPush ? createPortal(panel, pushPortalContainer) : panel;
-				})()}
-
-			{/* Panel mode: floating icon to toggle side panel */}
-			{uiMode === "panel" && !state.activeMode && !sidePanelOpen && (
-				<div
-					className={`deloop-dot deloop-theme-${resolvedTheme}`}
-					onClick={() => {
-						setSidePanelOpen(true);
-						setPanelOpen(false);
-						setShowSettings(false);
-						setShowHelp(false);
-						setShowLabels(false);
-						setShowExportMenu(false);
-						setToolMenu(null);
-					}}
-					onMouseDown={drag.onMouseDown}
-					title="Open panel"
-					style={
-						drag.offset
-							? {
-									left: drag.offset.x,
-									bottom: "auto",
-									top: drag.offset.y,
-									transform: "none",
-								}
-							: undefined
-					}
-				>
-					<SidePanelIcon />
-					{state.annotations.length > 0 && (
-						<span className={`deloop-badge ${badgePulse ? "deloop-badge-pulse" : ""}`}>
-							{state.annotations.length}
-						</span>
-					)}
 				</div>
 			)}
 
@@ -3045,7 +2760,7 @@ export function Deloop({
 			)}
 
 			{/* Collapsed dot (toolbar mode only) */}
-			{uiMode === "toolbar" && collapsed && !state.activeMode && !sidePanelOpen && (
+			{uiMode === "toolbar" && collapsed && !state.activeMode && (
 				<div
 					className={`deloop-dot deloop-theme-${resolvedTheme}`}
 					onClick={() => setCollapsed(false)}
@@ -3071,8 +2786,8 @@ export function Deloop({
 				</div>
 			)}
 
-			{/* Bottom bar — only in toolbar mode, hidden when side panel is open */}
-			{uiMode === "toolbar" && !state.activeMode && !collapsed && !sidePanelOpen && (
+			{/* Bottom bar — only in toolbar mode */}
+			{uiMode === "toolbar" && !state.activeMode && !collapsed && (
 				<div
 					className={`deloop-bar deloop-theme-${resolvedTheme}${showSettings || showHelp || showLabels ? " deloop-bar-panel-open" : ""}${settings.toolbarOrientation === "vertical" ? " deloop-bar-vertical" : ""}`}
 					style={
@@ -3136,18 +2851,6 @@ export function Deloop({
 					{renderLabelButton()}
 					<div className="deloop-bar-divider" />
 					{renderExportButton()}
-					<div className="deloop-bar-divider" />
-					<button
-						type="button"
-						className={`deloop-bar-btn ${sidePanelOpen ? "deloop-bar-btn-active" : ""}`}
-						onClick={toggleSidePanel}
-					>
-						<SidePanelIcon />
-						<span className="deloop-tooltip">
-							Panel
-							<span className="deloop-tooltip-key">P</span>
-						</span>
-					</button>
 					{collab.peers.length > 0 && (
 						<>
 							<div className="deloop-bar-divider" />
@@ -3321,7 +3024,7 @@ export function Deloop({
 				})()}
 
 			{/* Labels panel (floating, toolbar mode only) */}
-			{showLabels && !state.activeMode && !sidePanelOpen && (
+			{showLabels && !state.activeMode && (
 				<div
 					className={`deloop-panel deloop-theme-${resolvedTheme}`}
 					style={{
@@ -3345,7 +3048,7 @@ export function Deloop({
 			)}
 
 			{/* Settings panel (floating, toolbar mode only) */}
-			{showSettings && !state.activeMode && !sidePanelOpen && (
+			{showSettings && !state.activeMode && (
 				<div
 					className={`deloop-panel deloop-theme-${resolvedTheme}`}
 					style={{
@@ -3369,7 +3072,7 @@ export function Deloop({
 			)}
 
 			{/* Keyboard shortcuts help (floating, toolbar mode only) */}
-			{showHelp && !state.activeMode && !sidePanelOpen && (
+			{showHelp && !state.activeMode && (
 				<div
 					className={`deloop-panel deloop-theme-${resolvedTheme}`}
 					style={{
