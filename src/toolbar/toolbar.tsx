@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import type {
 	Annotation,
 	CaptureConfig,
@@ -56,10 +55,8 @@ import {
 	MonitorIcon,
 	CopyIcon,
 	SaveFileIcon,
-	ChevronRightIcon,
 	ChevronDownIcon,
 	ChevronUpIcon,
-	ToolbarModeIcon,
 	PreviewIcon,
 	SettingsIcon,
 	UserIcon,
@@ -843,7 +840,7 @@ export function Deloop({
 		[state.archiveAndClear, state.activeLabel, collab.sendClear],
 	);
 
-	const [uiMode, setUiMode] = useState<"toolbar" | "panel">("toolbar");
+	const [uiMode] = useState<"toolbar" | "panel">("toolbar");
 	const [panelOpen, setPanelOpen] = useState(false);
 	const [toast, setToast] = useState<string | null>(null);
 	const [theme, setTheme] = useState<DeloopTheme>(initialTheme);
