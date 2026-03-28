@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { serveStatic } from "hono/bun";
 import { createAuth } from "./auth";
 import { getDb } from "./db";
-import { authMiddleware } from "./middleware";
+import { authMiddleware, subscriptionGuard } from "./middleware";
 import commentRoutes from "./routes/comments";
 import reportRoutes from "./routes/reports";
 import stripeRoutes, { createWebhookRoute } from "./routes/stripe";
@@ -65,11 +65,17 @@ export async function createDeloopServer(): Promise<{
 	// Protected API routes
 	const api = new Hono();
 	api.use("*", authMiddleware(auth));
-	api.route("/reports", reportRoutes);
-	api.route("/reports", commentRoutes); // comments are nested under /reports/:id/comments
-	api.route("", commentRoutes); // for DELETE /api/comments/:id
 
+	// Stripe routes — auth required but no subscription check (manages subscription itself)
 	api.route("/stripe", stripeRoutes);
+
+	// Feature routes — require active subscription
+	const gated = new Hono();
+	gated.use("*", subscriptionGuard());
+	gated.route("/reports", reportRoutes);
+	gated.route("/reports", commentRoutes); // comments are nested under /reports/:id/comments
+	gated.route("", commentRoutes); // for DELETE /api/comments/:id
+	api.route("", gated);
 
 	// Stripe webhook - MUST be mounted before the protected api routes
 	// so it doesn't hit the auth middleware (verified by Stripe signature instead)

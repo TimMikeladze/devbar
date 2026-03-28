@@ -1,0 +1,2 @@
+[  823183ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5173/@fs/Users/tim/workspace/deloop/dist/index.js?t=1774627315396:0
+[  823183ms] [ERROR] [vite] Failed to reload /@fs/Users/tim/workspace/deloop/dist/index.js. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@fs/Users/tim/workspace/deloop/dist/index.js:194

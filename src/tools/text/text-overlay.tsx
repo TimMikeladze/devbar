@@ -106,7 +106,7 @@ export function TextOverlay({
 						border: "1px solid var(--deloop-border)",
 						borderRadius: 12,
 						padding: 6,
-						boxShadow: "0 16px 48px rgba(0,0,0,0.25)",
+						boxShadow: "var(--deloop-shadow-lg)",
 						display: "flex",
 						gap: 4,
 					}}

@@ -51,10 +51,15 @@ export function AnnotationHighlights({
 			const elementAnnotations = annotationsRef.current.filter((a) => a.type === "element");
 			for (let i = 0; i < elementAnnotations.length; i++) {
 				const a = elementAnnotations[i]!;
-				const wrapper = elContainer.children[i] as HTMLDivElement | undefined;
+				const wrapper = (elContainer.querySelector(`[data-deloop-aid="${a.id}"]`) ??
+					elContainer.children[i]) as HTMLDivElement | undefined;
 				if (!wrapper) continue;
 
-				const el = document.querySelector((a.data as ElementData).cssSelector);
+				const selector = (a.data as ElementData).cssSelector;
+				let el: Element | null = null;
+				try {
+					if (selector) el = document.querySelector(selector);
+				} catch {}
 				if (!el) {
 					wrapper.style.display = "none";
 					continue;
@@ -225,17 +230,17 @@ export function AnnotationHighlights({
 			<div ref={elementContainerRef}>
 				{elementAnnotations.map((a) =>
 					selectMode ? (
-						<div key={a.id}>
+						<div key={a.id} data-deloop-aid={a.id}>
 							<div
 								className="deloop-element-highlight"
 								style={{
-									border: "1.5px solid #4ade80",
+									border: "1.5px solid var(--deloop-green, #4ade80)",
 									backgroundColor: "rgba(74, 222, 128, 0.06)",
 								}}
 							/>
 						</div>
 					) : (
-						<div key={a.id}>
+						<div key={a.id} data-deloop-aid={a.id}>
 							<div
 								className="deloop-selection-marker deloop-selection-marker-clickable"
 								onClick={() => onFocusAnnotation(focusedAnnotation === a.id ? null : a.id)}

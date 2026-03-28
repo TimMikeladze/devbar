@@ -1,16 +1,17 @@
-app = "deloop"
+# Shared config — deploy with: fly deploy -a deloop-dev / fly deploy -a deloop-prod
+app = "deloop-prod"
 primary_region = "ord"
 
 [build]
 dockerfile = "Dockerfile"
+# Pass VITE_ vars as build args so the SPA bakes them in at build time
+[build.args]
+VITE_STRIPE_TEAM_PRICE_ID = ""
+VITE_STRIPE_ORG_PRICE_ID = ""
 
 [env]
 NODE_ENV = "production"
 DELOOP_STATIC_DIR = "./public"
-# For multi-instance: set DELOOP_FLY_INSTANCES to comma-separated machine IDs
-# e.g. fly secrets set DELOOP_FLY_INSTANCES="machine1,machine2,machine3"
-# This enables fly-replay room affinity for WebSocket collaboration.
-# Without it, single-instance mode is used (works fine for most deployments).
 
 [http_service]
 internal_port = 3100

@@ -109,6 +109,7 @@ export function SelectOverlay({
 					onCaptureRef.current(commentInput.annotation);
 					setCommentInput(null);
 					selectedEl.current = null;
+					return;
 				}
 				onDoneRef.current();
 			}
@@ -176,7 +177,7 @@ export function SelectOverlay({
 						top: highlight.y - 2,
 						width: highlight.width + 4,
 						height: highlight.height + 4,
-						border: `1.5px solid ${hoveredIsExisting ? "#4ade80" : "var(--deloop-blue, #6e8efb)"}`,
+						border: `1.5px solid ${hoveredIsExisting ? "var(--deloop-green, #4ade80)" : "var(--deloop-blue, #6e8efb)"}`,
 						backgroundColor: hoveredIsExisting
 							? "rgba(74, 222, 128, 0.06)"
 							: "rgba(110, 142, 251, 0.06)",

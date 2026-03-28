@@ -11,10 +11,15 @@ RUN bun run build
 # Build the app (Vite SPA)
 FROM base AS build-app
 COPY --from=build-lib /app/package.json /app/package.json
+COPY --from=build-lib /app/bun.lock /app/bun.lock
 COPY --from=build-lib /app/dist/ /app/dist/
 COPY app/ app/
 WORKDIR /app/app
 RUN bun install --frozen-lockfile
+ARG VITE_STRIPE_TEAM_PRICE_ID
+ARG VITE_STRIPE_ORG_PRICE_ID
+ARG VITE_UMAMI_URL
+ARG VITE_UMAMI_WEBSITE_ID
 RUN bunx vite build
 
 # Production dependencies only (root)
@@ -22,7 +27,7 @@ FROM base AS deps
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
-# Production
+# Run migrations then start server
 FROM base AS production
 ENV NODE_ENV=production
 ENV DELOOP_STATIC_DIR=./public
@@ -34,4 +39,4 @@ COPY --from=build-app /app/app/dist public
 COPY drizzle/ drizzle/
 
 EXPOSE 3100
-CMD ["bun", "run", "dist/server/cli.js", "start", "--port", "3100"]
+CMD ["sh", "-c", "bun run dist/server/cli.js start --port 3100"]

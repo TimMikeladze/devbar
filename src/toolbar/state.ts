@@ -183,7 +183,15 @@ export function useDeloopState(): DeloopState {
 	}, []);
 
 	const removeAnnotation = useCallback((id: string, _remote?: boolean): void => {
-		setAnnotations((prev) => prev.filter((a) => a.id !== id));
+		setAnnotations((prev) => {
+			const removed = prev.find((a) => a.id === id);
+			if (removed?.type === "recording" && (removed.data as any)?.videoBlobUrl) {
+				try {
+					URL.revokeObjectURL((removed.data as any).videoBlobUrl);
+				} catch {}
+			}
+			return prev.filter((a) => a.id !== id);
+		});
 		dbDeleteRecord(STORE_NAME, id).catch((e) => console.warn("[deloop] delete error:", e));
 	}, []);
 

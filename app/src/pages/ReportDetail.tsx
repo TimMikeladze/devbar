@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useReport, getTimeAgo } from "../lib/hooks";
 import { api } from "../lib/api";
@@ -31,9 +31,12 @@ export function ReportDetailPage() {
 	const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 	const [toast, setToast] = useState<string | null>(null);
 
+	const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+	useEffect(() => () => clearTimeout(toastTimer.current), []);
 	const showToast = useCallback((msg: string) => {
+		clearTimeout(toastTimer.current);
 		setToast(msg);
-		setTimeout(() => setToast(null), 2000);
+		toastTimer.current = setTimeout(() => setToast(null), 2000);
 	}, []);
 
 	const addComment = useCallback(
@@ -63,21 +66,28 @@ export function ReportDetailPage() {
 		try {
 			await api(`/reports/${id}`, { method: "DELETE" });
 			navigate("/dashboard");
+		} catch (err) {
+			showToast(err instanceof Error ? err.message : "Failed to delete report");
+			setConfirmDeleteReport(false);
 		} finally {
 			setDeleting(false);
 		}
-	}, [id, navigate]);
+	}, [id, navigate, showToast]);
 
 	const copyPrompt = useCallback(() => {
 		const prompt = (report?.payload as any)?.prompt;
 		if (!prompt) return;
-		navigator.clipboard.writeText(prompt).then(() => showToast("Prompt copied to clipboard"));
+		navigator.clipboard
+			.writeText(prompt)
+			.then(() => showToast("Prompt copied to clipboard"))
+			.catch(() => showToast("Failed to copy prompt"));
 	}, [report, showToast]);
 
 	const copyReportUrl = useCallback(() => {
 		navigator.clipboard
 			.writeText(window.location.href)
-			.then(() => showToast("Link copied to clipboard"));
+			.then(() => showToast("Link copied to clipboard"))
+			.catch(() => showToast("Failed to copy link"));
 	}, [showToast]);
 
 	const deleteComment = useCallback(
@@ -181,11 +191,17 @@ export function ReportDetailPage() {
 			{/* Lightbox */}
 			{lightboxSrc && (
 				<div
+					role="dialog"
+					aria-label="Image preview"
 					className="lightbox-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6 sm:p-10"
 					onClick={() => setLightboxSrc(null)}
 				>
 					<button
-						onClick={() => setLightboxSrc(null)}
+						onClick={(e) => {
+							e.stopPropagation();
+							setLightboxSrc(null);
+						}}
+						aria-label="Close lightbox"
 						className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
 					>
 						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -199,7 +215,7 @@ export function ReportDetailPage() {
 					</button>
 					<img
 						src={lightboxSrc}
-						alt=""
+						alt="Enlarged annotation screenshot"
 						className="lightbox-image max-w-full max-h-full rounded-lg shadow-2xl cursor-default"
 						onClick={(e) => e.stopPropagation()}
 					/>
@@ -405,6 +421,7 @@ export function ReportDetailPage() {
 												onClick={() => setConfirmDeleteComment(c.id)}
 												className="ml-auto opacity-0 group-hover:opacity-100 text-muted hover:text-rose transition-all cursor-pointer"
 												title="Delete comment"
+												aria-label="Delete comment"
 											>
 												<svg width="12" height="12" viewBox="0 0 14 14" fill="none">
 													<path
@@ -744,11 +761,19 @@ function MetaRow({
 	copyable?: boolean;
 }) {
 	const [copied, setCopied] = useState(false);
+	const copyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+	useEffect(() => () => clearTimeout(copyTimer.current), []);
 	const handleCopy = () => {
-		navigator.clipboard.writeText(value).then(() => {
-			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
-		});
+		navigator.clipboard
+			.writeText(value)
+			.then(() => {
+				clearTimeout(copyTimer.current);
+				setCopied(true);
+				copyTimer.current = setTimeout(() => setCopied(false), 1500);
+			})
+			.catch(() => {
+				/* clipboard write can fail in insecure contexts — silently ignore */
+			});
 	};
 
 	return (

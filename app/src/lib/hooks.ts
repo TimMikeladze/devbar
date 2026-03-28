@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
 
 export type DashboardContext = {
@@ -34,26 +34,43 @@ export function useReports(orgId: string | undefined) {
 	const [reports, setReports] = useState<Report[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const abortRef = useRef<AbortController>(undefined);
 
 	const refresh = useCallback(() => {
+		abortRef.current?.abort();
 		if (!orgId) {
 			setLoading(false);
 			return;
 		}
 		setLoading(true);
 		setError(null);
+		const controller = new AbortController();
+		abortRef.current = controller;
 		api<Report[]>(`/reports?organizationId=${orgId}`)
 			.then((data) => {
+				if (controller.signal.aborted) return;
 				// Sort newest first defensively
 				data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 				setReports(data);
+				setError(null);
 			})
-			.catch((err) => setError(err.message))
-			.finally(() => setLoading(false));
+			.catch((err) => {
+				if (controller.signal.aborted) return;
+				const code = (err as any).code;
+				if (code === "NO_SUBSCRIPTION" || code === "SUBSCRIPTION_INACTIVE") {
+					setError("subscription_inactive");
+				} else {
+					setError(err.message);
+				}
+			})
+			.finally(() => {
+				if (!controller.signal.aborted) setLoading(false);
+			});
 	}, [orgId]);
 
 	useEffect(() => {
 		refresh();
+		return () => abortRef.current?.abort();
 	}, [refresh]);
 
 	return { reports, loading, error, refresh };
@@ -63,22 +80,35 @@ export function useReport(id: string | undefined) {
 	const [report, setReport] = useState<ReportWithComments | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const abortRef = useRef<AbortController>(undefined);
 
 	const refresh = useCallback(() => {
+		abortRef.current?.abort();
 		if (!id) {
 			setLoading(false);
 			return;
 		}
 		setLoading(true);
 		setError(null);
+		const controller = new AbortController();
+		abortRef.current = controller;
 		api<ReportWithComments>(`/reports/${id}`)
-			.then(setReport)
-			.catch((err) => setError(err.message))
-			.finally(() => setLoading(false));
+			.then((data) => {
+				if (controller.signal.aborted) return;
+				setReport(data);
+			})
+			.catch((err) => {
+				if (controller.signal.aborted) return;
+				setError(err.message);
+			})
+			.finally(() => {
+				if (!controller.signal.aborted) setLoading(false);
+			});
 	}, [id]);
 
 	useEffect(() => {
 		refresh();
+		return () => abortRef.current?.abort();
 	}, [refresh]);
 
 	return { report, loading, error, refresh };

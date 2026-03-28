@@ -16,7 +16,7 @@ export function TextPin({ x, y, label }: TextPinProps): React.ReactNode {
 				height: 16,
 				borderRadius: "50%",
 				background: "var(--deloop-blue, #6e8efb)",
-				border: "2px solid rgba(255,255,255,0.9)",
+				border: "2px solid var(--deloop-bg, rgba(255,255,255,0.9))",
 				boxShadow: "0 2px 8px rgba(110,142,251,0.4)",
 				zIndex: 2147483644,
 				pointerEvents: "none",

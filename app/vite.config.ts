@@ -12,12 +12,18 @@ export default defineConfig({
 		{
 			name: "strip-optional-env",
 			transformIndexHtml(html) {
-				return html.replace(/<script[^>]*%VITE_UMAMI_[^>]*<\/script>/g, "");
+				// Strip the Umami script tag and the companion umami.track script
+				// when VITE_UMAMI_URL is not set (multiline tags need [\s\S])
+				return html
+					.replace(/<script\b[^>]*src="[^"]*%VITE_UMAMI_[^"]*"[^>]*><\/script>/g, "")
+					.replace(/<script>\s*if\s*\(window\.umami\)[\s\S]*?<\/script>/g, "");
 			},
 		},
 	],
+	envDir: deloopRoot,
 	resolve: {
 		alias: {
+			"@": path.resolve(__dirname, "src"),
 			"deloop.dev/styles.css": path.join(deloopRoot, "dist/index.css"),
 			"deloop.dev": path.join(deloopRoot, "dist/index.js"),
 		},

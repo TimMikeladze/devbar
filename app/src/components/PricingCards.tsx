@@ -58,26 +58,32 @@ export function PricingCards({
 	actionLoading,
 	teamDisabled,
 	orgDisabled,
+	hideFree,
+	actionLabel,
 }: {
 	onSelectTeam?: () => void;
 	onSelectOrg?: () => void;
 	actionLoading?: boolean;
 	teamDisabled?: boolean;
 	orgDisabled?: boolean;
+	hideFree?: boolean;
+	actionLabel?: string;
 }) {
 	return (
-		<div className="grid sm:grid-cols-3 gap-4">
+		<div className={`grid gap-4 ${hideFree ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
 			{/* Free tier */}
-			<div className="pricing-card flex flex-col border border-border rounded-lg p-5 sm:p-6">
-				<div className="mb-4">
-					<p className="text-sm font-medium text-fg">Free</p>
-					<p className="text-[13px] text-muted mt-0.5">Self-hosted, open source</p>
+			{!hideFree && (
+				<div className="pricing-card flex flex-col border border-border rounded-lg p-5 sm:p-6">
+					<div className="mb-4">
+						<p className="text-sm font-medium text-fg">Free</p>
+						<p className="text-[13px] text-muted mt-0.5">Self-hosted, open source</p>
+					</div>
+					<p className="text-2xl font-bold text-fg mb-4">
+						$0<span className="text-[13px] font-normal text-muted"> / forever</span>
+					</p>
+					<FeatureList features={FREE_FEATURES} />
 				</div>
-				<p className="text-2xl font-bold text-fg mb-4">
-					$0<span className="text-[13px] font-normal text-muted"> / forever</span>
-				</p>
-				<FeatureList features={FREE_FEATURES} />
-			</div>
+			)}
 
 			{/* Team tier */}
 			<div className="pricing-card flex flex-col border border-accent/30 rounded-lg p-5 sm:p-6 relative">
@@ -102,7 +108,7 @@ export function PricingCards({
 						disabled={actionLoading || teamDisabled}
 						className="btn-primary w-full !py-2.5 text-[14px] mt-5"
 					>
-						{actionLoading ? "Loading..." : "Start free trial"}
+						{actionLoading ? "Loading..." : (actionLabel ?? "Start free trial")}
 					</button>
 				)}
 			</div>
@@ -127,7 +133,7 @@ export function PricingCards({
 						disabled={actionLoading || orgDisabled}
 						className="btn-primary w-full !py-2.5 text-[14px] mt-5"
 					>
-						{actionLoading ? "Loading..." : "Start free trial"}
+						{actionLoading ? "Loading..." : (actionLabel ?? "Start free trial")}
 					</button>
 				)}
 			</div>

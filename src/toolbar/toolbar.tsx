@@ -65,6 +65,7 @@ import {
 	HistoryIcon,
 	RecordIcon,
 	RecordItemIcon,
+	TextItemIcon,
 } from "./icons";
 
 export type DeloopPlugin = {
@@ -115,6 +116,7 @@ const ITEM_ICONS: Record<string, () => React.ReactNode> = {
 	screenshot: ScreenshotItemIcon,
 	marker: MarkerItemIcon,
 	recording: RecordItemIcon,
+	text: TextItemIcon,
 };
 
 function annotationLabel(a: Annotation): string {
@@ -484,6 +486,7 @@ const ALL_TOOLS: ToolMode[] = ["select", "marker", "draw", "capture", "record"];
 
 const METHOD_ICONS: Record<ExportMethod, () => React.ReactNode> = {
 	clipboard: CopyIcon,
+	json: CopyIcon,
 	"file-md": SaveFileIcon,
 	"file-json": SaveFileIcon,
 	server: SendIcon,
@@ -491,6 +494,7 @@ const METHOD_ICONS: Record<ExportMethod, () => React.ReactNode> = {
 
 const METHOD_TIPS: Record<ExportMethod, string> = {
 	clipboard: "Clipboard",
+	json: "JSON clipboard",
 	"file-md": "Markdown file",
 	"file-json": "JSON file",
 	server: "Server",
@@ -726,13 +730,17 @@ function useDeloopAuth(server?: string, user?: DeloopUser, authEnabled?: boolean
 
 	const onLoginSuccess = useCallback(async () => {
 		if (!clientRef.current) return;
-		const session = await clientRef.current.getSession();
-		if (session.data?.user) {
-			setAuthUser({
-				name: session.data.user.name,
-				email: session.data.user.email,
-				avatar: session.data.user.image ?? undefined,
-			});
+		try {
+			const session = await clientRef.current.getSession();
+			if (session.data?.user) {
+				setAuthUser({
+					name: session.data.user.name,
+					email: session.data.user.email,
+					avatar: session.data.user.image ?? undefined,
+				});
+			}
+		} catch {
+			// Session fetch failed — close modal anyway
 		}
 		setShowAuthModal(false);
 	}, []);
@@ -848,7 +856,11 @@ export function Deloop({
 	const [collapsed, setCollapsed] = useState(false);
 	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 	const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null);
-	const [newCommentText, setNewCommentText] = useState("");
+	const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+	const getCommentText = useCallback((id: string) => commentTexts[id] ?? "", [commentTexts]);
+	const setCommentText = useCallback((id: string, text: string) => {
+		setCommentTexts((prev) => ({ ...prev, [id]: text }));
+	}, []);
 	const [authorName, setAuthorName] = useState(() => localStorage.getItem("deloop-author") ?? "");
 	const [badgePulse, setBadgePulse] = useState(false);
 	const [hoveredAnnotation, setHoveredAnnotation] = useState<string | null>(null);
@@ -856,6 +868,7 @@ export function Deloop({
 	const [copied, setCopied] = useState(false);
 	const [showHelp, setShowHelp] = useState(false);
 	const [clearConfirm, setClearConfirm] = useState(false);
+	const clearConfirmTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const [showSettings, setShowSettings] = useState(false);
 	const panelOpenAboveRef = useRef(true);
 	const [previewMode, setPreviewMode] = useState<"off" | "md" | "json">("off");
@@ -864,7 +877,7 @@ export function Deloop({
 			includeImages: true,
 			imageExportMode: "base64",
 			enableScreenshots: true,
-			toolbarOrientation: "horizontal",
+			toolbarOrientation: window.innerWidth < 640 ? "vertical" : "horizontal",
 			capture: { ...DEFAULT_CAPTURE_CONFIG },
 		};
 		try {
@@ -1000,6 +1013,9 @@ export function Deloop({
 		return () => window.removeEventListener("mousedown", onClick);
 	}, [toolMenu]);
 
+	// Ref to keep handleCopy fresh for the keyboard handler (declared after this effect)
+	const handleCopyRef = useRef<() => void>(() => {});
+
 	// Keyboard shortcuts
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
@@ -1019,7 +1035,7 @@ export function Deloop({
 			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
 				if (state.annotations.length > 0) {
 					e.preventDefault();
-					handleCopy();
+					handleCopyRef.current();
 					return;
 				}
 			}
@@ -1035,6 +1051,8 @@ export function Deloop({
 			if (key === "escape") {
 				if (toolMenu) {
 					setToolMenu(null);
+				} else if (focusedAnnotation) {
+					setFocusedAnnotation(null);
 				} else if (showLabels) {
 					setShowLabels(false);
 				} else if (showSettings) {
@@ -1134,6 +1152,7 @@ export function Deloop({
 		state.activateTool,
 		state.annotations,
 		localRemoveAnnotation,
+		focusedAnnotation,
 		panelOpen,
 		showHelp,
 		showSettings,
@@ -1141,17 +1160,21 @@ export function Deloop({
 		toolMenu,
 	]);
 
+	const toastTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const showToast = useCallback((msg: string) => {
+		clearTimeout(toastTimerRef.current);
 		setToast(msg);
-		setTimeout(() => setToast(null), 2000);
+		toastTimerRef.current = setTimeout(() => setToast(null), 2000);
 	}, []);
 
+	const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const handleCopy = useCallback(async () => {
 		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
 		await copyToClipboard(payload);
 		setCopied(true);
 		showToast("Copied to clipboard!");
-		setTimeout(() => setCopied(false), 1500);
+		clearTimeout(copiedTimerRef.current);
+		copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
 		onSubmit?.(payload);
 		if (!onSubmit) {
 			localArchiveAndClear("clipboard");
@@ -1166,6 +1189,7 @@ export function Deloop({
 		showToast,
 		localArchiveAndClear,
 	]);
+	handleCopyRef.current = handleCopy;
 
 	const handleCopyJson = useCallback(async () => {
 		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
@@ -1184,10 +1208,11 @@ export function Deloop({
 		}
 		setCopied(true);
 		showToast("Copied JSON to clipboard!");
-		setTimeout(() => setCopied(false), 1500);
+		clearTimeout(copiedTimerRef.current);
+		copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
 		onSubmit?.(payload);
 		if (!onSubmit) {
-			localArchiveAndClear("clipboard");
+			localArchiveAndClear("json");
 			setPanelOpen(false);
 		}
 	}, [
@@ -1377,7 +1402,6 @@ export function Deloop({
 
 	const toggleThread = useCallback((id: string) => {
 		setExpandedThreadId((prev) => (prev === id ? null : id));
-		setNewCommentText("");
 	}, []);
 
 	// Deterministic avatar color from author name
@@ -1409,7 +1433,8 @@ export function Deloop({
 
 	const submitComment = useCallback(
 		(annotationId: string) => {
-			if (!newCommentText.trim()) return;
+			const text = (commentTexts[annotationId] ?? "").trim();
+			if (!text) return;
 			const author = authorName.trim() || "Anonymous";
 			if (author !== "Anonymous") {
 				localStorage.setItem("deloop-author", author);
@@ -1417,13 +1442,13 @@ export function Deloop({
 			const comment: Comment = {
 				id: crypto.randomUUID(),
 				author,
-				text: newCommentText.trim(),
+				text,
 				timestamp: Date.now(),
 			};
 			localAddComment(annotationId, comment);
-			setNewCommentText("");
+			setCommentTexts((prev) => ({ ...prev, [annotationId]: "" }));
 		},
-		[newCommentText, authorName, localAddComment],
+		[commentTexts, authorName, localAddComment],
 	);
 
 	// Floating settings/help panel positioning (toolbar mode only)
@@ -1606,12 +1631,14 @@ export function Deloop({
 				onClick={() => {
 					if (!clearConfirm) {
 						setClearConfirm(true);
-						setTimeout(() => setClearConfirm(false), 2000);
+						clearTimeout(clearConfirmTimerRef.current);
+						clearConfirmTimerRef.current = setTimeout(() => setClearConfirm(false), 2000);
 						return;
 					}
 					localClearAnnotations();
 					setShowExportMenu(false);
 					setClearConfirm(false);
+					clearTimeout(clearConfirmTimerRef.current);
 				}}
 			>
 				{clearConfirm ? "Confirm clear?" : "Clear all"}
@@ -2507,19 +2534,18 @@ export function Deloop({
 													className="deloop-thread-input"
 													type="text"
 													placeholder="Write a comment…"
-													value={newCommentText}
-													onChange={(e) => setNewCommentText(e.target.value)}
+													value={getCommentText(a.id)}
+													onChange={(e) => setCommentText(a.id, e.target.value)}
 													onKeyDown={(e) => {
 														if (e.key === "Enter") submitComment(a.id);
 													}}
-													autoFocus
 												/>
 												<button
 													type="button"
 													className="deloop-thread-send"
 													title="Send comment"
 													onClick={() => submitComment(a.id)}
-													disabled={!newCommentText.trim()}
+													disabled={!getCommentText(a.id).trim()}
 												>
 													<svg
 														width="12"
@@ -2628,12 +2654,14 @@ export function Deloop({
 					onClick={() => {
 						if (!clearConfirm) {
 							setClearConfirm(true);
-							setTimeout(() => setClearConfirm(false), 2000);
+							clearTimeout(clearConfirmTimerRef.current);
+							clearConfirmTimerRef.current = setTimeout(() => setClearConfirm(false), 2000);
 							return;
 						}
 						localClearAnnotations();
 						setPanelOpen(false);
 						setClearConfirm(false);
+						clearTimeout(clearConfirmTimerRef.current);
 					}}
 					style={
 						clearConfirm
@@ -2647,7 +2675,7 @@ export function Deloop({
 		) : null;
 
 	return (
-		<div data-deloop="toolbar" className="deloop-toolbar">
+		<div data-deloop="toolbar" className={`deloop-toolbar deloop-theme-${resolvedTheme}`}>
 			{/* Persistent element annotation highlights — live-tracking via rAF */}
 			<AnnotationHighlights
 				annotations={state.annotations}
@@ -2957,8 +2985,8 @@ export function Deloop({
 											className="deloop-thread-input"
 											type="text"
 											placeholder="Write a comment…"
-											value={newCommentText}
-											onChange={(e) => setNewCommentText(e.target.value)}
+											value={getCommentText(a.id)}
+											onChange={(e) => setCommentText(a.id, e.target.value)}
 											onKeyDown={(e) => {
 												if (e.key === "Enter") submitComment(a.id);
 												if (e.key === "Escape") setFocusedAnnotation(null);
@@ -2970,7 +2998,7 @@ export function Deloop({
 											className="deloop-thread-send"
 											title="Send comment"
 											onClick={() => submitComment(a.id)}
-											disabled={!newCommentText.trim()}
+											disabled={!getCommentText(a.id).trim()}
 										>
 											<svg
 												width="12"

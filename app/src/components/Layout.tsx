@@ -24,18 +24,38 @@ export function DashboardLayout() {
 		}
 	}, [session.data, session.isPending, navigate]);
 
+	const [creatingOrg, setCreatingOrg] = useState(false);
+
 	useEffect(() => {
-		if (
-			session.data &&
-			!session.isPending &&
-			orgs.data &&
-			orgs.data.length > 0 &&
-			!activeOrg.data &&
-			!activeOrg.isPending
-		) {
-			auth.organization.setActive({ organizationId: orgs.data[0].id });
+		if (!session.data || session.isPending || orgs.isPending || activeOrg.isPending || creatingOrg)
+			return;
+
+		if (orgs.data && orgs.data.length > 0 && !activeOrg.data) {
+			auth.organization.setActive({ organizationId: orgs.data[0].id }).catch(() => {});
+		} else if (orgs.data && orgs.data.length === 0) {
+			setCreatingOrg(true);
+			const orgName = session.data.user.name
+				? `${session.data.user.name}'s Org`
+				: "My Organization";
+			auth.organization
+				.create({ name: orgName, slug: `org-${session.data.user.id.slice(0, 8)}` })
+				.then((res) => {
+					if (res.data) {
+						return auth.organization.setActive({ organizationId: res.data.id });
+					}
+				})
+				.catch(() => {})
+				.finally(() => setCreatingOrg(false));
 		}
-	}, [session.data, session.isPending, orgs.data, activeOrg.data, activeOrg.isPending]);
+	}, [
+		session.data,
+		session.isPending,
+		orgs.data,
+		orgs.isPending,
+		activeOrg.data,
+		activeOrg.isPending,
+		creatingOrg,
+	]);
 
 	useEffect(() => {
 		setActiveOrgId(activeOrg.data?.id ?? null);
@@ -96,6 +116,8 @@ export function DashboardLayout() {
 								setShowUserMenu(false);
 								setShowOrgDropdown(!showOrgDropdown);
 							}}
+							aria-expanded={showOrgDropdown}
+							aria-haspopup="menu"
 							className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-bg-hover border border-transparent hover:border-border transition-all text-left cursor-pointer"
 						>
 							<div className="w-5 h-5 rounded bg-fg text-bg-card flex items-center justify-center text-[10px] font-bold shrink-0">
@@ -147,6 +169,8 @@ export function DashboardLayout() {
 								setShowOrgDropdown(false);
 								setShowUserMenu(!showUserMenu);
 							}}
+							aria-expanded={showUserMenu}
+							aria-haspopup="menu"
 							className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-bg-hover transition-colors cursor-pointer"
 						>
 							{session.data.user.image ? (
@@ -233,6 +257,7 @@ export function DashboardLayout() {
 function Dropdown({ children, align }: { children: React.ReactNode; align?: "right" }) {
 	return (
 		<div
+			role="menu"
 			className={`dropdown-menu absolute top-full mt-1.5 min-w-[200px] bg-bg-card border border-border rounded-lg shadow-lg shadow-black/8 z-50 p-1 ${
 				align === "right" ? "right-0" : "left-0"
 			}`}

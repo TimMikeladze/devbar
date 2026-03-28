@@ -1,53 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { Link } from "react-router";
 import { createHighlighter, type Highlighter } from "shiki";
 import { Deloop } from "deloop.dev";
 import "deloop.dev/styles.css";
 import { PricingCards } from "./components/PricingCards";
-
-/* ═══════════════════════════════════════════
-   Theme (light / dark / system)
-   ═══════════════════════════════════════════ */
-
-type Theme = "light" | "dark" | "system";
-
-function useTheme() {
-	const [theme, setTheme] = useState<Theme>(() => {
-		try {
-			return (localStorage.getItem("deloop-theme") as Theme) || "system";
-		} catch {
-			return "system";
-		}
-	});
-
-	useEffect(() => {
-		const root = document.documentElement;
-		const apply = () => {
-			const isDark =
-				theme === "dark" ||
-				(theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-			root.classList.toggle("dark", isDark);
-			const meta = document.querySelector('meta[name="theme-color"]');
-			if (meta) meta.setAttribute("content", isDark ? "#0a0a0a" : "#fafafa");
-		};
-		apply();
-		try {
-			localStorage.setItem("deloop-theme", theme);
-		} catch {}
-
-		if (theme === "system") {
-			const mq = window.matchMedia("(prefers-color-scheme: dark)");
-			const handler = () => apply();
-			mq.addEventListener("change", handler);
-			return () => mq.removeEventListener("change", handler);
-		}
-	}, [theme]);
-
-	const cycle = useCallback(() => {
-		setTheme((t) => (t === "light" ? "dark" : t === "dark" ? "system" : "light"));
-	}, []);
-
-	return { theme, cycle };
-}
+import { useTheme, type Theme } from "./hooks/useTheme";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -61,26 +18,22 @@ function getHighlighter() {
 	return highlighterPromise;
 }
 
-function useIsDark() {
-	const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
-	useEffect(() => {
-		const observer = new MutationObserver(() => {
-			setDark(document.documentElement.classList.contains("dark"));
-		});
-		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-		return () => observer.disconnect();
-	}, []);
-	return dark;
-}
-
 function useReveal() {
 	const ref = useRef<HTMLElement>(null);
 	useEffect(() => {
 		const el = ref.current;
 		if (!el) return;
+		// Fallback: if IntersectionObserver never fires (e.g. polyfill edge case),
+		// reveal after 1s so content is never permanently hidden
+		const fallback = setTimeout(() => {
+			if (!el.classList.contains("visible")) {
+				el.classList.add("visible");
+			}
+		}, 1000);
 		const observer = new IntersectionObserver(
 			([entry]) => {
 				if (entry.isIntersecting) {
+					clearTimeout(fallback);
 					el.classList.add("visible");
 					observer.disconnect();
 				}
@@ -88,7 +41,10 @@ function useReveal() {
 			{ threshold: 0.1 },
 		);
 		observer.observe(el);
-		return () => observer.disconnect();
+		return () => {
+			clearTimeout(fallback);
+			observer.disconnect();
+		};
 	}, []);
 	return ref;
 }
@@ -123,7 +79,10 @@ function App() {
 
 function Header() {
 	const [open, setOpen] = useState(false);
-	const { theme, cycle } = useTheme();
+	const { theme, setTheme } = useTheme();
+	const cycle = useCallback(() => {
+		setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light");
+	}, [theme, setTheme]);
 
 	useEffect(() => {
 		if (!open) return;
@@ -160,12 +119,12 @@ function Header() {
 						</a>
 					))}
 					<ThemeToggle theme={theme} onCycle={cycle} />
-					<a href="/login" className="text-fg hover:text-fg/80 transition-colors font-medium">
+					<Link to="/login" className="text-fg hover:text-fg/80 transition-colors font-medium">
 						Sign In
-					</a>
-					<a href="/login?signup=1" className="btn-warm text-[13px] !py-1.5 !px-4">
+					</Link>
+					<Link to="/login?signup=1" className="btn-warm text-[13px] !py-1.5 !px-4">
 						Get Started
-					</a>
+					</Link>
 				</nav>
 
 				<button
@@ -173,6 +132,7 @@ function Header() {
 					onClick={() => setOpen(!open)}
 					className="sm:hidden flex flex-col gap-[5px] p-2 -mr-2 cursor-pointer"
 					aria-label="Toggle menu"
+					aria-expanded={open}
 				>
 					<span
 						className={`block w-4 h-[1.5px] bg-fg transition-all ${open ? "rotate-45 translate-y-[6.5px]" : ""}`}
@@ -199,12 +159,12 @@ function Header() {
 					))}
 					<div className="border-t border-border/50 pt-3 mt-3 flex items-center gap-3">
 						<ThemeToggle theme={theme} onCycle={cycle} />
-						<a href="/login" className="text-[14px] text-fg font-medium">
+						<Link to="/login" className="text-[14px] text-fg font-medium">
 							Sign In
-						</a>
-						<a href="/login?signup=1" className="btn-warm text-[13px] !py-1.5 !px-4">
+						</Link>
+						<Link to="/login?signup=1" className="btn-warm text-[13px] !py-1.5 !px-4">
 							Get Started
-						</a>
+						</Link>
 					</div>
 				</nav>
 			)}
@@ -219,18 +179,29 @@ function Header() {
 function Hero() {
 	useEffect(() => {
 		// Add shine border to the deloop toolbar bar on mount, dismiss on first click
+		let barRef: Element | null = null;
+		let dismissRef: (() => void) | null = null;
 		const interval = setInterval(() => {
 			const bar = document.querySelector(".deloop-bar");
 			if (!bar) return;
 			clearInterval(interval);
+			barRef = bar;
 			bar.classList.add("deloop-shine");
 			const dismiss = () => {
 				bar.classList.remove("deloop-shine");
 				bar.removeEventListener("click", dismiss);
+				dismissRef = null;
 			};
+			dismissRef = dismiss;
 			bar.addEventListener("click", dismiss);
 		}, 100);
-		return () => clearInterval(interval);
+		return () => {
+			clearInterval(interval);
+			if (barRef && dismissRef) {
+				barRef.removeEventListener("click", dismissRef);
+				barRef.classList.remove("deloop-shine");
+			}
+		};
 	}, []);
 
 	return (
@@ -1377,7 +1348,14 @@ function Pricing() {
 					the hosted dashboard.
 				</p>
 			</div>
-			<PricingCards />
+			<PricingCards
+				onSelectTeam={() => {
+					window.location.href = "/login?signup=1";
+				}}
+				onSelectOrg={() => {
+					window.location.href = "/login?signup=1";
+				}}
+			/>
 		</section>
 	);
 }
@@ -1563,7 +1541,8 @@ function InstallTabs() {
 function CodeBlock({ code, lang }: { code: string; lang: string }) {
 	const [html, setHtml] = useState("");
 	const [copied, setCopied] = useState(false);
-	const dark = useIsDark();
+	const { resolved } = useTheme();
+	const dark = resolved === "dark";
 
 	useEffect(() => {
 		getHighlighter().then((h) => {
@@ -1577,10 +1556,13 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 	}, [code, lang, dark]);
 
 	const handleCopy = () => {
-		navigator.clipboard.writeText(code).then(() => {
-			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
-		});
+		navigator.clipboard
+			.writeText(code)
+			.then(() => {
+				setCopied(true);
+				setTimeout(() => setCopied(false), 1500);
+			})
+			.catch(() => {});
 	};
 
 	return (
@@ -1709,6 +1691,9 @@ function FAQ() {
 function Contact() {
 	const ref = useReveal();
 	const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+	const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+	useEffect(() => () => clearTimeout(resetTimer.current), []);
 
 	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -1717,6 +1702,7 @@ function Contact() {
 		const email = formData.get("email") as string;
 		const message = formData.get("message") as string;
 
+		clearTimeout(resetTimer.current);
 		setStatus("sending");
 		try {
 			const res = await fetch("/api/contact", {
@@ -1727,9 +1713,10 @@ function Contact() {
 			if (!res.ok) throw new Error();
 			setStatus("sent");
 			form.reset();
-			setTimeout(() => setStatus("idle"), 5000);
+			resetTimer.current = setTimeout(() => setStatus("idle"), 5000);
 		} catch {
 			setStatus("error");
+			resetTimer.current = setTimeout(() => setStatus("idle"), 5000);
 		}
 	};
 

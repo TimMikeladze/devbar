@@ -92,9 +92,14 @@ export function DrawOverlay({
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
-		canvas.width = window.innerWidth;
-		canvas.height = window.innerHeight;
-		redraw();
+		const resize = () => {
+			canvas.width = window.innerWidth;
+			canvas.height = window.innerHeight;
+			redraw();
+		};
+		resize();
+		window.addEventListener("resize", resize);
+		return () => window.removeEventListener("resize", resize);
 	}, [redraw]);
 
 	const handleUndo = useCallback(() => {
@@ -104,10 +109,12 @@ export function DrawOverlay({
 		});
 	}, []);
 
+	const finishDrawingRef = useRef<() => void>(() => {});
+
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
-				finishDrawing();
+				finishDrawingRef.current();
 			}
 			if ((e.metaKey || e.ctrlKey) && e.key === "z") {
 				e.preventDefault();
@@ -126,7 +133,7 @@ export function DrawOverlay({
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	});
+	}, [handleUndo]);
 
 	const onMouseDown = useCallback(
 		(e: React.MouseEvent) => {
@@ -166,6 +173,11 @@ export function DrawOverlay({
 			setShapes((prev) => [...prev, shape]);
 		}
 	}, []);
+
+	useEffect(() => {
+		window.addEventListener("mouseup", onMouseUp);
+		return () => window.removeEventListener("mouseup", onMouseUp);
+	}, [onMouseUp]);
 
 	const finishDrawing = useCallback(async () => {
 		const canvas = canvasRef.current;
@@ -222,6 +234,7 @@ export function DrawOverlay({
 			onDone();
 		}
 	}, [shapes, onCapture, onDone, enableScreenshots]);
+	finishDrawingRef.current = finishDrawing;
 
 	return (
 		<div data-deloop="draw-overlay">

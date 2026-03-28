@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 
-type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark" | "system";
 
 const STORAGE_KEY = "deloop-theme";
 
@@ -25,12 +25,15 @@ function getResolved(theme: Theme): "light" | "dark" {
 function apply(theme: Theme) {
 	const resolved = getResolved(theme);
 	document.documentElement.classList.toggle("dark", resolved === "dark");
+	const meta = document.querySelector('meta[name="theme-color"]');
+	if (meta) meta.setAttribute("content", resolved === "dark" ? "#0a0a0a" : "#fafafa");
 }
 
 // Apply on load
 apply(getTheme());
 
-// Listen for system changes
+// Intentional permanent listener — this module is loaded once in a browser-only SPA,
+// so the listener lives for the lifetime of the page and never needs cleanup.
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
 	apply(getTheme());
 	emit();

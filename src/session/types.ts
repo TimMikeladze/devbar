@@ -167,7 +167,7 @@ export type DeloopUser = {
 	avatar?: string;
 };
 
-export type ExportMethod = "clipboard" | "file-md" | "file-json" | "server";
+export type ExportMethod = "clipboard" | "json" | "file-md" | "file-json" | "server";
 
 export type ExportRecord = {
 	id: string;

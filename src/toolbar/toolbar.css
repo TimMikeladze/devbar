@@ -1450,7 +1450,7 @@
 	height: 20px;
 	border-radius: 10px;
 	border: none;
-	background: var(--deloop-border);
+	background: var(--deloop-border-active);
 	cursor: pointer;
 	position: relative;
 	flex-shrink: 0;
@@ -2117,7 +2117,7 @@
 }
 
 .deloop-auth-submit {
-	background: #3b82f6;
+	background: var(--deloop-blue);
 	color: #fff;
 	border: none;
 	border-radius: 8px;
@@ -2149,7 +2149,7 @@
 .deloop-auth-link {
 	background: none;
 	border: none;
-	color: #3b82f6;
+	color: var(--deloop-blue);
 	cursor: pointer;
 	font-size: 12px;
 	font-family: inherit;

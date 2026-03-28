@@ -50,7 +50,7 @@ export async function captureRegion(region: {
 	const ctx = croppedCanvas.getContext("2d");
 	if (!ctx) throw new Error("Failed to get canvas context");
 
-	const scale = fullCanvas.width / document.body.scrollWidth;
+	const scale = fullCanvas.width / document.documentElement.scrollWidth;
 	ctx.drawImage(
 		fullCanvas,
 		region.x * scale,

@@ -8,34 +8,39 @@ import type {
 import { DEFAULT_CAPTURE_CONFIG } from "@/session/types";
 import { defaultPromptTemplate } from "./prompt";
 
-// Console error capture — ring buffer of recent errors
+// Console error capture — ring buffer of recent errors (idempotent for HMR)
 const MAX_CONSOLE_ERRORS = 20;
-const consoleErrors: string[] = [];
-const originalConsoleError = console.error;
+const consoleErrors: string[] = ((globalThis as any).__deloop_consoleErrors ??= []) as string[];
+const INSTALLED_KEY = "__deloop_errorCapture";
 
 try {
-	console.error = (...args: unknown[]) => {
-		const msg = args
-			.map((a) =>
-				typeof a === "string" ? a : a instanceof Error ? `${a.name}: ${a.message}` : String(a),
-			)
-			.join(" ");
-		consoleErrors.push(msg.slice(0, 300));
-		if (consoleErrors.length > MAX_CONSOLE_ERRORS) consoleErrors.shift();
-		originalConsoleError.apply(console, args);
-	};
+	if (!(globalThis as any)[INSTALLED_KEY]) {
+		const originalConsoleError = console.error;
+		console.error = (...args: unknown[]) => {
+			const msg = args
+				.map((a) =>
+					typeof a === "string" ? a : a instanceof Error ? `${a.name}: ${a.message}` : String(a),
+				)
+				.join(" ");
+			consoleErrors.push(msg.slice(0, 300));
+			if (consoleErrors.length > MAX_CONSOLE_ERRORS) consoleErrors.shift();
+			originalConsoleError.apply(console, args);
+		};
 
-	window.addEventListener("error", (e) => {
-		const msg = `${e.message} at ${e.filename}:${e.lineno}:${e.colno}`;
-		consoleErrors.push(msg.slice(0, 300));
-		if (consoleErrors.length > MAX_CONSOLE_ERRORS) consoleErrors.shift();
-	});
+		window.addEventListener("error", (e) => {
+			const msg = `${e.message} at ${e.filename}:${e.lineno}:${e.colno}`;
+			consoleErrors.push(msg.slice(0, 300));
+			if (consoleErrors.length > MAX_CONSOLE_ERRORS) consoleErrors.shift();
+		});
 
-	window.addEventListener("unhandledrejection", (e) => {
-		const msg = `Unhandled rejection: ${e.reason instanceof Error ? `${e.reason.name}: ${e.reason.message}` : String(e.reason)}`;
-		consoleErrors.push(msg.slice(0, 300));
-		if (consoleErrors.length > MAX_CONSOLE_ERRORS) consoleErrors.shift();
-	});
+		window.addEventListener("unhandledrejection", (e) => {
+			const msg = `Unhandled rejection: ${e.reason instanceof Error ? `${e.reason.name}: ${e.reason.message}` : String(e.reason)}`;
+			consoleErrors.push(msg.slice(0, 300));
+			if (consoleErrors.length > MAX_CONSOLE_ERRORS) consoleErrors.shift();
+		});
+
+		(globalThis as any)[INSTALLED_KEY] = true;
+	}
 } catch {}
 
 export function buildPayload(

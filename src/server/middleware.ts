@@ -2,10 +2,9 @@ import { createMiddleware } from "hono/factory";
 import { eq, and } from "drizzle-orm";
 import type { DeloopAuth } from "./auth";
 import { verify } from "./hmac";
-import { getDb } from "./db";
+import { getDb, DB_DRIVER } from "./db";
 import * as sqliteSchema from "./db/schema.sqlite";
 import * as pgSchema from "./db/schema.pg";
-import { DB_DRIVER } from "./db";
 
 export type AuthUser = {
 	id: string | null;
@@ -95,5 +94,40 @@ export function authMiddleware(
 		}
 
 		return c.json({ error: "Unauthorized" }, 401);
+	});
+}
+
+/**
+ * Middleware that blocks requests when the org has no active subscription.
+ * Must run after authMiddleware so `c.get("user")` is available.
+ * Allows token/injected auth modes through (self-hosted users).
+ */
+export function subscriptionGuard(): ReturnType<
+	typeof createMiddleware<{ Variables: { user: AuthUser } }>
+> {
+	return createMiddleware<{ Variables: { user: AuthUser } }>(async (c, next) => {
+		const user = c.get("user");
+
+		// Self-hosted / token users are not gated
+		if (user.authMode !== "session") return next();
+
+		const orgId = user.organizationId;
+		if (!orgId) return c.json({ error: "Organization required" }, 400);
+
+		const db = await getDb();
+		const subTable =
+			DB_DRIVER === "sqlite" ? sqliteSchema.subscriptions : (pgSchema.subscriptions as any);
+		const [sub] = await db.select().from(subTable).where(eq(subTable.organizationId, orgId));
+
+		if (!sub) {
+			return c.json({ error: "No subscription found", code: "NO_SUBSCRIPTION" }, 403);
+		}
+
+		const isActive = sub.status === "active" || sub.status === "trialing";
+		if (!isActive) {
+			return c.json({ error: "Subscription inactive", code: "SUBSCRIPTION_INACTIVE" }, 403);
+		}
+
+		return next();
 	});
 }

@@ -10,7 +10,7 @@ export async function api<T = unknown>(path: string, opts?: RequestInit): Promis
 		headers["X-Deloop-Org"] = _activeOrgId;
 	}
 	const method = opts?.method?.toUpperCase() ?? "GET";
-	if (method !== "GET" && method !== "HEAD") {
+	if (method !== "GET" && method !== "HEAD" && !(opts?.body instanceof FormData)) {
 		headers["Content-Type"] = "application/json";
 	}
 
@@ -24,7 +24,13 @@ export async function api<T = unknown>(path: string, opts?: RequestInit): Promis
 	});
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({}));
-		throw new Error(body.error ?? `Request failed: ${res.status}`);
+		const err = new Error(body.error ?? `Request failed: ${res.status}`);
+		(err as any).code = body.code ?? null;
+		(err as any).status = res.status;
+		throw err;
+	}
+	if (res.status === 204 || res.headers.get("content-length") === "0") {
+		return undefined as T;
 	}
 	return res.json();
 }

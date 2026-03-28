@@ -11,6 +11,10 @@ type RecordMode = "requesting" | "recording" | "processing" | "note";
 
 function captureThumbnail(video: HTMLVideoElement): Promise<string> {
 	return new Promise((resolve) => {
+		if (!video.videoWidth || !video.videoHeight) {
+			resolve("");
+			return;
+		}
 		const canvas = document.createElement("canvas");
 		canvas.width = Math.min(video.videoWidth, 640);
 		canvas.height = Math.round(canvas.width * (video.videoHeight / video.videoWidth));
@@ -87,8 +91,16 @@ export function RecordOverlay({
 
 			const seekTime = Math.min(1, duration * 0.1);
 			video.currentTime = seekTime;
-			await new Promise<void>((resolve) => {
-				video.onseeked = () => resolve();
+			await new Promise<void>((resolve, reject) => {
+				const timeout = setTimeout(() => reject(new Error("Seek timed out")), 5000);
+				video.onseeked = () => {
+					clearTimeout(timeout);
+					resolve();
+				};
+				video.onerror = () => {
+					clearTimeout(timeout);
+					reject(new Error("Seek failed"));
+				};
 			});
 
 			thumbnailDataUri = await captureThumbnail(video);
@@ -144,7 +156,9 @@ export function RecordOverlay({
 					? "video/webm;codecs=vp9,opus"
 					: MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
 						? "video/webm;codecs=vp8,opus"
-						: "video/webm";
+						: MediaRecorder.isTypeSupported("video/mp4")
+							? "video/mp4"
+							: "video/webm";
 
 				const recorder = new MediaRecorder(stream, { mimeType });
 				mediaRecorderRef.current = recorder;

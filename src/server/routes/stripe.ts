@@ -75,10 +75,9 @@ stripeRoutes.post("/checkout", async (c) => {
 		success_url: `${appUrl}/dashboard/settings/billing?success=1`,
 		cancel_url: `${appUrl}/dashboard/settings/billing?canceled=1`,
 		subscription_data: {
-			// Only offer trial for first-time subscribers
-			...(hadSubscriptionBefore ? {} : { trial_period_days: 7 }),
 			metadata: { organizationId: orgId },
 		},
+		payment_method_collection: "always",
 		metadata: { organizationId: orgId },
 	});
 

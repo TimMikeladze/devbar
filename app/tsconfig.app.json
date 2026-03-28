@@ -16,6 +16,7 @@
 		"noEmit": true,
 		"jsx": "react-jsx",
 		"paths": {
+			"@/*": ["./src/*"],
 			"deloop.dev": ["../dist/index.d.ts"],
 			"deloop.dev/styles.css": ["../dist/styles.css"]
 		},

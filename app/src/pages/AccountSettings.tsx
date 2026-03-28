@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import { auth } from "../lib/auth";
 import type { DashboardContext } from "../lib/hooks";
+import { PasswordInput } from "../components/PasswordInput";
 
 export function AccountSettingsPage() {
 	const { user } = useOutletContext<DashboardContext>();
@@ -91,27 +92,33 @@ function ChangePassword() {
 			<div className="bg-bg-card border border-border rounded-xl p-6">
 				<form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
 					<div>
-						<label className="text-[13px] font-medium text-dim block mb-1.5">
+						<label
+							htmlFor="current-password"
+							className="text-[13px] font-medium text-dim block mb-1.5"
+						>
 							Current password
 						</label>
-						<input
-							type="password"
+						<PasswordInput
+							id="current-password"
 							value={currentPassword}
 							onChange={(e) => setCurrentPassword(e.target.value)}
 							required
-							className="input-field"
+							minLength={8}
+							autoComplete="current-password"
 							placeholder="Enter current password"
 						/>
 					</div>
 					<div>
-						<label className="text-[13px] font-medium text-dim block mb-1.5">New password</label>
-						<input
-							type="password"
+						<label htmlFor="new-password" className="text-[13px] font-medium text-dim block mb-1.5">
+							New password
+						</label>
+						<PasswordInput
+							id="new-password"
 							value={newPassword}
 							onChange={(e) => setNewPassword(e.target.value)}
 							required
 							minLength={8}
-							className="input-field"
+							autoComplete="new-password"
 							placeholder="Min. 8 characters"
 						/>
 					</div>

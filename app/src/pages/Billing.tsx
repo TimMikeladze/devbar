@@ -90,6 +90,16 @@ export function BillingPage() {
 	if (!activeOrg) {
 		return (
 			<div className="p-8 sm:p-10 max-w-5xl mx-auto fade-up">
+				{success && (
+					<div className="px-4 py-3 bg-emerald/5 border border-emerald/15 rounded-lg mb-6">
+						<p className="text-[14px] text-emerald">Subscription activated. Welcome to the team!</p>
+					</div>
+				)}
+				{canceled && (
+					<div className="px-4 py-3 bg-amber/5 border border-amber/15 rounded-lg mb-6">
+						<p className="text-[14px] text-amber">Checkout was canceled. No charges were made.</p>
+					</div>
+				)}
 				<p className="text-[15px] text-muted">Select an organization to manage billing.</p>
 			</div>
 		);
@@ -175,6 +185,8 @@ export function BillingPage() {
 						actionLoading={actionLoading}
 						teamDisabled={!TEAM_PRICE_ID}
 						orgDisabled={!ORG_PRICE_ID}
+						hideFree
+						actionLabel={isPaid ? "Subscribe" : "Start free trial"}
 					/>
 				</div>
 			)}

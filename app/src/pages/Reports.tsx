@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Link, useOutletContext } from "react-router";
+import { Link, useOutletContext, useNavigate } from "react-router";
 import { useFilteredReports, getTimeAgo, type Report, type DashboardContext } from "../lib/hooks";
 
 const TYPE_META: Record<string, { label: string; color: string; dotColor: string }> = {
@@ -12,6 +12,7 @@ const TYPE_META: Record<string, { label: string; color: string; dotColor: string
 
 export function ReportsPage() {
 	const { activeOrg } = useOutletContext<DashboardContext>();
+	const navigate = useNavigate();
 	const {
 		filtered,
 		grouped,
@@ -106,8 +107,23 @@ export function ReportsPage() {
 				</p>
 			</div>
 
+			{/* Subscription expired */}
+			{error === "subscription_inactive" && (
+				<div className="bg-bg-card border border-amber/20 rounded-xl p-6 mb-6 text-center">
+					<p className="text-[16px] font-semibold mb-1">Your trial has ended</p>
+					<p className="text-[14px] text-muted mb-4">Subscribe to continue using the dashboard.</p>
+					<button
+						type="button"
+						onClick={() => navigate("/dashboard/settings/billing")}
+						className="btn-primary !py-2.5 !px-6 text-[14px]"
+					>
+						View plans
+					</button>
+				</div>
+			)}
+
 			{/* Error banner */}
-			{error && (
+			{error && error !== "subscription_inactive" && (
 				<div className="error-banner mb-6">
 					<svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
 						<circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
@@ -178,6 +194,7 @@ export function ReportsPage() {
 					{search && (
 						<button
 							onClick={() => setSearch("")}
+							aria-label="Clear search"
 							className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-fg transition-colors cursor-pointer"
 						>
 							<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
