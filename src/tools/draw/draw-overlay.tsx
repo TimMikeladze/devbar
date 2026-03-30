@@ -74,6 +74,8 @@ export function DrawOverlay({
 	const [shapes, setShapes] = useState<DrawShape[]>([]);
 	const currentShape = useRef<DrawShape | null>(null);
 	const drawing = useRef(false);
+	const [commentMode, setCommentMode] = useState(false);
+	const [commentText, setCommentText] = useState("");
 
 	const redraw = useCallback(() => {
 		const canvas = canvasRef.current;
@@ -113,6 +115,7 @@ export function DrawOverlay({
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
+			if (commentMode) return;
 			if (e.key === "Escape") {
 				finishDrawingRef.current();
 			}
@@ -133,7 +136,7 @@ export function DrawOverlay({
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [handleUndo]);
+	}, [handleUndo, commentMode]);
 
 	const onMouseDown = useCallback(
 		(e: React.MouseEvent) => {
@@ -179,14 +182,19 @@ export function DrawOverlay({
 		return () => window.removeEventListener("mouseup", onMouseUp);
 	}, [onMouseUp]);
 
-	const finishDrawing = useCallback(async () => {
-		const canvas = canvasRef.current;
-		if (!canvas) {
+	const finishDrawing = useCallback(() => {
+		if (shapes.length === 0 && !currentShape.current) {
 			onDone();
 			return;
 		}
+		setCommentMode(true);
+		setCommentText("");
+	}, [shapes, onDone]);
+	finishDrawingRef.current = finishDrawing;
 
-		if (shapes.length === 0 && !currentShape.current) {
+	const submitDrawing = useCallback(async () => {
+		const canvas = canvasRef.current;
+		if (!canvas) {
 			onDone();
 			return;
 		}
@@ -203,6 +211,8 @@ export function DrawOverlay({
 					".deloop-instruction",
 				) as HTMLElement | null;
 				if (instruction) instruction.style.display = "none";
+				const commentEl = document.querySelector("[data-deloop-draw-comment]") as HTMLElement | null;
+				if (commentEl) commentEl.style.display = "none";
 
 				try {
 					screenshotDataUri = await captureFullPage();
@@ -212,7 +222,31 @@ export function DrawOverlay({
 					canvas.style.display = "";
 					if (toolbar) toolbar.style.display = "";
 					if (instruction) instruction.style.display = "";
+					if (commentEl) commentEl.style.display = "";
 				}
+			}
+
+			const comments = commentText.trim()
+				? [
+						{
+							id: crypto.randomUUID(),
+							author: localStorage.getItem("deloop-author") || "Anonymous",
+							text: commentText.trim(),
+							timestamp: Date.now(),
+						},
+					]
+				: [];
+
+			let strokesBounds: { x: number; y: number; width: number; height: number } | undefined;
+			if (shapes.length > 0) {
+				const allPoints = shapes.flatMap((s) => s.points);
+				const xs = allPoints.map((p) => p.x);
+				const ys = allPoints.map((p) => p.y);
+				const minX = Math.min(...xs);
+				const minY = Math.min(...ys);
+				const maxX = Math.max(...xs);
+				const maxY = Math.max(...ys);
+				strokesBounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 			}
 
 			const annotation: Annotation = {
@@ -224,8 +258,9 @@ export function DrawOverlay({
 					screenshotDataUri,
 					viewportOffset: { x: window.scrollX, y: window.scrollY },
 					dimensions: { width: canvas.width, height: canvas.height },
+					strokesBounds,
 				},
-				comments: [],
+				comments,
 			};
 			onCapture(annotation);
 		} catch (e) {
@@ -233,92 +268,123 @@ export function DrawOverlay({
 		} finally {
 			onDone();
 		}
-	}, [shapes, onCapture, onDone, enableScreenshots]);
-	finishDrawingRef.current = finishDrawing;
+	}, [shapes, commentText, onCapture, onDone, enableScreenshots]);
 
 	return (
 		<div data-deloop="draw-overlay">
 			<canvas
 				ref={canvasRef}
-				onMouseDown={onMouseDown}
-				onMouseMove={onMouseMove}
-				onMouseUp={onMouseUp}
-				className="deloop-overlay deloop-overlay-crosshair"
+				onMouseDown={commentMode ? undefined : onMouseDown}
+				onMouseMove={commentMode ? undefined : onMouseMove}
+				onMouseUp={commentMode ? undefined : onMouseUp}
+				className={`deloop-overlay ${commentMode ? "" : "deloop-overlay-crosshair"}`}
 			/>
-			<div data-deloop-draw-toolbar className="deloop-overlay-toolbar">
-				{ALL_TOOLS.map((tool, i) => {
-					const Icon = TOOL_ICONS[tool];
-					const label = tool.charAt(0).toUpperCase() + tool.slice(1);
-					return (
+			{!commentMode && (
+				<div data-deloop-draw-toolbar className="deloop-overlay-toolbar">
+					{ALL_TOOLS.map((tool, i) => {
+						const Icon = TOOL_ICONS[tool];
+						const label = tool.charAt(0).toUpperCase() + tool.slice(1);
+						return (
+							<button
+								key={tool}
+								type="button"
+								onClick={() => setActiveTool(tool)}
+								className={`deloop-overlay-btn deloop-overlay-btn-icon ${activeTool === tool ? "deloop-overlay-btn-active" : ""}`}
+								title={`${label} (${i + 1})`}
+								aria-label={`${label} (${i + 1})`}
+							>
+								<Icon />
+							</button>
+						);
+					})}
+					<div className="deloop-overlay-toolbar-divider" />
+					{DRAW_COLORS.map((color) => (
 						<button
-							key={tool}
+							key={color}
 							type="button"
-							onClick={() => setActiveTool(tool)}
-							className={`deloop-overlay-btn deloop-overlay-btn-icon ${activeTool === tool ? "deloop-overlay-btn-active" : ""}`}
-							title={`${label} (${i + 1})`}
-							aria-label={`${label} (${i + 1})`}
+							onClick={() => setActiveColor(color)}
+							className={`deloop-color-swatch ${activeColor === color ? "deloop-color-swatch-active" : ""}`}
+							style={{ background: color }}
+						/>
+					))}
+					<div className="deloop-overlay-toolbar-divider" />
+					{LINE_WIDTHS.map((lw) => (
+						<button
+							key={lw.label}
+							type="button"
+							onClick={() => setActiveWidth(lw.value)}
+							className={`deloop-overlay-btn ${activeWidth === lw.value ? "deloop-overlay-btn-active" : ""}`}
+							style={{ padding: "4px 10px", fontSize: 11 }}
 						>
-							<Icon />
+							{lw.label}
 						</button>
-					);
-				})}
-				<div className="deloop-overlay-toolbar-divider" />
-				{DRAW_COLORS.map((color) => (
+					))}
+					<div className="deloop-overlay-toolbar-divider" />
 					<button
-						key={color}
 						type="button"
-						onClick={() => setActiveColor(color)}
-						className={`deloop-color-swatch ${activeColor === color ? "deloop-color-swatch-active" : ""}`}
-						style={{ background: color }}
-					/>
-				))}
-				<div className="deloop-overlay-toolbar-divider" />
-				{LINE_WIDTHS.map((lw) => (
-					<button
-						key={lw.label}
-						type="button"
-						onClick={() => setActiveWidth(lw.value)}
-						className={`deloop-overlay-btn ${activeWidth === lw.value ? "deloop-overlay-btn-active" : ""}`}
-						style={{ padding: "4px 10px", fontSize: 11 }}
+						onClick={handleUndo}
+						disabled={shapes.length === 0}
+						className="deloop-overlay-btn deloop-overlay-btn-muted"
 					>
-						{lw.label}
+						Undo
 					</button>
-				))}
-				<div className="deloop-overlay-toolbar-divider" />
-				<button
-					type="button"
-					onClick={handleUndo}
-					disabled={shapes.length === 0}
-					className="deloop-overlay-btn deloop-overlay-btn-muted"
-				>
-					Undo
-				</button>
-				<button
-					type="button"
-					onClick={() => {
-						setShapes([]);
-						const canvas = canvasRef.current;
-						if (canvas) {
-							const ctx = canvas.getContext("2d");
-							ctx?.clearRect(0, 0, canvas.width, canvas.height);
-						}
-					}}
-					className="deloop-overlay-btn deloop-overlay-btn-muted"
-				>
-					Clear
-				</button>
-				<button
-					type="button"
-					onClick={finishDrawing}
-					className="deloop-overlay-btn deloop-overlay-btn-primary"
-				>
-					Done
-				</button>
-			</div>
-			<div className="deloop-instruction">
-				Draw on the page &middot; <kbd>1</kbd>-<kbd>4</kbd> tools &middot; <kbd>⌘Z</kbd> undo
-				&middot; <kbd>Esc</kbd> finish
-			</div>
+					<button
+						type="button"
+						onClick={() => {
+							setShapes([]);
+							const canvas = canvasRef.current;
+							if (canvas) {
+								const ctx = canvas.getContext("2d");
+								ctx?.clearRect(0, 0, canvas.width, canvas.height);
+							}
+						}}
+						className="deloop-overlay-btn deloop-overlay-btn-muted"
+					>
+						Clear
+					</button>
+					<button
+						type="button"
+						onClick={finishDrawing}
+						className="deloop-overlay-btn deloop-overlay-btn-primary"
+					>
+						Done
+					</button>
+				</div>
+			)}
+			{commentMode && (
+				<div data-deloop-draw-comment className="deloop-draw-comment">
+					<input
+						type="text"
+						placeholder="Add a comment (optional)"
+						value={commentText}
+						onChange={(e) => setCommentText(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") submitDrawing();
+							if (e.key === "Escape") {
+								e.stopPropagation();
+								setCommentMode(false);
+							}
+						}}
+						autoFocus
+					/>
+					<button type="button" onClick={submitDrawing} className="deloop-overlay-btn deloop-overlay-btn-primary">
+						Save
+					</button>
+					<button
+						type="button"
+						onClick={() => setCommentMode(false)}
+						className="deloop-overlay-btn deloop-overlay-btn-muted"
+					>
+						Back
+					</button>
+				</div>
+			)}
+			{!commentMode && (
+				<div className="deloop-instruction">
+					Draw on the page &middot; <kbd>1</kbd>-<kbd>4</kbd> tools &middot; <kbd>⌘Z</kbd> undo
+					&middot; <kbd>Esc</kbd> finish
+				</div>
+			)}
 		</div>
 	);
 }

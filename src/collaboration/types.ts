@@ -36,6 +36,7 @@ export type ClientMessage =
 	| { type: "annotation:remove"; annotationId: string }
 	| { type: "comment:add"; annotationId: string; comment: Comment }
 	| { type: "comment:remove"; annotationId: string; commentId: string }
+	| { type: "comment:edit"; annotationId: string; commentId: string; text: string }
 	| { type: "tool:change"; tool: ToolMode }
 	| { type: "viewport"; scrollX: number; scrollY: number }
 	| { type: "annotations:clear" };
@@ -50,6 +51,7 @@ export type ServerMessage =
 	| { type: "annotation:remove"; annotationId: string; peerId: string }
 	| { type: "comment:add"; annotationId: string; comment: Comment; peerId: string }
 	| { type: "comment:remove"; annotationId: string; commentId: string; peerId: string }
+	| { type: "comment:edit"; annotationId: string; commentId: string; text: string; peerId: string }
 	| { type: "tool:change"; peerId: string; tool: ToolMode }
 	| { type: "viewport"; peerId: string; scrollX: number; scrollY: number }
 	| { type: "annotations:clear"; peerId: string }

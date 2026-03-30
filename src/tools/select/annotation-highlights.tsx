@@ -129,6 +129,17 @@ export function AnnotationHighlights({
 					img.style.left = `${vx}px`;
 					img.style.top = `${vy}px`;
 				}
+				const note = wrapper.children[1] as HTMLDivElement | undefined;
+				if (note) {
+					const sb = d.strokesBounds;
+					if (sb) {
+						note.style.left = `${vx + sb.x + sb.width + 8}px`;
+						note.style.top = `${vy + sb.y}px`;
+					} else {
+						note.style.left = `${vx + 8}px`;
+						note.style.top = `${vy + 8}px`;
+					}
+				}
 			}
 		}
 	}, []);
@@ -275,7 +286,13 @@ export function AnnotationHighlights({
 									{d.number}
 								</div>
 								{a.comments.length > 0 && focusedAnnotation !== a.id && (
-									<div className="deloop-persistent-pin-note">{a.comments[0]!.text}</div>
+									<div
+										className="deloop-persistent-pin-note"
+										style={{ cursor: "pointer" }}
+										onClick={() => onFocusAnnotation(a.id)}
+									>
+										{a.comments[0]!.text}
+									</div>
 								)}
 							</div>
 						);
@@ -299,6 +316,9 @@ export function AnnotationHighlights({
 										height: d.dimensions.height,
 									}}
 								/>
+								{a.comments.length > 0 && focusedAnnotation !== a.id && (
+									<div className="deloop-drawing-note">{a.comments[0]!.text}</div>
+								)}
 							</div>
 						);
 					})}

@@ -33,6 +33,7 @@ export type DrawingData = {
 	screenshotDataUri: string;
 	viewportOffset: { x: number; y: number };
 	dimensions: { width: number; height: number };
+	strokesBounds?: { x: number; y: number; width: number; height: number };
 };
 
 export type TextData = {

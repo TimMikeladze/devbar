@@ -790,6 +790,9 @@ export function Deloop({
 			onCommentAdd: (annotationId, comment) => {
 				state.addComment(annotationId, comment, true);
 			},
+			onCommentEdit: (annotationId, commentId, text) => {
+				state.updateComment(annotationId, commentId, text, true);
+			},
 			onCommentRemove: (annotationId, commentId) => {
 				state.removeComment(annotationId, commentId, true);
 			},
@@ -801,6 +804,7 @@ export function Deloop({
 			state.addAnnotation,
 			state.removeAnnotation,
 			state.addComment,
+			state.updateComment,
 			state.removeComment,
 			state.clearAnnotations,
 		],
@@ -825,6 +829,14 @@ export function Deloop({
 			collab.sendCommentAdd(annotationId, comment);
 		},
 		[state.addComment, collab.sendCommentAdd],
+	);
+
+	const localEditComment = useCallback(
+		(annotationId: string, commentId: string, text: string) => {
+			state.updateComment(annotationId, commentId, text);
+			collab.sendCommentEdit(annotationId, commentId, text);
+		},
+		[state.updateComment, collab.sendCommentEdit],
 	);
 
 	const localRemoveComment = useCallback(
@@ -857,6 +869,8 @@ export function Deloop({
 	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 	const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null);
 	const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+	const [editingComment, setEditingComment] = useState<{ annotationId: string; commentId: string } | null>(null);
+	const [editText, setEditText] = useState("");
 	const getCommentText = useCallback((id: string) => commentTexts[id] ?? "", [commentTexts]);
 	const setCommentText = useCallback((id: string, text: string) => {
 		setCommentTexts((prev) => ({ ...prev, [id]: text }));
@@ -1450,6 +1464,29 @@ export function Deloop({
 		},
 		[commentTexts, authorName, localAddComment],
 	);
+
+	const startEditComment = useCallback(
+		(annotationId: string, commentId: string, currentText: string) => {
+			setEditingComment({ annotationId, commentId });
+			setEditText(currentText);
+		},
+		[],
+	);
+
+	const saveEditComment = useCallback(() => {
+		if (!editingComment) return;
+		const trimmed = editText.trim();
+		if (trimmed && trimmed !== "") {
+			localEditComment(editingComment.annotationId, editingComment.commentId, trimmed);
+		}
+		setEditingComment(null);
+		setEditText("");
+	}, [editingComment, editText, localEditComment]);
+
+	const cancelEditComment = useCallback(() => {
+		setEditingComment(null);
+		setEditText("");
+	}, []);
 
 	// Floating settings/help panel positioning (toolbar mode only)
 	// Direction is locked when the panel opens via panelOpenAboveRef
@@ -2498,6 +2535,16 @@ export function Deloop({
 																minute: "2-digit",
 															})}
 														</span>
+														{c.author === (authorName || "Anonymous") && (
+															<button
+																type="button"
+																className="deloop-thread-edit"
+																onClick={() => startEditComment(a.id, c.id, c.text)}
+																title="Edit comment"
+															>
+																&#9998;
+															</button>
+														)}
 														<button
 															type="button"
 															className="deloop-thread-delete"
@@ -2507,7 +2554,33 @@ export function Deloop({
 															&times;
 														</button>
 													</div>
-													<div className="deloop-thread-comment-text">{c.text}</div>
+													{editingComment?.annotationId === a.id && editingComment?.commentId === c.id ? (
+														<div className="deloop-thread-edit-wrap">
+															<input
+																className="deloop-thread-input"
+																type="text"
+																value={editText}
+																onChange={(e) => setEditText(e.target.value)}
+																onKeyDown={(e) => {
+																	if (e.key === "Enter") saveEditComment();
+																	if (e.key === "Escape") cancelEditComment();
+																}}
+																autoFocus
+															/>
+															<div className="deloop-thread-edit-actions">
+																<button type="button" className="deloop-thread-edit-save" onClick={saveEditComment}>Save</button>
+																<button type="button" className="deloop-thread-edit-cancel" onClick={cancelEditComment}>Cancel</button>
+															</div>
+														</div>
+													) : (
+														<div
+															className="deloop-thread-comment-text"
+															onDoubleClick={c.author === (authorName || "Anonymous") ? () => startEditComment(a.id, c.id, c.text) : undefined}
+															title={c.author === (authorName || "Anonymous") ? "Double-click to edit" : undefined}
+														>
+															{c.text}
+														</div>
+													)}
 												</div>
 											</div>
 										</div>
@@ -2613,7 +2686,6 @@ export function Deloop({
 					className="deloop-submit-btn deloop-submit-btn-secondary"
 					onClick={handleCopyJson}
 					title="Copy as JSON"
-					style={{ flex: "none", padding: "7px 10px" }}
 				>
 					<CopyIcon />
 					JSON
@@ -2632,7 +2704,6 @@ export function Deloop({
 					className="deloop-submit-btn deloop-submit-btn-secondary"
 					onClick={() => handleExport("json")}
 					title="Save as JSON file"
-					style={{ flex: "none", padding: "7px 10px" }}
 				>
 					.json
 				</button>
@@ -2669,7 +2740,7 @@ export function Deloop({
 							: undefined
 					}
 				>
-					{clearConfirm ? "Confirm?" : "Clear"}
+					{clearConfirm ? "Confirm?" : "Clear all"}
 				</button>
 			</div>
 		) : null;
@@ -2924,7 +2995,10 @@ export function Deloop({
 								</button>
 							</div>
 							<div className="deloop-thread-popover-body">
-								<AnnotationReadout annotation={a} />
+								<details className="deloop-readout-collapse">
+									<summary>Click to view annotation details</summary>
+									<AnnotationReadout annotation={a} />
+								</details>
 								{a.comments.length === 0 && (
 									<div className="deloop-empty" style={{ padding: "12px 8px", fontSize: 11 }}>
 										No comments yet
@@ -2948,6 +3022,16 @@ export function Deloop({
 															minute: "2-digit",
 														})}
 													</span>
+													{c.author === (authorName || "Anonymous") && (
+														<button
+															type="button"
+															className="deloop-thread-edit"
+															onClick={() => startEditComment(a.id, c.id, c.text)}
+															title="Edit"
+														>
+															&#9998;
+														</button>
+													)}
 													<button
 														type="button"
 														className="deloop-thread-delete"
@@ -2957,7 +3041,33 @@ export function Deloop({
 														&times;
 													</button>
 												</div>
-												<div className="deloop-thread-comment-text">{c.text}</div>
+												{editingComment?.annotationId === a.id && editingComment?.commentId === c.id ? (
+													<div className="deloop-thread-edit-wrap">
+														<input
+															className="deloop-thread-input"
+															type="text"
+															value={editText}
+															onChange={(e) => setEditText(e.target.value)}
+															onKeyDown={(e) => {
+																if (e.key === "Enter") saveEditComment();
+																if (e.key === "Escape") cancelEditComment();
+															}}
+															autoFocus
+														/>
+														<div className="deloop-thread-edit-actions">
+															<button type="button" className="deloop-thread-edit-save" onClick={saveEditComment}>Save</button>
+															<button type="button" className="deloop-thread-edit-cancel" onClick={cancelEditComment}>Cancel</button>
+														</div>
+													</div>
+												) : (
+													<div
+														className="deloop-thread-comment-text"
+														onDoubleClick={c.author === (authorName || "Anonymous") ? () => startEditComment(a.id, c.id, c.text) : undefined}
+														title={c.author === (authorName || "Anonymous") ? "Double-click to edit" : undefined}
+													>
+														{c.text}
+													</div>
+												)}
 											</div>
 										</div>
 									</div>

@@ -13,6 +13,7 @@ export type DeloopState = {
 	updateAnnotation: (id: string, data: Annotation["data"]) => void;
 	removeAnnotation: (id: string, remote?: boolean) => void;
 	addComment: (annotationId: string, comment: Comment, remote?: boolean) => void;
+	updateComment: (annotationId: string, commentId: string, text: string, remote?: boolean) => void;
 	removeComment: (annotationId: string, commentId: string, remote?: boolean) => void;
 	clearAnnotations: () => void;
 	archiveAndClear: (method: ExportMethod, label?: string | null) => void;
@@ -212,6 +213,28 @@ export function useDeloopState(): DeloopState {
 		[],
 	);
 
+	const updateComment = useCallback(
+		(annotationId: string, commentId: string, text: string, _remote?: boolean): void => {
+			setAnnotations((prev) => {
+				let matched: Annotation | undefined;
+				const updated = prev.map((a) => {
+					if (a.id !== annotationId) return a;
+					matched = {
+						...a,
+						comments: a.comments.map((c) =>
+							c.id === commentId ? { ...c, text } : c,
+						),
+					};
+					return matched;
+				});
+				if (matched)
+					dbPutRecord(STORE_NAME, matched).catch((e) => console.warn("[deloop] save error:", e));
+				return updated;
+			});
+		},
+		[],
+	);
+
 	const removeComment = useCallback(
 		(annotationId: string, commentId: string, _remote?: boolean): void => {
 			setAnnotations((prev) => {
@@ -282,6 +305,7 @@ export function useDeloopState(): DeloopState {
 		updateAnnotation,
 		removeAnnotation,
 		addComment,
+		updateComment,
 		removeComment,
 		clearAnnotations,
 		archiveAndClear,

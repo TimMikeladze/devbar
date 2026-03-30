@@ -104,10 +104,9 @@
 	border: 1px solid var(--deloop-border);
 	border-radius: 16px;
 	padding: 4px 5px;
-	backdrop-filter: blur(24px) saturate(1.6);
-	-webkit-backdrop-filter: blur(24px) saturate(1.6);
 	box-shadow: var(--deloop-shadow-md);
 	transition: box-shadow 0.3s ease;
+	z-index: 2147483647;
 }
 
 .deloop-bar:hover {
@@ -464,33 +463,34 @@
 /* ─── Panel footer ─── */
 .deloop-panel-footer {
 	display: flex;
-	gap: 6px;
-	padding: 10px 10px;
+	gap: 4px;
+	padding: 8px 8px;
 	border-top: 1px solid var(--deloop-border);
+	flex-wrap: wrap;
 }
 
 .deloop-submit-btn {
-	flex: 1;
+	flex: 0 1 auto;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6px;
-	padding: 7px 14px;
-	font-size: 12.5px;
+	gap: 4px;
+	padding: 4px 8px;
+	font-size: 11px;
 	font-weight: 550;
 	font-family: inherit;
 	border: none;
 	background: var(--deloop-text);
 	color: var(--deloop-bg);
-	border-radius: 9px;
+	border-radius: 7px;
 	cursor: pointer;
 	transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 	letter-spacing: -0.01em;
 }
 
 .deloop-submit-btn svg {
-	width: 13px;
-	height: 13px;
+	width: 11px;
+	height: 11px;
 	flex-shrink: 0;
 }
 
@@ -518,14 +518,14 @@
 }
 
 .deloop-clear-btn {
-	padding: 7px 12px;
-	font-size: 12.5px;
+	padding: 4px 8px;
+	font-size: 11px;
 	font-weight: 500;
 	font-family: inherit;
 	border: 1px solid var(--deloop-border);
 	background: transparent;
 	color: var(--deloop-text-secondary);
-	border-radius: 9px;
+	border-radius: 7px;
 	cursor: pointer;
 	transition: all 0.15s;
 	letter-spacing: -0.01em;
@@ -802,6 +802,38 @@
 	animation: deloop-readout-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.deloop-readout-collapse {
+	border-bottom: 1px solid var(--deloop-border);
+}
+
+.deloop-readout-collapse summary {
+	padding: 6px 12px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--deloop-text-secondary);
+	cursor: pointer;
+	user-select: none;
+	list-style: none;
+}
+
+.deloop-readout-collapse summary::-webkit-details-marker {
+	display: none;
+}
+
+.deloop-readout-collapse summary::before {
+	content: "▸ ";
+}
+
+.deloop-readout-collapse[open] summary::before {
+	content: "▾ ";
+}
+
+.deloop-readout-collapse[open] summary {
+	border-bottom: 1px solid var(--deloop-border);
+}
+
 .deloop-thread-popover-body .deloop-readout {
 	margin: 0 0 4px;
 	border-radius: 0;
@@ -1075,8 +1107,77 @@
 	font-variant-numeric: tabular-nums;
 }
 
-.deloop-thread-delete {
+.deloop-thread-edit {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 4px;
+	border: none;
+	background: transparent;
+	color: var(--deloop-text-muted);
+	cursor: pointer;
+	font-size: 10px;
+	opacity: 0;
+	transition: all 0.12s;
 	margin-left: auto;
+}
+
+.deloop-thread-comment:hover .deloop-thread-edit {
+	opacity: 1;
+}
+
+.deloop-thread-edit:hover {
+	background: var(--deloop-blue-muted);
+	color: var(--deloop-blue);
+}
+
+.deloop-thread-edit-wrap {
+	margin-top: 2px;
+}
+
+.deloop-thread-edit-wrap .deloop-thread-input {
+	width: 100%;
+}
+
+.deloop-thread-edit-actions {
+	display: flex;
+	gap: 4px;
+	margin-top: 4px;
+	justify-content: flex-end;
+}
+
+.deloop-thread-edit-save,
+.deloop-thread-edit-cancel {
+	border: none;
+	border-radius: 4px;
+	padding: 2px 8px;
+	font-size: 10px;
+	cursor: pointer;
+	transition: all 0.12s;
+}
+
+.deloop-thread-edit-save {
+	background: var(--deloop-blue);
+	color: #fff;
+}
+
+.deloop-thread-edit-save:hover {
+	background: var(--deloop-blue-hover);
+}
+
+.deloop-thread-edit-cancel {
+	background: transparent;
+	color: var(--deloop-text-secondary);
+}
+
+.deloop-thread-edit-cancel:hover {
+	background: var(--deloop-accent-hover);
+}
+
+.deloop-thread-delete {
+	margin-left: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1328,7 +1429,8 @@
 	font-weight: 500;
 	padding: 3px 8px;
 	border-radius: 6px;
-	pointer-events: none;
+	pointer-events: auto;
+	cursor: pointer;
 	z-index: 2147483642;
 	white-space: nowrap;
 	max-width: 200px;
@@ -1699,6 +1801,47 @@
 	opacity: 0.85;
 }
 
+/* ─── Draw comment input ─── */
+.deloop-draw-comment {
+	position: fixed;
+	top: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 2147483646;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	border-radius: 12px;
+	padding: 6px;
+	box-shadow: var(--deloop-shadow-lg);
+	display: flex;
+	gap: 4px;
+	animation: deloop-popover-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.deloop-draw-comment input {
+	border: 1px solid var(--deloop-border);
+	border-radius: 8px;
+	padding: 6px 10px;
+	font-size: 13px;
+	width: 240px;
+	outline: none;
+	background: var(--deloop-bg-surface);
+	color: var(--deloop-text);
+	font-family: inherit;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
+}
+
+.deloop-draw-comment input:focus {
+	border-color: var(--deloop-blue);
+	box-shadow: 0 0 0 2px var(--deloop-blue-muted);
+}
+
+.deloop-draw-comment input::placeholder {
+	color: var(--deloop-text-muted);
+}
+
 /* ─── Capture note dialog ─── */
 .deloop-capture-note {
 	position: fixed;
@@ -1857,6 +2000,24 @@
 	position: fixed;
 	pointer-events: none;
 	z-index: 2147483643;
+}
+
+.deloop-drawing-note {
+	position: fixed;
+	background: var(--deloop-bg);
+	border: 1px solid var(--deloop-border);
+	color: var(--deloop-text);
+	font-size: 11px;
+	font-weight: 500;
+	padding: 3px 8px;
+	border-radius: 6px;
+	pointer-events: none;
+	z-index: 2147483644;
+	white-space: nowrap;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	box-shadow: var(--deloop-shadow-sm);
 }
 
 /* ─── Marker pin (shared in overlay and toolbar) ─── */

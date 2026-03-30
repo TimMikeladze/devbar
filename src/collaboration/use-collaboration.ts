@@ -10,6 +10,7 @@ export type CollaborationState = {
 	sendAnnotationAdd: (annotation: Annotation) => void;
 	sendAnnotationRemove: (annotationId: string) => void;
 	sendCommentAdd: (annotationId: string, comment: Comment) => void;
+	sendCommentEdit: (annotationId: string, commentId: string, text: string) => void;
 	sendCommentRemove: (annotationId: string, commentId: string) => void;
 	sendToolChange: (tool: ToolMode) => void;
 	sendViewport: (scrollX: number, scrollY: number) => void;
@@ -20,6 +21,7 @@ export type CollaborationCallbacks = {
 	onAnnotationAdd?: (annotation: Annotation, peerId: string) => void;
 	onAnnotationRemove?: (annotationId: string, peerId: string) => void;
 	onCommentAdd?: (annotationId: string, comment: Comment, peerId: string) => void;
+	onCommentEdit?: (annotationId: string, commentId: string, text: string, peerId: string) => void;
 	onCommentRemove?: (annotationId: string, commentId: string, peerId: string) => void;
 	onClear?: (peerId: string) => void;
 };
@@ -128,6 +130,10 @@ export function useCollaboration(
 						callbacksRef.current.onCommentAdd?.(msg.annotationId, msg.comment, msg.peerId);
 						break;
 
+					case "comment:edit":
+						callbacksRef.current.onCommentEdit?.(msg.annotationId, msg.commentId, msg.text, msg.peerId);
+						break;
+
 					case "comment:remove":
 						callbacksRef.current.onCommentRemove?.(msg.annotationId, msg.commentId, msg.peerId);
 						break;
@@ -206,6 +212,12 @@ export function useCollaboration(
 		[send],
 	);
 
+	const sendCommentEdit = useCallback(
+		(annotationId: string, commentId: string, text: string) =>
+			send({ type: "comment:edit", annotationId, commentId, text }),
+		[send],
+	);
+
 	const sendCommentRemove = useCallback(
 		(annotationId: string, commentId: string) =>
 			send({ type: "comment:remove", annotationId, commentId }),
@@ -232,6 +244,7 @@ export function useCollaboration(
 		sendAnnotationAdd,
 		sendAnnotationRemove,
 		sendCommentAdd,
+		sendCommentEdit,
 		sendCommentRemove,
 		sendToolChange,
 		sendViewport,
