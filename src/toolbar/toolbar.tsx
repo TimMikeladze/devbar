@@ -89,6 +89,10 @@ export type DeloopProps = {
 	tools?: ToolMode[];
 	plugins?: DeloopPlugin[];
 	server?: string;
+	/** Bearer token sent as Authorization header with server submissions */
+	token?: string;
+	/** Project slug for dispatch routing */
+	project?: string;
 	user?: DeloopUser;
 	authProxy?: string;
 	labels?: string[];
@@ -769,6 +773,8 @@ export function Deloop({
 	theme: initialTheme = "auto",
 	plugins = [],
 	server,
+	token,
+	project,
 	user,
 	authProxy,
 	labels: propLabels = [],
@@ -1269,7 +1275,10 @@ export function Deloop({
 		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
 		const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-		if (authProxy && auth.authUser) {
+		if (token) {
+			// Mode D: static bearer token (e.g. local server)
+			headers["Authorization"] = `Bearer ${token}`;
+		} else if (authProxy && auth.authUser) {
 			// Mode C: get signed token from auth proxy
 			try {
 				const res = await fetch(authProxy, { method: "POST", credentials: "include" });
@@ -1295,6 +1304,7 @@ export function Deloop({
 					payload,
 					url: payload.url,
 					title: payload.title,
+					project,
 				}),
 			});
 			if (res.ok) {
@@ -1310,6 +1320,8 @@ export function Deloop({
 		}
 	}, [
 		server,
+		token,
+		project,
 		state.annotations,
 		promptTemplate,
 		settings,
