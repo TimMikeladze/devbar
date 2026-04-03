@@ -211,7 +211,9 @@ export function DrawOverlay({
 					".deloop-instruction",
 				) as HTMLElement | null;
 				if (instruction) instruction.style.display = "none";
-				const commentEl = document.querySelector("[data-deloop-draw-comment]") as HTMLElement | null;
+				const commentEl = document.querySelector(
+					"[data-deloop-draw-comment]",
+				) as HTMLElement | null;
 				if (commentEl) commentEl.style.display = "none";
 
 				try {
@@ -367,7 +369,11 @@ export function DrawOverlay({
 						}}
 						autoFocus
 					/>
-					<button type="button" onClick={submitDrawing} className="deloop-overlay-btn deloop-overlay-btn-primary">
+					<button
+						type="button"
+						onClick={submitDrawing}
+						className="deloop-overlay-btn deloop-overlay-btn-primary"
+					>
 						Save
 					</button>
 					<button

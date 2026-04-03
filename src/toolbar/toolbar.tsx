@@ -869,7 +869,10 @@ export function Deloop({
 	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 	const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null);
 	const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
-	const [editingComment, setEditingComment] = useState<{ annotationId: string; commentId: string } | null>(null);
+	const [editingComment, setEditingComment] = useState<{
+		annotationId: string;
+		commentId: string;
+	} | null>(null);
 	const [editText, setEditText] = useState("");
 	const getCommentText = useCallback((id: string) => commentTexts[id] ?? "", [commentTexts]);
 	const setCommentText = useCallback((id: string, text: string) => {
@@ -2554,7 +2557,8 @@ export function Deloop({
 															&times;
 														</button>
 													</div>
-													{editingComment?.annotationId === a.id && editingComment?.commentId === c.id ? (
+													{editingComment?.annotationId === a.id &&
+													editingComment?.commentId === c.id ? (
 														<div className="deloop-thread-edit-wrap">
 															<input
 																className="deloop-thread-input"
@@ -2568,15 +2572,35 @@ export function Deloop({
 																autoFocus
 															/>
 															<div className="deloop-thread-edit-actions">
-																<button type="button" className="deloop-thread-edit-save" onClick={saveEditComment}>Save</button>
-																<button type="button" className="deloop-thread-edit-cancel" onClick={cancelEditComment}>Cancel</button>
+																<button
+																	type="button"
+																	className="deloop-thread-edit-save"
+																	onClick={saveEditComment}
+																>
+																	Save
+																</button>
+																<button
+																	type="button"
+																	className="deloop-thread-edit-cancel"
+																	onClick={cancelEditComment}
+																>
+																	Cancel
+																</button>
 															</div>
 														</div>
 													) : (
 														<div
 															className="deloop-thread-comment-text"
-															onDoubleClick={c.author === (authorName || "Anonymous") ? () => startEditComment(a.id, c.id, c.text) : undefined}
-															title={c.author === (authorName || "Anonymous") ? "Double-click to edit" : undefined}
+															onDoubleClick={
+																c.author === (authorName || "Anonymous")
+																	? () => startEditComment(a.id, c.id, c.text)
+																	: undefined
+															}
+															title={
+																c.author === (authorName || "Anonymous")
+																	? "Double-click to edit"
+																	: undefined
+															}
 														>
 															{c.text}
 														</div>
@@ -3041,7 +3065,8 @@ export function Deloop({
 														&times;
 													</button>
 												</div>
-												{editingComment?.annotationId === a.id && editingComment?.commentId === c.id ? (
+												{editingComment?.annotationId === a.id &&
+												editingComment?.commentId === c.id ? (
 													<div className="deloop-thread-edit-wrap">
 														<input
 															className="deloop-thread-input"
@@ -3055,15 +3080,35 @@ export function Deloop({
 															autoFocus
 														/>
 														<div className="deloop-thread-edit-actions">
-															<button type="button" className="deloop-thread-edit-save" onClick={saveEditComment}>Save</button>
-															<button type="button" className="deloop-thread-edit-cancel" onClick={cancelEditComment}>Cancel</button>
+															<button
+																type="button"
+																className="deloop-thread-edit-save"
+																onClick={saveEditComment}
+															>
+																Save
+															</button>
+															<button
+																type="button"
+																className="deloop-thread-edit-cancel"
+																onClick={cancelEditComment}
+															>
+																Cancel
+															</button>
 														</div>
 													</div>
 												) : (
 													<div
 														className="deloop-thread-comment-text"
-														onDoubleClick={c.author === (authorName || "Anonymous") ? () => startEditComment(a.id, c.id, c.text) : undefined}
-														title={c.author === (authorName || "Anonymous") ? "Double-click to edit" : undefined}
+														onDoubleClick={
+															c.author === (authorName || "Anonymous")
+																? () => startEditComment(a.id, c.id, c.text)
+																: undefined
+														}
+														title={
+															c.author === (authorName || "Anonymous")
+																? "Double-click to edit"
+																: undefined
+														}
 													>
 														{c.text}
 													</div>

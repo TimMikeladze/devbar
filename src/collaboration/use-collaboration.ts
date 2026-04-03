@@ -131,7 +131,12 @@ export function useCollaboration(
 						break;
 
 					case "comment:edit":
-						callbacksRef.current.onCommentEdit?.(msg.annotationId, msg.commentId, msg.text, msg.peerId);
+						callbacksRef.current.onCommentEdit?.(
+							msg.annotationId,
+							msg.commentId,
+							msg.text,
+							msg.peerId,
+						);
 						break;
 
 					case "comment:remove":

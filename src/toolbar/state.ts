@@ -221,9 +221,7 @@ export function useDeloopState(): DeloopState {
 					if (a.id !== annotationId) return a;
 					matched = {
 						...a,
-						comments: a.comments.map((c) =>
-							c.id === commentId ? { ...c, text } : c,
-						),
+						comments: a.comments.map((c) => (c.id === commentId ? { ...c, text } : c)),
 					};
 					return matched;
 				});
