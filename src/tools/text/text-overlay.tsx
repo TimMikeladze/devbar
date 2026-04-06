@@ -39,7 +39,10 @@ export function TextOverlay({
 			const el = document.elementFromPoint(e.clientX, e.clientY);
 			const xpath = el && capture?.xpath !== false ? getXPath(el) : "";
 			const cssSelector = el && capture?.cssSelector !== false ? getCssSelector(el) : "";
-			const reactContext = el && capture?.reactContext !== false ? extractReactContext(el) : null;
+			const reactContext =
+				el && capture?.reactContext !== false
+					? extractReactContext(el, capture?.reactContextProps ?? false)
+					: null;
 
 			setInputPos({ x: e.clientX, y: e.clientY, xpath, cssSelector, reactContext });
 			setText("");

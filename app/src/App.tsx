@@ -58,13 +58,10 @@ function App() {
 				<BeforeAfter />
 				<HowItWorks />
 				<Examples />
-				<UseCases />
 				<CapturedData />
 				<Integrations />
-				<Pipelines />
 				<Features />
 				<Pricing />
-				<PremiumFeatures />
 				<FAQ />
 				<Contact />
 				<Footer />
@@ -219,9 +216,8 @@ function Hero() {
 						<span className="gradient-warm">Ship faster.</span>
 					</h1>
 					<p className="text-dim text-[15px] sm:text-lg leading-[1.7] mb-8 max-w-2xl mx-auto">
-						An open&#8209;source toolbar that captures structured context from any website. Click an
-						element, draw on it, drop a marker, add a comment — deloop extracts selectors, styles,
-						and source paths. Send that context to your AI agent, share it with your team, or both.
+						An open&#8209;source toolbar that turns browser annotations into structured context for
+						your AI agent and team.
 					</p>
 					<div className="max-w-sm mx-auto mb-6">
 						<InstallTabs />
@@ -243,7 +239,7 @@ function Hero() {
 			</div>
 
 			{/* Real Deloop toolbar — rendered here, floats freely via position:fixed */}
-			<Deloop />
+			<Deloop server="http://localhost:3101" project="deloop" />
 		</section>
 	);
 }
@@ -260,40 +256,26 @@ function HowItWorks() {
 			number: 1,
 			title: "Annotate",
 			color: "accent",
-			desc: "Anyone spots something — click it, circle it, draw on it, or drop a marker. Designers, QA, PMs, and developers all use the same toolbar. No DevTools knowledge needed.",
-			items: [
-				"Element selection",
-				"Freehand drawing",
-				"Numbered markers",
-				"Screenshot capture",
-				"Comments & threads",
-			],
+			desc: "Click, circle, draw, or drop a marker. No DevTools needed.",
+			items: ["Element selection", "Freehand drawing & markers", "Screenshots & comments"],
 		},
 		{
 			number: 2,
 			title: "Context",
 			color: "emerald",
-			desc: "deloop auto-captures XPaths, CSS selectors, computed styles, React component trees, and source file paths behind every click. A designer's annotation carries the same structured context a developer or AI agent needs to act.",
+			desc: "Auto-captures selectors, styles, React trees, and source paths.",
 			items: [
 				"XPaths & CSS selectors",
 				"Computed styles",
-				"React component tree",
-				"Source file locations",
-				"Context screenshots",
+				"React component tree & source locations",
 			],
 		},
 		{
 			number: 3,
 			title: "Route",
 			color: "cyan",
-			desc: "Send structured context wherever it needs to go — paste into Claude or Cursor, share with your team on the dashboard, pipe to an agent via MCP, or push to Slack, Jira, and Linear. Same payload, every destination.",
-			items: [
-				"Paste into any LLM or coding assistant",
-				"Shared team dashboard",
-				"MCP server for agent workflows",
-				"Webhook to Slack, Jira, Linear",
-				"JSON & Markdown export",
-			],
+			desc: "Paste into an LLM, share on the dashboard, or pipe to any tool.",
+			items: ["Clipboard, MCP & webhooks", "Slack, GitHub, Jira, Linear", "JSON & Markdown export"],
 		},
 	];
 
@@ -317,13 +299,9 @@ function HowItWorks() {
 		>
 			<div className="text-center mb-10 sm:mb-12">
 				<p className="section-label text-amber before:bg-amber justify-center">How it works</p>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em]">
 					Annotate. Capture context. <span className="gradient-warm">Route it anywhere.</span>
 				</h2>
-				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					Anyone on your team spots an issue. deloop turns their annotation into structured context
-					that flows to your AI agent, your teammates, or both — no translation layer needed.
-				</p>
 			</div>
 
 			<div className="flex flex-col sm:flex-row items-stretch gap-4 sm:gap-0">
@@ -432,175 +410,78 @@ const { destroy } = init();`,
 
 ## Page Information
 - **URL:** https://app.example.com/dashboard
-- **Route:** /dashboard?tab=orders
-- **Title:** Dashboard — Example App
 - **Viewport:** 1440x900
-- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ...
 
 ## Annotations
 
 ### Annotation 1: element
 > **QA:** Button color doesn't match the design spec
-- **Tag:** button
-- **ID:** submit-btn
-- **Classes:** btn, btn-primary
 - **XPath:** \`/html/body/div/main/form/button\`
 - **CSS Selector:** \`#submit-btn\`
-- **Bounding Rect:** 120x40 at (450, 320)
-- **Computed Styles:**
-  - display: flex
-  - color: rgb(255, 255, 255)
-  - background-color: rgb(59, 130, 246)
-  - font-size: 14px
-  - padding: 8px 16px
-- **Text:** Submit Order
-- **HTML:**
-\`\`\`
-<button id="submit-btn" class="btn btn-primary">Submit Order</button>
-\`\`\`
-- **React Component Path:** \`App > Dashboard > OrderForm > Button\`
-  - \`<Button variant="primary" size="md">\` (src/ui/Button.tsx:6)
-  - \`<OrderForm onSubmit="[Function]">\` (src/components/OrderForm.tsx:24)
+- **Computed Styles:** background-color: rgb(59, 130, 246), font-size: 14px
+- **React:** \`App > Dashboard > OrderForm > Button\` (src/ui/Button.tsx:6)
 
 ### Annotation 2: drawing
-- **Type:** Freehand drawing
-- **Drawing:** ![drawing](data:image/png;base64,...)
-- **Context Screenshot:** ![context](data:image/png;base64,...)
+> Freehand drawing with context screenshot attached
 
 ### Annotation 3: marker
 > **Designer:** This row is misaligned with the header
-- **Marker #1**
-- **Position:** (680, 445)
-- **Nearest Element XPath:** \`/html/body/div/main/table/tr[3]\`
-- **Nearest Element CSS Selector:** \`main > table > tr:nth-of-type(3)\`
+- **Nearest Element:** \`main > table > tr:nth-of-type(3)\`
 
-### Annotation 4: screenshot
-- **Region:** 400x300 at (100, 200)
-- **Image:** ![screenshot](data:image/png;base64,...)
-
-## Request
-Based on the annotations above, please analyze the issues
-found on this page and suggest specific fixes.
-Include code changes where applicable.`,
+... plus screenshot annotation, full page metadata, and HTML source`,
 		},
 		{
 			lang: "json",
 			code: `{
   "url": "https://app.example.com/dashboard",
-  "route": { "pathname": "/dashboard", "search": "?tab=orders", "hash": "" },
-  "title": "Dashboard — Example App",
   "viewport": { "width": 1440, "height": 900 },
-  "userAgent": "Mozilla/5.0 ...",
-  "timestamp": 1741267800000,
   "annotations": [
     {
-      "id": "a_1",
       "type": "element",
-      "timestamp": 1741267790000,
-      "comments": [
-        { "id": "c_1", "author": "QA", "text": "Button color doesn't match design" }
-      ],
+      "comments": [{ "author": "QA", "text": "Button color doesn't match design" }],
       "data": {
         "tagName": "button",
-        "id": "submit-btn",
-        "classes": ["btn", "btn-primary"],
         "xpath": "/html/body/div/main/form/button",
         "cssSelector": "#submit-btn",
-        "boundingRect": { "x": 450, "y": 320, "width": 120, "height": 40 },
-        "computedStyles": {
-          "display": "flex",
-          "color": "rgb(255, 255, 255)",
-          "background-color": "rgb(59, 130, 246)",
-          "font-size": "14px",
-          "padding": "8px 16px"
-        },
-        "innerText": "Submit Order",
-        "outerHTML": "<button id=\\"submit-btn\\" class=\\"btn btn-primary\\">Submit Order</button>",
+        "computedStyles": { "background-color": "rgb(59, 130, 246)" },
         "reactContext": {
           "componentPath": "App > Dashboard > OrderForm > Button",
           "components": [
-            {
-              "name": "Button",
-              "props": { "variant": "primary", "size": "md" },
-              "source": { "fileName": "src/ui/Button.tsx", "lineNumber": 6 }
-            },
-            {
-              "name": "OrderForm",
-              "props": { "onSubmit": "[Function]" },
-              "source": { "fileName": "src/components/OrderForm.tsx", "lineNumber": 24 }
-            }
+            { "name": "Button", "source": { "fileName": "src/ui/Button.tsx", "lineNumber": 6 } }
           ]
         }
       }
-    },
-    {
-      "id": "a_2",
-      "type": "drawing",
-      "timestamp": 1741267792000,
-      "comments": [],
-      "data": {
-        "imageDataUri": "data:image/png;base64,...",
-        "screenshotDataUri": "data:image/png;base64,...",
-        "viewportOffset": { "x": 0, "y": 120 },
-        "dimensions": { "width": 500, "height": 300 }
-      }
-    },
-    {
-      "id": "a_3",
-      "type": "marker",
-      "timestamp": 1741267794000,
-      "comments": [
-        { "id": "c_2", "author": "Designer", "text": "Row misaligned with header" }
-      ],
-      "data": {
-        "number": 1,
-        "position": { "x": 680, "y": 445 },
-        "color": "#ef4444",
-        "nearestElementXPath": "/html/body/div/main/table/tr[3]",
-        "nearestElementCssSelector": "main > table > tr:nth-of-type(3)",
-        "nearestReactContext": null
-      }
-    },
-    {
-      "id": "a_4",
-      "type": "screenshot",
-      "timestamp": 1741267796000,
-      "comments": [],
-      "data": {
-        "imageDataUri": "data:image/png;base64,...",
-        "region": { "x": 100, "y": 200, "width": 400, "height": 300 },
-        "fullPage": false
-      }
     }
-  ],
-  "prompt": "# Bug Report\\n\\n## Page Information\\n- **URL:** ..."
+  ]
 }`,
 		},
 	];
 
 	return (
 		<section className="mb-24 sm:mb-32">
-			<div className="flex items-center gap-1 mb-3 overflow-x-auto tabs-scroll pb-1 -mx-5 px-5 sm:mx-0 sm:px-0">
-				{tabs.map((t, i) => (
-					<button
-						key={t.label}
-						onClick={() => setTab(i)}
-						className={`inline-flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
-							tab === i ? "text-fg bg-fg/[0.06]" : "text-muted hover:text-dim"
-						}`}
-					>
-						<span
-							className={`block w-1.5 h-1.5 rounded-full ${t.color} ${tab === i ? "opacity-100" : "opacity-30"}`}
-						/>
-						{t.label}
-					</button>
-				))}
+			<div className="examples-card">
+				<div className="flex items-center gap-1 mb-3 overflow-x-auto tabs-scroll pb-1 -mx-5 px-5 sm:mx-0 sm:px-0">
+					{tabs.map((t, i) => (
+						<button
+							key={t.label}
+							onClick={() => setTab(i)}
+							className={`inline-flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+								tab === i ? "text-fg bg-fg/[0.06]" : "text-muted hover:text-dim"
+							}`}
+						>
+							<span
+								className={`block w-1.5 h-1.5 rounded-full ${t.color} ${tab === i ? "opacity-100" : "opacity-30"}`}
+							/>
+							{t.label}
+						</button>
+					))}
+				</div>
+				<div className="mb-3">
+					<p className="text-sm font-medium text-fg">{tabs[tab]!.title}</p>
+					<p className="text-[13px] text-muted leading-relaxed mt-1">{tabs[tab]!.desc}</p>
+				</div>
+				<CodeBlock lang={examples[tab]!.lang} code={examples[tab]!.code} />
 			</div>
-			<div className="mb-3">
-				<p className="text-sm font-medium text-fg">{tabs[tab]!.title}</p>
-				<p className="text-[13px] text-muted leading-relaxed mt-1">{tabs[tab]!.desc}</p>
-			</div>
-			<CodeBlock lang={examples[tab]!.lang} code={examples[tab]!.code} />
 		</section>
 	);
 }
@@ -617,19 +498,12 @@ function CapturedData() {
 				<p className="section-label text-emerald before:bg-emerald justify-center">
 					What gets captured
 				</p>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em]">
 					Rich context, <span className="gradient-warm">zero follow-ups</span>
 				</h2>
-				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					Every annotation automatically produces structured context — DOM selectors, computed
-					styles, React component trees, source file paths, and screenshots. Whether a designer
-					filed it or QA did, your AI agent and your developers both get exactly what they need to
-					act.
-				</p>
 			</div>
 
-			<div className="grid lg:grid-cols-2 gap-6">
-				{/* Left: the readout card */}
+			<div className="max-w-xl mx-auto">
 				<div className="capture-readout">
 					<div className="capture-readout-header">
 						<span className="w-[6px] h-[6px] rounded-full bg-accent" />
@@ -713,50 +587,6 @@ function CapturedData() {
 						</div>
 					</div>
 				</div>
-
-				{/* Right: explanation */}
-				<div className="space-y-5 py-2">
-					{[
-						{
-							color: "text-accent",
-							dot: "bg-accent",
-							title: "DOM selectors",
-							desc: "XPath and CSS selector for every annotated element. Your agent uses them to locate the exact node. Your teammate uses them to verify the fix.",
-						},
-						{
-							color: "text-cyan",
-							dot: "bg-cyan",
-							title: "Computed CSS",
-							desc: 'Actual rendered values, not what\'s in the stylesheet. Designers, developers, and agents all see the same precise colors and spacing — no "it looks different on my screen."',
-						},
-						{
-							color: "text-emerald",
-							dot: "bg-emerald",
-							title: "React component context",
-							desc: "Full component hierarchy with props and source file locations. A designer files the annotation — your agent or developer goes straight to the right file and line.",
-						},
-						{
-							color: "text-amber",
-							dot: "bg-amber",
-							title: "Layout & bounding rect",
-							desc: "Element dimensions, position, inner text, and outer HTML. Enough spatial context for an agent to reason about layout or a teammate to review the design.",
-						},
-						{
-							color: "text-rose",
-							dot: "bg-rose",
-							title: "Context screenshot",
-							desc: "Visual reference captured with every annotation. Your agent sees what the reporter saw. Your teammate sees what the reporter saw. No ambiguity.",
-						},
-					].map((item) => (
-						<div key={item.title} className="flex items-start gap-3">
-							<span className={`mt-[7px] block w-1.5 h-1.5 rounded-full ${item.dot} shrink-0`} />
-							<div>
-								<p className={`text-sm font-medium ${item.color}`}>{item.title}</p>
-								<p className="text-[13px] text-muted leading-relaxed">{item.desc}</p>
-							</div>
-						</div>
-					))}
-				</div>
 			</div>
 		</section>
 	);
@@ -772,14 +602,9 @@ function BeforeAfter() {
 		<section ref={ref} className="mb-24 sm:mb-32 reveal">
 			<div className="text-center mb-10 sm:mb-12">
 				<p className="section-label text-rose before:bg-rose justify-center">The problem</p>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em]">
 					Without context, <span className="gradient-warm">nobody can act</span>
 				</h2>
-				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					A designer posts a screenshot with no element info. A PM writes &ldquo;the button on that
-					page.&rdquo; Your AI agent asks which element you mean. Every handoff — teammate to
-					developer, developer to agent — loses context. Three follow-ups later, nothing ships.
-				</p>
 			</div>
 
 			<div className="grid sm:grid-cols-2 gap-4">
@@ -950,16 +775,12 @@ function Integrations() {
 		<section ref={ref} className="mb-24 sm:mb-32 reveal">
 			<div className="text-center mb-10 sm:mb-12">
 				<p className="section-label text-amber before:bg-amber justify-center">Integration</p>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em]">
 					Add it once, <span className="gradient-warm">context flows everywhere</span>
 				</h2>
-				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					React component, CDN tag, or programmatic init. One integration gives every collaborator —
-					teammates and AI agents alike — the same structured context surface.
-				</p>
 			</div>
 
-			<div className="grid sm:grid-cols-2 gap-4">
+			<div className="grid sm:grid-cols-3 gap-4">
 				{methods.map((m) => (
 					<div key={m.label} className="integration-card">
 						<p className={`text-sm font-semibold ${m.color} mb-1`}>{m.label}</p>
@@ -968,266 +789,20 @@ function Integrations() {
 					</div>
 				))}
 			</div>
+			<p className="text-center text-[13px] text-muted mt-6">
+				Routes to Slack, GitHub, Jira, Linear, or any webhook endpoint via{" "}
+				<code className="text-fg font-mono text-[12px] bg-bg-code px-1.5 py-0.5 rounded">
+					server
+				</code>{" "}
+				or{" "}
+				<code className="text-fg font-mono text-[12px] bg-bg-code px-1.5 py-0.5 rounded">
+					onSubmit
+				</code>
+				.
+			</p>
 		</section>
 	);
 }
-
-/* ═══════════════════════════════════════════
-   Pipelines & Webhooks
-   ═══════════════════════════════════════════ */
-
-function Pipelines() {
-	const ref = useReveal();
-
-	const pipelines = [
-		{
-			name: "Slack",
-			color: "text-amber",
-			dot: "bg-amber",
-			desc: "Post structured context to any Slack channel so the whole team sees it. The webhook receives the full payload — format it however you want.",
-			code: `// Your webhook endpoint
-app.post("/api/deloop", async (req) => {
-  const { prompt, annotations } = req.body;
-  await slack.chat.postMessage({
-    channel: "#bugs",
-    text: prompt, // formatted Markdown
-  });
-});`,
-			lang: "typescript",
-		},
-		{
-			name: "GitHub Issues",
-			color: "text-fg",
-			dot: "bg-fg",
-			desc: "Auto-create GitHub issues with full structured context — selectors, component paths, and screenshots. Your agent or teammate picks it up and acts.",
-			code: `app.post("/api/deloop", async (req) => {
-  const { prompt, annotations, label } = req.body;
-  await octokit.issues.create({
-    owner: "org", repo: "app",
-    title: \`Bug: \${label || "Untitled"}\`,
-    body: prompt,
-    labels: ["bug", "deloop"],
-  });
-});`,
-			lang: "typescript",
-		},
-		{
-			name: "Jira",
-			color: "text-accent",
-			dot: "bg-accent",
-			desc: "Create Jira tickets with structured context — XPaths, component paths, and source locations go right into the description. No manual reproduction steps.",
-			code: `app.post("/api/deloop", async (req) => {
-  const { prompt, url, annotations } = req.body;
-  await jira.addNewIssue({
-    fields: {
-      project: { key: "APP" },
-      issuetype: { name: "Bug" },
-      summary: \`Visual issue on \${url}\`,
-      description: prompt,
-    },
-  });
-});`,
-			lang: "typescript",
-		},
-		{
-			name: "Linear",
-			color: "text-cyan",
-			dot: "bg-cyan",
-			desc: "Push structured context directly into Linear with team assignment and priority. Everyone on the team — and your agent — works from the same data.",
-			code: `app.post("/api/deloop", async (req) => {
-  const { prompt, label } = req.body;
-  await linear.createIssue({
-    teamId: "...",
-    title: label || "Visual bug report",
-    description: prompt,
-    priority: 2,
-  });
-});`,
-			lang: "typescript",
-		},
-	];
-
-	return (
-		<section ref={ref} className="mb-24 sm:mb-32 reveal">
-			<div className="text-center mb-10 sm:mb-12">
-				<p className="section-label text-rose before:bg-rose justify-center">Pipelines</p>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
-					Send context <span className="gradient-warm">to every tool your team uses</span>
-				</h2>
-				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					Set a{" "}
-					<code className="text-fg font-mono text-[12px] bg-bg-code px-1.5 py-0.5 rounded">
-						server
-					</code>{" "}
-					URL and deloop POSTs the full structured context on every export — to your agent, your
-					issue tracker, or both.
-				</p>
-			</div>
-
-			<div className="max-w-xl mx-auto mb-8">
-				<CodeBlock lang="tsx" code={`<Deloop server="https://api.yourapp.com/deloop" />`} />
-			</div>
-
-			<div className="grid sm:grid-cols-2 gap-4">
-				{pipelines.map((p) => (
-					<div key={p.name} className="integration-card">
-						<div className="flex items-center gap-2.5 mb-1">
-							<span className={`block w-2 h-2 rounded-full ${p.dot} shrink-0`} />
-							<p className={`text-sm font-semibold ${p.color}`}>{p.name}</p>
-						</div>
-						<p className="text-[13px] text-muted leading-relaxed mb-3">{p.desc}</p>
-						<CodeBlock lang={p.lang} code={p.code} />
-					</div>
-				))}
-			</div>
-
-			<div className="mt-6 border border-border rounded-xl p-5 bg-bg-card">
-				<h3 className="text-sm font-semibold text-fg mb-2">Fully customizable with onSubmit</h3>
-				<p className="text-[13px] text-muted leading-relaxed mb-3">
-					For complete control, use the{" "}
-					<code className="text-fg font-mono text-[12px] bg-bg-code px-1.5 py-0.5 rounded">
-						onSubmit
-					</code>{" "}
-					callback instead of a server URL. You receive the full typed payload and can route context
-					to every collaborator simultaneously — notify your team on Slack, create an issue in
-					Linear, and feed the same structured data into your AI agent, all in one call.
-				</p>
-				<CodeBlock
-					lang="tsx"
-					code={`<Deloop
-  onSubmit={async (payload) => {
-    // payload.prompt — formatted Markdown string
-    // payload.annotations — full structured array
-    // payload.label — optional label from the toolbar
-    // payload.url, payload.viewport, payload.userAgent, ...
-
-    // Send to multiple services
-    await Promise.all([
-      postToSlack(payload.prompt),
-      createGitHubIssue(payload),
-      notifyTeam(payload.label, payload.url),
-    ]);
-  }}
-/>`}
-				/>
-			</div>
-		</section>
-	);
-}
-
-/* ═══════════════════════════════════════════
-   Use Cases
-   ═══════════════════════════════════════════ */
-
-function UseCases() {
-	const ref = useReveal();
-	const soloUses = [
-		{
-			color: "bg-accent",
-			colorText: "text-accent",
-			role: "Developer + AI agent",
-			desc: "Send your agent the context it actually needs. Annotate what's wrong, hit export, and structured context — XPaths, component trees, source file paths — lands in Claude, Cursor, or ChatGPT. Your agent opens the right file and ships the fix.",
-		},
-		{
-			color: "bg-emerald",
-			colorText: "text-emerald",
-			role: "Self-review & iteration",
-			desc: "Review your own work in the browser and annotate what needs to change. deloop captures exact CSS values, bounding rects, and screenshots — fix it yourself or hand the structured context to your agent.",
-		},
-		{
-			color: "bg-cyan",
-			colorText: "text-cyan",
-			role: "Agent pipelines via MCP",
-			desc: "Wire deloop into your agent via MCP, a webhook, or onSubmit callback. Anyone on the team annotates an issue — your agent receives structured context with source file locations and acts on it automatically.",
-		},
-	];
-
-	const teamUses = [
-		{
-			color: "bg-amber",
-			colorText: "text-amber",
-			role: "Design feedback & handoff",
-			desc: "Designers annotate what needs to change — deloop captures exact CSS values, bounding rects, and screenshots automatically. The developer or agent receives precise context, not a vague Slack message. One annotation replaces three follow-ups.",
-		},
-		{
-			color: "bg-rose",
-			colorText: "text-rose",
-			role: "QA & stakeholder review",
-			desc: "QA files structured reports. PMs review staging in the browser. Everyone's feedback arrives as the same structured context — developers and agents can act immediately, no re-explanation needed.",
-		},
-		{
-			color: "bg-fg",
-			colorText: "text-fg",
-			role: "Shared dashboard & history",
-			desc: "Every annotation flows to the team dashboard — one searchable history of structured context across your entire team. Traceable, filterable, and ready for any collaborator to pick up.",
-		},
-	];
-
-	return (
-		<section ref={ref} className="mb-24 sm:mb-32 reveal section-tint">
-			<div className="text-center mb-10 sm:mb-12">
-				<p className="section-label text-cyan before:bg-cyan justify-center">
-					Built for collaboration
-				</p>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
-					Your agent and your team, <span className="gradient-warm">same context</span>
-				</h2>
-				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					Designers annotate. QA files reports. PMs review staging. Developers paste into Claude.
-					Everyone uses the same toolbar, and every annotation produces the same structured context
-					— ready for a human collaborator or an AI agent to act on.
-				</p>
-			</div>
-
-			<div className="grid sm:grid-cols-2 gap-6">
-				{/* Solo column */}
-				<div>
-					<p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-accent mb-4 flex items-center gap-2">
-						<span className="block w-3 h-[1.5px] bg-accent" />
-						You &amp; your AI
-					</p>
-					<div className="space-y-4">
-						{soloUses.map((r) => (
-							<div
-								key={r.role}
-								className="border border-border rounded-lg p-5 hover:border-muted transition-colors"
-							>
-								<div className="flex items-center gap-2.5 mb-2">
-									<span className={`block w-2 h-2 rounded-full ${r.color} shrink-0`} />
-									<p className={`text-sm font-semibold ${r.colorText}`}>{r.role}</p>
-								</div>
-								<p className="text-[13px] text-muted leading-relaxed">{r.desc}</p>
-							</div>
-						))}
-					</div>
-				</div>
-
-				{/* Team column */}
-				<div>
-					<p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-amber mb-4 flex items-center gap-2">
-						<span className="block w-3 h-[1.5px] bg-amber" />
-						Your whole team
-					</p>
-					<div className="space-y-4">
-						{teamUses.map((r) => (
-							<div
-								key={r.role}
-								className="border border-border rounded-lg p-5 hover:border-muted transition-colors"
-							>
-								<div className="flex items-center gap-2.5 mb-2">
-									<span className={`block w-2 h-2 rounded-full ${r.color} shrink-0`} />
-									<p className={`text-sm font-semibold ${r.colorText}`}>{r.role}</p>
-								</div>
-								<p className="text-[13px] text-muted leading-relaxed">{r.desc}</p>
-							</div>
-						))}
-					</div>
-				</div>
-			</div>
-		</section>
-	);
-}
-
 /* ═══════════════════════════════════════════
    Features
    ═══════════════════════════════════════════ */
@@ -1238,67 +813,42 @@ function Features() {
 		{
 			color: "bg-accent",
 			label: "Element inspector",
-			desc: "Click any element to capture its XPath, CSS selector, computed styles, bounding rect, and HTML. Your agent locates the exact node. Your teammate verifies the fix",
+			desc: "XPath, CSS selector, computed styles, bounding rect, and HTML for every click",
 		},
 		{
 			color: "bg-cyan",
-			label: "React context extraction",
-			desc: "Walks the React fiber tree to capture full component hierarchy, props, and source file locations. An agent can open the right file; a teammate can trace the component path",
+			label: "React context",
+			desc: "Component hierarchy, props, and source file locations from the fiber tree",
 		},
 		{
 			color: "bg-emerald",
-			label: "Freehand drawing",
-			desc: "Circle a problem, underline text, or sketch the expected layout. Each drawing includes a context screenshot — visual context for teammates and agents alike",
+			label: "Drawing & markers",
+			desc: "Freehand drawing, numbered pins, and screenshots — each with context attached",
 		},
 		{
 			color: "bg-amber",
-			label: "Screenshot capture",
-			desc: "Capture the full page or drag to select a region. Embed in the structured context as base64 so agents see what you see, or share as separate files with your team",
-		},
-		{
-			color: "bg-rose",
-			label: "Numbered markers",
-			desc: "Drop numbered pins to call out specific areas. Each marker auto-detects the nearest DOM element and includes its XPath and CSS selector in the context payload",
-		},
-		{
-			color: "bg-cyan",
 			label: "Comments & threads",
-			desc: "Add notes to any annotation — explain what's wrong or what you expect. Comments travel with the structured context so every collaborator gets the full picture",
-		},
-		{
-			color: "bg-emerald",
-			label: "Structured Markdown export",
-			desc: "One-click export as Markdown — paste into Claude, Cursor, or ChatGPT, or share with your team. Page URL, viewport, and every annotation included",
-		},
-		{
-			color: "bg-accent",
-			label: "JSON & file export",
-			desc: "Download the full structured context as JSON or Markdown. Feed it to an agent pipeline, attach it to a ticket, or archive it on the team dashboard",
-		},
-		{
-			color: "bg-amber",
-			label: "MCP, webhooks & clipboard",
-			desc: "Route context to agents via MCP, POST to any webhook for team workflows, or copy to clipboard for instant sharing with a teammate or LLM",
+			desc: "Add notes to any annotation. Comments travel with the structured context",
 		},
 		{
 			color: "bg-rose",
-			label: "Custom prompt templates",
-			desc: "Shape exactly what gets exported. Pass a template function that formats context for your agent pipeline or your team's review workflow",
+			label: "Markdown & JSON export",
+			desc: "One-click export — paste into any LLM, attach to a ticket, or feed an agent pipeline",
+		},
+		{
+			color: "bg-cyan",
+			label: "MCP & webhooks",
+			desc: "Route context to agents via MCP, POST to any URL, or copy to clipboard",
 		},
 		{
 			color: "bg-emerald",
 			label: "CDN script tag",
-			desc: "One script tag, zero build step. Works on any HTML page — WordPress, Shopify, static sites. Your whole team can start capturing context immediately",
+			desc: "One tag, zero build step. Works on any HTML page",
 		},
 		{
 			color: "bg-accent",
-			label: "Plugin system",
-			desc: "Extend the toolbar with custom tools, panels, and buttons. Build the exact context-capture workflow your team and agents need",
-		},
-		{
-			color: "bg-amber",
-			label: "Theme & positioning",
-			desc: "Light, dark, or auto theme. Place the toolbar in any corner. Draggable and minimizable — stays out of the way until someone needs to capture context",
+			label: "Plugins & theming",
+			desc: "Custom tools, panels, light/dark theme, draggable positioning",
 		},
 	];
 
@@ -1306,17 +856,13 @@ function Features() {
 		<section ref={ref} className="mb-24 sm:mb-32 reveal section-tint">
 			<div className="text-center mb-10 sm:mb-12">
 				<p className="section-label text-accent before:bg-accent justify-center">Features</p>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
+				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em]">
 					Every tool captures <span className="gradient-warm">actionable context</span>
 				</h2>
-				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					Every annotation automatically captures structured context so whoever acts on it — your AI
-					agent, a teammate, or a reviewer — has everything they need on the first try.
-				</p>
 			</div>
-			<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-5">
+			<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
 				{features.map((f) => (
-					<div key={f.label} className="flex items-start gap-3">
+					<div key={f.label} className="feature-card flex items-start gap-3">
 						<span className={`mt-[7px] block w-1.5 h-1.5 rounded-full ${f.color} shrink-0`} />
 						<div>
 							<p className="text-sm font-medium text-fg">{f.label}</p>
@@ -1343,9 +889,8 @@ function Pricing() {
 					Capture context. <span className="gradient-warm">Free.</span>
 				</h2>
 				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					Every context-capture feature — annotations, agent integrations, MCP, webhooks — is free
-					and open source. When your team needs shared history, search, and org-wide settings, add
-					the hosted dashboard.
+					The toolbar is free and open source. Add the hosted dashboard when your team needs shared
+					history and search.
 				</p>
 			</div>
 			<PricingCards
@@ -1356,129 +901,6 @@ function Pricing() {
 					window.location.href = "/login?signup=1";
 				}}
 			/>
-		</section>
-	);
-}
-
-/* ═══════════════════════════════════════════
-   Premium Features (after pricing)
-   ═══════════════════════════════════════════ */
-
-const premiumFeatures: {
-	title: string;
-	desc: string;
-	color: string;
-	iconBg: string;
-	span?: boolean;
-	icon: React.ReactNode;
-}[] = [
-	{
-		title: "Cloud Dashboard",
-		desc: "A dedicated app for your team's captured context. Browse, filter, and search every report — organized by project, date, and member. No more digging through Slack threads or stale screenshots.",
-		color: "text-accent",
-		iconBg: "bg-accent/10",
-		span: true,
-		icon: (
-			<svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-				<rect x="2" y="3" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-				<path d="M7 18h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-				<path d="M10 15v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-			</svg>
-		),
-	},
-	{
-		title: "Real-time Collaboration",
-		desc: "Multiple teammates annotate the same page simultaneously. See live cursors, shared markers, and threaded comments updating in real time — no refresh, no conflicts.",
-		color: "text-cyan",
-		iconBg: "bg-cyan/10",
-		span: true,
-		icon: (
-			<svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-				<circle cx="7" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
-				<circle cx="13" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
-				<path
-					d="M2 16c0-2.5 2-4 5-4s5 1.5 5 4"
-					stroke="currentColor"
-					strokeWidth="1.5"
-					strokeLinecap="round"
-				/>
-				<path
-					d="M14 12c2 0 4 1.2 4 3.5"
-					stroke="currentColor"
-					strokeWidth="1.5"
-					strokeLinecap="round"
-				/>
-			</svg>
-		),
-	},
-	{
-		title: "Report History & Search",
-		desc: "Full-text search across every captured context your team has created. Filter by project, member, date range, or annotation type. Surface patterns your team would otherwise miss.",
-		color: "text-emerald",
-		iconBg: "bg-emerald/10",
-		icon: (
-			<svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-				<circle cx="9" cy="9" r="5" stroke="currentColor" strokeWidth="1.5" />
-				<path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-				<path d="M7 7h4M7 10h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-			</svg>
-		),
-	},
-	{
-		title: "Org-level Settings",
-		desc: "Define prompt templates, webhook destinations, export formats, and toolbar defaults once — applied across every project and member in your organization.",
-		color: "text-amber",
-		iconBg: "bg-amber/10",
-		icon: (
-			<svg width="22" height="22" viewBox="0 0 20 20" fill="none">
-				<circle cx="10" cy="10" r="3" stroke="currentColor" strokeWidth="1.5" />
-				<path
-					d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4"
-					stroke="currentColor"
-					strokeWidth="1.5"
-					strokeLinecap="round"
-				/>
-			</svg>
-		),
-	},
-];
-
-function PremiumFeatures() {
-	const ref = useReveal();
-	return (
-		<section ref={ref} className="mb-24 sm:mb-32 reveal section-tint">
-			<div className="text-center mb-10 sm:mb-12">
-				<p className="section-label text-amber before:bg-amber justify-center">Premium</p>
-				<h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-fg tracking-[-0.025em] mb-3">
-					Built for teams that <span className="gradient-warm">ship together</span>
-				</h2>
-				<p className="text-[14px] sm:text-[15px] text-muted max-w-2xl mx-auto">
-					The free toolbar captures everything. The premium dashboard turns that context into a
-					shared source of truth — searchable, collaborative, and always up to date.
-				</p>
-			</div>
-			<div className="grid sm:grid-cols-2 gap-4">
-				{premiumFeatures.map((f) => (
-					<div
-						key={f.title}
-						className={`premium-card group border border-border rounded-xl bg-bg-card overflow-hidden ${f.span ? "lg:col-span-1" : ""}`}
-					>
-						<div className="p-6">
-							<div className="flex items-start gap-4">
-								<div
-									className={`w-10 h-10 rounded-xl ${f.iconBg} ${f.color} flex items-center justify-center shrink-0`}
-								>
-									{f.icon}
-								</div>
-								<div className="min-w-0">
-									<p className="text-[15px] font-semibold text-fg mb-1.5">{f.title}</p>
-									<p className="text-[13px] text-muted leading-relaxed">{f.desc}</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				))}
-			</div>
 		</section>
 	);
 }
@@ -1625,40 +1047,24 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 function FAQ() {
 	const faqs = [
 		{
-			q: "How does team collaboration work?",
-			a: "Everyone — designers, QA, PMs, developers — uses the same toolbar. Each annotation produces identical structured context regardless of who created it. Context flows to the team dashboard, Slack, Jira, or directly to your AI agent. Zero follow-up messages.",
-		},
-		{
 			q: "How does this work with AI agents?",
-			a: "Paste structured context into Claude, Cursor, or ChatGPT from the clipboard. Or connect via MCP, onSubmit, or a webhook — when anyone on your team annotates an issue, the structured payload flows directly into your agent with XPaths, component trees, and source file paths included.",
-		},
-		{
-			q: "Who on my team can use it?",
-			a: "Anyone. Designers capture pixel-perfect feedback with exact CSS values. QA files structured reports. PMs annotate staging. Developers paste context into their agent. No DevTools knowledge required — the toolbar handles the technical capture automatically.",
-		},
-		{
-			q: "How does React context extraction work?",
-			a: "When anyone selects an element, deloop reads the React fiber node and walks up the tree, capturing every component's name, props, and source file location. A designer's annotation carries the same source paths your agent or developer needs to act — all captured locally in the browser.",
+			a: "Paste context into Claude, Cursor, or ChatGPT from clipboard. Or connect via MCP, onSubmit, or a webhook for automated agent workflows.",
 		},
 		{
 			q: "Does it work without React?",
-			a: "Yes. Element selection, XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any website. React context is an automatic bonus when detected — everything else works everywhere.",
+			a: "Yes. All tools work on any website. React component context is an automatic bonus when detected.",
 		},
 		{
-			q: "What output formats are supported?",
-			a: "Clipboard copy as Markdown (paste into any LLM or share with teammates), downloadable JSON or Markdown files, webhook POST to any URL, and MCP for agent workflows. Images can be embedded as base64 or exported as separate PNG files.",
-		},
-		{
-			q: "Can I customize the exported context?",
-			a: "Yes. Pass a promptTemplate function that receives all annotations, page URL, viewport, and settings. Shape the structured context for your agent pipeline, your team's review workflow, or both.",
+			q: "How does team collaboration work?",
+			a: "Everyone uses the same toolbar. Annotations flow to the dashboard, Slack, Jira, or your AI agent with identical structured context.",
 		},
 		{
 			q: "Does it affect my app's performance?",
-			a: "No. The toolbar renders in its own isolated DOM container. It only reads the page when someone interacts with a tool — no polling, no mutation observers, no background overhead.",
+			a: "No. The toolbar renders in its own isolated DOM container with zero background overhead.",
 		},
 		{
 			q: "Why not just use browser DevTools?",
-			a: "DevTools is built for one developer debugging alone. deloop is a context layer — anyone on your team captures structured, actionable context without knowing what an XPath is. The same output works for your AI agent, your teammates, and your issue tracker.",
+			a: "DevTools is for one developer debugging alone. deloop lets anyone capture structured context without technical knowledge.",
 		},
 	];
 

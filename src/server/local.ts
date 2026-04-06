@@ -61,7 +61,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 	stop: () => Promise<void>;
 }> {
 	const port = options.port ?? 3100;
-	const host = options.host ?? "127.0.0.1";
+	const host = options.host ?? "::";
 	const reportsDir = options.dir ?? REPORTS_DIR;
 	const resultsDir = options.resultsDir ?? RESULTS_DIR;
 	const projectsFile = options.projectsFile ?? PROJECTS_FILE;
@@ -79,13 +79,16 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 	});
 
 	const server = createServer(async (req, res) => {
+		const url = req.url ?? "/";
+		if (url !== "/health") {
+			console.log(`[deloop] ${req.method} ${url}`);
+		}
+
 		if (req.method === "OPTIONS") {
 			res.writeHead(204, CORS_HEADERS);
 			res.end();
 			return;
 		}
-
-		const url = req.url ?? "/";
 
 		if (req.method === "GET" && url === "/health") {
 			respond(res, 200, { ok: true });
@@ -165,7 +168,8 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		// GET /api/tasks — list dispatch tasks with optional filters
 		if (req.method === "GET" && (url === "/api/tasks" || url.startsWith("/api/tasks?"))) {
 			const queryStart = url.indexOf("?");
-			const query = queryStart >= 0 ? new URLSearchParams(url.slice(queryStart + 1)) : new URLSearchParams();
+			const query =
+				queryStart >= 0 ? new URLSearchParams(url.slice(queryStart + 1)) : new URLSearchParams();
 			const statusFilter = query.get("status") ?? undefined;
 			const projectFilter = query.get("project") ?? undefined;
 			const tasks = dispatcher.getTasks({ status: statusFilter, project: projectFilter });
@@ -221,9 +225,16 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 				let taskId: string | undefined;
 				if (project) {
 					const projectConfig = registry.get(project);
-					if (projectConfig?.autoDispatch) {
+					if (!projectConfig) {
+						console.log(`[deloop] report has project="${project}" but no project registered with that slug`);
+						console.log(`[deloop]   registered projects: ${registry.list().map((p) => p.slug).join(", ") || "(none)"}`);
+					} else if (!projectConfig.autoDispatch) {
+						console.log(`[deloop] report for "${project}" saved (auto-dispatch disabled)`);
+					} else {
 						taskId = dispatcher.enqueue(filePath, project);
 					}
+				} else {
+					console.log("[deloop] report saved without project field — skipping dispatch");
 				}
 
 				respond(res, 200, { ok: true, id, path: filePath, ...(taskId ? { taskId } : {}) });

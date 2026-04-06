@@ -27,6 +27,20 @@ export default defineConfig([
 		],
 	},
 	{
+		name: "local",
+		entry: "src/server/local.ts",
+		outDir: "dist/local",
+		format: "esm",
+		dts: true,
+	},
+	{
+		name: "local-cli",
+		entry: "src/server/local-cli.ts",
+		outDir: "dist/local",
+		format: "esm",
+		packages: "bundle",
+	},
+	{
 		name: "cdn",
 		entry: "src/cdn.ts",
 		format: "iife",

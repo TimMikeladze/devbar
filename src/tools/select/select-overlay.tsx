@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Annotation, CaptureConfig, ElementData } from "@/session/types";
+import { captureElement } from "@/tools/capture/screenshot";
 import { extractElementData } from "./element-data";
 
 type SelectOverlayProps = {
@@ -25,6 +26,7 @@ export function SelectOverlay({
 	} | null>(null);
 	const hoveredEl = useRef<Element | null>(null);
 	const selectedEl = useRef<Element | null>(null);
+	const pendingScreenshot = useRef<Promise<string> | null>(null);
 	const [commentInput, setCommentInput] = useState<{
 		annotation: Annotation;
 		x: number;
@@ -89,6 +91,15 @@ export function SelectOverlay({
 			}
 
 			const data = extractElementData(el, capture);
+			const rect = el.getBoundingClientRect();
+
+			// Start async screenshot capture while user types comment
+			if (capture?.elementScreenshot !== false) {
+				pendingScreenshot.current = captureElement(rect).catch(() => "");
+			} else {
+				pendingScreenshot.current = null;
+			}
+
 			const annotation: Annotation = {
 				id: crypto.randomUUID(),
 				type: "element",
@@ -98,15 +109,25 @@ export function SelectOverlay({
 			};
 
 			selectedEl.current = el;
-			const rect = el.getBoundingClientRect();
 			setCommentInput({ annotation, x: rect.x + rect.width / 2, y: rect.y + rect.height + 8 });
 			setCommentText("");
 		};
 
-		const onKeyDown = (e: KeyboardEvent) => {
+		const onKeyDown = async (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
 				if (commentInput) {
-					onCaptureRef.current(commentInput.annotation);
+					let annotation = commentInput.annotation;
+					if (pendingScreenshot.current) {
+						const screenshot = await pendingScreenshot.current;
+						if (screenshot) {
+							annotation = {
+								...annotation,
+								data: { ...annotation.data, elementScreenshot: screenshot },
+							};
+						}
+						pendingScreenshot.current = null;
+					}
+					onCaptureRef.current(annotation);
 					setCommentInput(null);
 					selectedEl.current = null;
 					return;
@@ -142,7 +163,7 @@ export function SelectOverlay({
 		};
 	}, [commentInput, findExistingAnnotation]);
 
-	const submitComment = useCallback(() => {
+	const submitComment = useCallback(async () => {
 		if (!commentInput) return;
 		const updated = commentText.trim()
 			? {
@@ -157,7 +178,18 @@ export function SelectOverlay({
 					],
 				}
 			: commentInput.annotation;
-		onCapture(updated);
+
+		// Attach element screenshot if available
+		let final = updated;
+		if (pendingScreenshot.current) {
+			const screenshot = await pendingScreenshot.current;
+			if (screenshot) {
+				final = { ...updated, data: { ...updated.data, elementScreenshot: screenshot } };
+			}
+			pendingScreenshot.current = null;
+		}
+
+		onCapture(final);
 		setCommentInput(null);
 		setCommentText("");
 		selectedEl.current = null;

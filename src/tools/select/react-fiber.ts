@@ -105,7 +105,10 @@ function serializeProps(props: Record<string, unknown>): Record<string, unknown>
 	return result;
 }
 
-export function extractReactContext(el: Element): ReactComponentContext | null {
+export function extractReactContext(
+	el: Element,
+	includeProps = true,
+): ReactComponentContext | null {
 	const fiber = getFiberFromElement(el);
 	if (!fiber) return null;
 
@@ -118,7 +121,10 @@ export function extractReactContext(el: Element): ReactComponentContext | null {
 			const name = getComponentName(current);
 			components.unshift({
 				name,
-				props: current.memoizedProps ? serializeProps(current.memoizedProps) : {},
+				props:
+					includeProps && current.memoizedProps
+						? serializeProps(current.memoizedProps)
+						: {},
 				source: current._debugSource
 					? {
 							fileName: current._debugSource.fileName,

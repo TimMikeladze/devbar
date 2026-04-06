@@ -61,6 +61,7 @@ import {
 	SettingsIcon,
 	UserIcon,
 	SendIcon,
+	KeyIcon,
 	LabelIcon,
 	HistoryIcon,
 	RecordIcon,
@@ -784,6 +785,20 @@ export function Deloop({
 	const authEnabled = !!(authProxy || user);
 	const auth = useDeloopAuth(server, user, authEnabled);
 
+	// Local token management — when server is set but no token prop,
+	// allow entering a bearer token via the toolbar UI
+	const STORAGE_KEY = "deloop-local-token";
+	const [localToken, setLocalToken] = useState<string>(() => {
+		try {
+			return localStorage.getItem(STORAGE_KEY) ?? "";
+		} catch {
+			return "";
+		}
+	});
+	const [showTokenModal, setShowTokenModal] = useState(false);
+	const effectiveToken = token || localToken || undefined;
+	const isLocalMode = !!server && !authProxy && !user;
+
 	// Collaboration
 	const collabCallbacks: CollaborationCallbacks = useMemo(
 		() => ({
@@ -1275,9 +1290,9 @@ export function Deloop({
 		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
 		const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-		if (token) {
+		if (effectiveToken) {
 			// Mode D: static bearer token (e.g. local server)
-			headers["Authorization"] = `Bearer ${token}`;
+			headers["Authorization"] = `Bearer ${effectiveToken}`;
 		} else if (authProxy && auth.authUser) {
 			// Mode C: get signed token from auth proxy
 			try {
@@ -1296,31 +1311,41 @@ export function Deloop({
 		// Mode B: session cookie sent automatically via credentials: "include"
 
 		try {
-			const res = await fetch(`${server}/api/reports`, {
+			const url = `${server}/api/reports`;
+			const body = JSON.stringify({
+				payload,
+				url: payload.url,
+				title: payload.title,
+				project,
+			});
+			console.log("[deloop] submitting to", url, { hasToken: !!effectiveToken, project });
+			const res = await fetch(url, {
 				method: "POST",
 				headers,
-				credentials: "include",
-				body: JSON.stringify({
-					payload,
-					url: payload.url,
-					title: payload.title,
-					project,
-				}),
+				// Only send cookies when not using bearer token auth —
+				// credentials: "include" with Access-Control-Allow-Origin: * is blocked by browsers
+				...(effectiveToken ? {} : { credentials: "include" as const }),
+				body,
 			});
 			if (res.ok) {
+				const data = await res.json();
+				console.log("[deloop] submit ok", data);
 				showToast("Submitted to server!");
 				onSubmit?.(payload);
 				localArchiveAndClear("server");
 				setPanelOpen(false);
 			} else {
-				showToast("Submit failed");
+				const text = await res.text();
+				console.error("[deloop] submit failed", res.status, text);
+				showToast(`Submit failed (${res.status})`);
 			}
-		} catch {
-			showToast("Submit failed");
+		} catch (err) {
+			console.error("[deloop] submit error", err);
+			showToast("Submit failed (network error)");
 		}
 	}, [
 		server,
-		token,
+		effectiveToken,
 		project,
 		state.annotations,
 		promptTemplate,
@@ -1548,6 +1573,35 @@ export function Deloop({
 	// Shared auth buttons
 	const renderAuthButtons = (btnClass: string, withTooltip: boolean) => (
 		<>
+			{isLocalMode && !token && (
+				<button
+					type="button"
+					className={btnClass}
+					onClick={() => setShowTokenModal(true)}
+					title={localToken ? "Token connected" : "Connect token"}
+					style={{ position: "relative" }}
+				>
+					<KeyIcon />
+					{localToken && (
+						<span
+							style={{
+								position: "absolute",
+								top: 4,
+								right: 4,
+								width: 6,
+								height: 6,
+								borderRadius: "50%",
+								background: "#22c55e",
+							}}
+						/>
+					)}
+					{withTooltip && (
+						<span className="deloop-tooltip">
+							{localToken ? "Token connected" : "Connect token"}
+						</span>
+					)}
+				</button>
+			)}
 			{server && authEnabled && !user && !auth.authUser && (
 				<button type="button" className={btnClass} onClick={auth.openLogin} title="Sign in">
 					<UserIcon />
@@ -2035,6 +2089,7 @@ export function Deloop({
 				[
 					["xpath", "XPath selectors", "Generate XPath for selected elements"],
 					["cssSelector", "CSS selectors", "Generate CSS selector for selected elements"],
+					["classes", "CSS classes", "Class names of selected elements"],
 					["attributes", "HTML attributes", "Capture href, src, alt, role, data-* attributes"],
 					["accessibility", "Accessibility info", "Role, accessible name, and tab index"],
 					["parentContext", "Parent context", "Tag, ID, and classes of the parent element"],
@@ -2046,7 +2101,17 @@ export function Deloop({
 					["imageDimensions", "Image dimensions", "Natural vs rendered size for <img> elements"],
 					["formState", "Form validation", "Validity state and validation messages"],
 					["pseudoContent", "Pseudo-elements", "Content of ::before and ::after pseudo-elements"],
-					["reactContext", "React context", "React component tree, props, and source locations"],
+					["reactContext", "React components", "Component tree and source locations"],
+					[
+						"reactContextProps",
+						"React component props",
+						"Include component props in React context (verbose)",
+					],
+					[
+						"elementScreenshot",
+						"Element screenshot",
+						"Auto-capture a cropped screenshot of selected elements",
+					],
 					[
 						"consoleErrors",
 						"Console errors",
@@ -3294,6 +3359,92 @@ export function Deloop({
 					onSuccess={auth.onLoginSuccess}
 					onClose={auth.closeLogin}
 				/>
+			)}
+
+			{/* Local token modal */}
+			{showTokenModal && (
+				<div className="deloop-auth-backdrop" onClick={() => setShowTokenModal(false)}>
+					<div className="deloop-auth-modal" onClick={(e) => e.stopPropagation()}>
+						<div className="deloop-auth-header">
+							<span className="deloop-panel-title">Connect to Local Server</span>
+							<button
+								type="button"
+								className="deloop-panel-close"
+								onClick={() => setShowTokenModal(false)}
+							>
+								&times;
+							</button>
+						</div>
+						<form
+							className="deloop-auth-form"
+							onSubmit={async (e) => {
+								e.preventDefault();
+								const input = (e.target as HTMLFormElement).elements.namedItem(
+									"token",
+								) as HTMLInputElement;
+								const val = input.value.trim();
+								if (!val) return;
+
+								try {
+									const res = await fetch(`${server}/health`);
+									const data = await res.json();
+									if (data.ok !== true) throw new Error();
+								} catch {
+									showToast("Server not reachable");
+									return;
+								}
+
+								setLocalToken(val);
+								try {
+									localStorage.setItem(STORAGE_KEY, val);
+								} catch {}
+								setShowTokenModal(false);
+								showToast("Connected");
+							}}
+						>
+							<p
+								style={{
+									margin: "0 0 8px",
+									fontSize: 12,
+									opacity: 0.6,
+									lineHeight: 1.4,
+								}}
+							>
+								Paste the token printed by{" "}
+								<code style={{ fontSize: 11, opacity: 0.8 }}>deloop.dev</code> when you
+								started the local server.
+							</p>
+							<input
+								className="deloop-auth-input"
+								name="token"
+								type="password"
+								placeholder="Paste token"
+								defaultValue={localToken}
+								autoFocus
+							/>
+							<button type="submit" className="deloop-auth-submit">
+								Connect
+							</button>
+							{localToken && (
+								<button
+									type="button"
+									className="deloop-auth-link"
+									style={{ marginTop: 4, fontSize: 12 }}
+									onClick={() => {
+										setLocalToken("");
+										try {
+											localStorage.removeItem(STORAGE_KEY);
+										} catch {}
+										setShowTokenModal(false);
+										showToast("Disconnected");
+									}}
+								>
+									Disconnect
+								</button>
+							)}
+						</form>
+					</div>
+				</div>
 			)}
 
 			{/* Peer cursors */}

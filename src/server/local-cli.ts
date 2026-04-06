@@ -37,7 +37,7 @@ type CliArgs = {
 function parseArgs(argv: string[]): CliArgs {
 	const args: CliArgs = {
 		port: 3100,
-		host: "127.0.0.1",
+		host: "::",
 		model: "sonnet",
 		effort: "medium",
 		concurrency: 1,
@@ -158,7 +158,9 @@ async function main(): Promise<void> {
 
 	if (await isServerRunning(args.host, args.port)) {
 		await registerWithExistingServer(args.host, args.port, token, projectConfig);
-		console.log(`project '${projectConfig.slug}' registered with existing server at http://${args.host}:${args.port}`);
+		console.log(
+			`project '${projectConfig.slug}' registered with existing server at http://${args.host}:${args.port}`,
+		);
 		process.exit(0);
 	}
 
@@ -176,8 +178,12 @@ async function main(): Promise<void> {
 	console.log(`deloop local server running at http://${addr.host}:${addr.port}`);
 	console.log(`writing reports to ${dir}`);
 	console.log(`project '${projectConfig.slug}' registered (${projectConfig.dir})`);
-	console.log(`  model=${projectConfig.model} effort=${projectConfig.effort} concurrency=${projectConfig.concurrency}`);
-	console.log(`  auto-dispatch=${projectConfig.autoDispatch} permission-mode=${projectConfig.permissionMode}`);
+	console.log(
+		`  model=${projectConfig.model} effort=${projectConfig.effort} concurrency=${projectConfig.concurrency}`,
+	);
+	console.log(
+		`  auto-dispatch=${projectConfig.autoDispatch} permission-mode=${projectConfig.permissionMode}`,
+	);
 	console.log(`token: ${token}`);
 }
 

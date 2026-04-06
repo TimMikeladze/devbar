@@ -57,9 +57,18 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 		activeByProject.set(slug, Math.max(0, getActiveCount(slug) - 1));
 	}
 
+	function formatDuration(ms: number): string {
+		if (ms < 1000) return `${ms}ms`;
+		const s = Math.floor(ms / 1000);
+		if (s < 60) return `${s}s`;
+		const m = Math.floor(s / 60);
+		return `${m}m${s % 60}s`;
+	}
+
 	async function runTask(task: Task): Promise<void> {
 		const project = options.getProject(task.projectSlug);
 		if (!project) {
+			console.log(`[dispatch] task ${task.id.slice(0, 8)} failed — project "${task.projectSlug}" not found`);
 			task.status = "failed";
 			task.completedAt = Date.now();
 			task.result = {
@@ -86,6 +95,15 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 			prompt = `Process report at ${task.reportPath}`;
 		}
 
+		const promptPreview = prompt.length > 120 ? `${prompt.slice(0, 120)}...` : prompt;
+		const cmdDisplay = command === "echo" ? "echo" : `claude --model ${project.model} --effort ${project.effort}`;
+
+		console.log(`[dispatch] starting task ${task.id.slice(0, 8)} for project "${task.projectSlug}"`);
+		console.log(`[dispatch]   command: ${cmdDisplay}`);
+		console.log(`[dispatch]   cwd: ${project.dir}`);
+		console.log(`[dispatch]   prompt: ${promptPreview.replace(/\n/g, " ")}`);
+		console.log(`[dispatch]   active: ${getActiveCount(task.projectSlug)}/${project.concurrency}`);
+
 		const args =
 			command === "echo"
 				? [prompt]
@@ -99,7 +117,7 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 						"--permission-mode",
 						project.permissionMode,
 						"--output-format",
-						"stream-json",
+						"text",
 						"-p",
 						prompt,
 					];
@@ -139,9 +157,23 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 					model: projectModel,
 				};
 
+				const duration = formatDuration(task.result.durationMs);
+				const outputPreview = task.result.output.length > 200
+					? `${task.result.output.slice(0, 200)}...`
+					: task.result.output;
+
+				if (task.status === "completed") {
+					console.log(`[dispatch] task ${task.id.slice(0, 8)} completed in ${duration}`);
+					console.log(`[dispatch]   output: ${outputPreview.replace(/\n/g, " ")}`);
+				} else {
+					console.log(`[dispatch] task ${task.id.slice(0, 8)} failed (exit ${exitCode}) in ${duration}`);
+					console.log(`[dispatch]   output: ${outputPreview.replace(/\n/g, " ")}`);
+				}
+
 				try {
 					const resultPath = join(options.resultsDir, `${task.id}.json`);
 					await writeFile(resultPath, JSON.stringify(task.result, null, 2), "utf-8");
+					console.log(`[dispatch]   result: ${resultPath}`);
 				} catch {}
 
 				resolve();
@@ -151,6 +183,7 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 			}
 
 			child.on("error", (err) => {
+				console.log(`[dispatch] task ${task.id.slice(0, 8)} spawn error: ${err}`);
 				finalize(1, String(err));
 			});
 
@@ -166,6 +199,7 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 			if (!project) return "";
 
 			const id = randomUUID();
+			console.log(`[dispatch] enqueued task ${id.slice(0, 8)} for "${projectSlug}" (auto=${project.autoDispatch})`);
 			const task: Task = {
 				id,
 				reportPath,
@@ -185,6 +219,7 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 		},
 
 		async dispatchAll(projectSlug?) {
+			console.log(`[dispatch] batch dispatch${projectSlug ? ` for "${projectSlug}"` : " (all projects)"}`);
 			const files = await readdir(options.reportsDir);
 			const jsonFiles = files.filter((f) => f.endsWith(".json")).sort();
 			const newTaskIds: string[] = [];

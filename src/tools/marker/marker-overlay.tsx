@@ -61,7 +61,10 @@ export function MarkerOverlay({
 			const tagName = el ? el.tagName.toLowerCase() : "";
 			const xpath = el && capture?.xpath !== false ? getXPath(el) : "";
 			const cssSelector = el && capture?.cssSelector !== false ? getCssSelector(el) : "";
-			const reactContext = el && capture?.reactContext !== false ? extractReactContext(el) : null;
+			const reactContext =
+				el && capture?.reactContext !== false
+					? extractReactContext(el, capture?.reactContextProps ?? false)
+					: null;
 
 			setCommentInput({
 				x: e.clientX,

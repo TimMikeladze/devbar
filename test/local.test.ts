@@ -84,9 +84,20 @@ describe("local server API", () => {
 		await fetch(`${baseUrl}/api/projects`, {
 			method: "POST",
 			headers: headers(),
-			body: JSON.stringify({ slug: "to-delete", dir: "/tmp/x", model: "sonnet", effort: "medium", concurrency: 1, permissionMode: "plan", autoDispatch: false }),
+			body: JSON.stringify({
+				slug: "to-delete",
+				dir: "/tmp/x",
+				model: "sonnet",
+				effort: "medium",
+				concurrency: 1,
+				permissionMode: "plan",
+				autoDispatch: false,
+			}),
 		});
-		const res = await fetch(`${baseUrl}/api/projects/to-delete`, { method: "DELETE", headers: headers() });
+		const res = await fetch(`${baseUrl}/api/projects/to-delete`, {
+			method: "DELETE",
+			headers: headers(),
+		});
 		expect(res.status).toBe(200);
 	});
 

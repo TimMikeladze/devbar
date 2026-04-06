@@ -12,13 +12,18 @@ import type {
 } from "@/session/types";
 import { DEFAULT_CAPTURE_CONFIG } from "@/session/types";
 
-function formatReactContext(ctx: ReactComponentContext | null | undefined, prefix = ""): string[] {
+function formatReactContext(
+	ctx: ReactComponentContext | null | undefined,
+	prefix = "",
+	includeProps = false,
+): string[] {
 	if (!ctx) return [];
 	const lines = [`${prefix}- **React Component Path:** \`${ctx.componentPath}\``];
 	for (const comp of ctx.components) {
-		const propsEntries = Object.entries(comp.props);
 		const propsStr =
-			propsEntries.length > 0 ? ` props={${JSON.stringify(comp.props).slice(0, 300)}}` : "";
+			includeProps && Object.keys(comp.props).length > 0
+				? ` props={${JSON.stringify(comp.props).slice(0, 300)}}`
+				: "";
 		const sourceStr = comp.source ? ` (${comp.source.fileName}:${comp.source.lineNumber})` : "";
 		lines.push(`${prefix}  - \`<${comp.name}${propsStr}>\`${sourceStr}`);
 	}
@@ -46,7 +51,7 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				d.classes.length > 0 ? `- **Classes:** ${d.classes.join(", ")}` : "",
 				d.xpath ? `- **XPath:** \`${d.xpath}\`` : "",
 				d.cssSelector ? `- **CSS Selector:** \`${d.cssSelector}\`` : "",
-				`- **Bounding Rect:** ${d.boundingRect.width.toFixed(0)}x${d.boundingRect.height.toFixed(0)} at (${d.boundingRect.x.toFixed(0)}, ${d.boundingRect.y.toFixed(0)})`,
+				`- **Size:** ${d.boundingRect.width.toFixed(0)}x${d.boundingRect.height.toFixed(0)}`,
 				d.parentContext
 					? `- **Parent:** ${d.parentContext.tagName}${d.parentContext.id ? `#${d.parentContext.id}` : ""}${d.parentContext.classes.length > 0 ? `.${d.parentContext.classes.join(".")}` : ""}`
 					: "",
@@ -72,7 +77,12 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				...Object.entries(d.computedStyles).map(([k, v]) => `  - ${k}: ${v}`),
 				d.innerText ? `- **Text:** ${d.innerText.slice(0, 200)}` : "",
 				d.outerHTML ? `- **HTML:** \`\`\`\n${d.outerHTML}\n\`\`\`` : "",
-				...formatReactContext(d.reactContext),
+				...formatReactContext(d.reactContext, "", cap.reactContextProps),
+				settings.includeImages && d.elementScreenshot
+					? `- **Screenshot:** ![element](${d.elementScreenshot})`
+					: d.elementScreenshot
+						? `- **Screenshot:** *(image captured, omitted from text)*`
+						: "",
 			]
 				.filter(Boolean)
 				.join("\n");
@@ -95,12 +105,11 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 			return [
 				header,
 				`- **Text:** "${d.text}"`,
-				`- **Position:** (${d.position.x.toFixed(0)}, ${d.position.y.toFixed(0)})`,
 				d.nearestElementXPath ? `- **Nearest Element XPath:** \`${d.nearestElementXPath}\`` : "",
 				d.nearestElementCssSelector
 					? `- **Nearest Element CSS Selector:** \`${d.nearestElementCssSelector}\``
 					: "",
-				...formatReactContext(d.nearestReactContext),
+				...formatReactContext(d.nearestReactContext, "", cap.reactContextProps),
 			]
 				.filter(Boolean)
 				.join("\n");
@@ -111,13 +120,12 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				header,
 				comments,
 				`- **Marker #${md.number}**`,
-				`- **Position:** (${md.position.x.toFixed(0)}, ${md.position.y.toFixed(0)})`,
 				md.nearestElementTagName ? `- **Nearest Element:** ${md.nearestElementTagName}` : "",
 				md.nearestElementXPath ? `- **Nearest Element XPath:** \`${md.nearestElementXPath}\`` : "",
 				md.nearestElementCssSelector
 					? `- **Nearest Element CSS Selector:** \`${md.nearestElementCssSelector}\``
 					: "",
-				...formatReactContext(md.nearestReactContext),
+				...formatReactContext(md.nearestReactContext, "", cap.reactContextProps),
 			]
 				.filter(Boolean)
 				.join("\n");
@@ -183,16 +191,21 @@ export const defaultPromptTemplate: PromptTemplate = (context) => {
 			? `\n\n## Console Errors\n\n${context.consoleErrors.map((e) => `- \`${e}\``).join("\n")}`
 			: "";
 
+	const routeSuffix = cap.mediaPreferences
+		? `${context.route.search}${context.route.hash}`
+		: "";
 	const pageInfoLines = [
 		`- **URL:** ${context.url}`,
-		`- **Route:** ${context.route.pathname}${context.route.search}${context.route.hash}`,
-		`- **Title:** ${context.title}`,
-		`- **Viewport:** ${context.viewport.width}x${context.viewport.height} @${context.devicePixelRatio}x`,
+		`- **Route:** ${context.route.pathname}${routeSuffix}`,
+		cap.mediaPreferences ? `- **Title:** ${context.title}` : "",
+		cap.mediaPreferences
+			? `- **Viewport:** ${context.viewport.width}x${context.viewport.height} @${context.devicePixelRatio}x`
+			: "",
 		cap.mediaPreferences
 			? `- **Color Scheme:** ${context.colorScheme}${context.reducedMotion ? " (reduced motion)" : ""}`
 			: "",
 		cap.mediaPreferences ? `- **Language:** ${context.language}` : "",
-		`- **User Agent:** ${context.userAgent}`,
+		cap.mediaPreferences && context.userAgent ? `- **User Agent:** ${context.userAgent}` : "",
 	]
 		.filter(Boolean)
 		.join("\n");

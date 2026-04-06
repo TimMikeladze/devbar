@@ -35,6 +35,25 @@ export async function captureFullPage(): Promise<string> {
 	return canvas.toDataURL("image/png");
 }
 
+const ELEMENT_PADDING = 40;
+
+export async function captureElement(rect: {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}): Promise<string> {
+	const x = Math.max(0, rect.x - ELEMENT_PADDING);
+	const y = Math.max(0, rect.y - ELEMENT_PADDING);
+	const padded = {
+		x,
+		y,
+		width: Math.min(rect.width + ELEMENT_PADDING * 2, window.innerWidth - x),
+		height: Math.min(rect.height + ELEMENT_PADDING * 2, window.innerHeight - y),
+	};
+	return captureRegion(padded);
+}
+
 export async function captureRegion(region: {
 	x: number;
 	y: number;

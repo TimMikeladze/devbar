@@ -26,6 +26,7 @@ export type ElementData = {
 	formState: { valid: boolean; message: string; required: boolean } | null;
 	pseudoContent: { before: string; after: string } | null;
 	reactContext: import("@/tools/select/react-fiber").ReactComponentContext | null;
+	elementScreenshot?: string;
 };
 
 export type DrawingData = {
@@ -116,6 +117,7 @@ export type CaptureConfig = {
 	xpath: boolean;
 	cssSelector: boolean;
 	// Element metadata
+	classes: boolean;
 	attributes: boolean;
 	accessibility: boolean;
 	parentContext: boolean;
@@ -130,6 +132,9 @@ export type CaptureConfig = {
 	pseudoContent: boolean;
 	// React
 	reactContext: boolean;
+	reactContextProps: boolean;
+	// Element screenshot
+	elementScreenshot: boolean;
 	// Page-level
 	consoleErrors: boolean;
 	mediaPreferences: boolean;
@@ -137,21 +142,24 @@ export type CaptureConfig = {
 
 export const DEFAULT_CAPTURE_CONFIG: CaptureConfig = {
 	xpath: true,
-	cssSelector: true,
+	cssSelector: false,
+	classes: false,
 	attributes: true,
-	accessibility: true,
-	parentContext: true,
-	computedStyles: true,
+	accessibility: false,
+	parentContext: false,
+	computedStyles: false,
 	innerText: true,
-	outerHTML: true,
-	overflowClipped: true,
-	renderedFont: true,
-	imageDimensions: true,
-	formState: true,
-	pseudoContent: true,
+	outerHTML: false,
+	overflowClipped: false,
+	renderedFont: false,
+	imageDimensions: false,
+	formState: false,
+	pseudoContent: false,
 	reactContext: true,
+	reactContextProps: false,
+	elementScreenshot: true,
 	consoleErrors: true,
-	mediaPreferences: true,
+	mediaPreferences: false,
 };
 
 export type DeloopSettings = {

@@ -12,7 +12,7 @@
 		"url": "git+https://github.com/TimMikeladze/deloop.git"
 	},
 	"bin": {
-		"deloop.dev": "./dist/server/cli.js"
+		"deloop.dev": "./dist/local/local-cli.js"
 	},
 	"workspaces": [
 		"test/**"
@@ -43,6 +43,12 @@
 				"default": "./dist/server/vercel.js"
 			}
 		},
+		"./local": {
+			"import": {
+				"types": "./dist/local/local.d.ts",
+				"default": "./dist/local/local.js"
+			}
+		},
 		"./cdn": "./dist/cdn/cdn.global.js",
 		"./styles.css": "./dist/index.css",
 		"./package.json": "./package.json"
@@ -53,6 +59,7 @@
 		"dev:lib": "bunup --watch",
 		"dev:ui": "bun run --cwd test/ui dev",
 		"dev:app": "bun run --cwd app dev",
+		"dev:local": "bun run dev:lib & bun run dev:app & bun run dev:server & bun --watch src/server/local-cli.ts --port 3101 & wait",
 		"dev:server": "bun --watch src/server/cli.ts start",
 		"format": "oxfmt . app",
 		"lint": "oxlint . app",

@@ -119,17 +119,12 @@ const RELEVANT_ATTRIBUTES = [
 	"title",
 	"role",
 	"aria-label",
-	"aria-hidden",
-	"aria-expanded",
-	"aria-disabled",
 	"type",
 	"name",
 	"value",
 	"placeholder",
 	"disabled",
 	"checked",
-	"target",
-	"rel",
 ];
 
 export function extractElementData(
@@ -281,7 +276,7 @@ export function extractElementData(
 		cssSelector: capture.cssSelector ? getCssSelector(el) : "",
 		tagName: el.tagName.toLowerCase(),
 		id: el.id,
-		classes: Array.from(el.classList),
+		classes: capture.classes ? Array.from(el.classList) : [],
 		attributes,
 		accessibility,
 		parentContext,
@@ -294,6 +289,8 @@ export function extractElementData(
 		imageDimensions,
 		formState,
 		pseudoContent,
-		reactContext: capture.reactContext ? extractReactContext(el) : null,
+		reactContext: capture.reactContext
+			? extractReactContext(el, capture.reactContextProps ?? false)
+			: null,
 	};
 }
