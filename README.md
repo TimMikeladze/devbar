@@ -23,11 +23,11 @@ function App() {
 
 The application is split across two hosts:
 
-| Concern | Host | Why |
-|---------|------|-----|
-| Landing page & SaaS app (Vite SPA) | [Vercel](https://vercel.com/) | Static files on edge CDN |
-| API (Hono routes) | [Vercel](https://vercel.com/) | Serverless function via `hono/vercel` adapter |
-| WebSocket collaboration | [Fly.io](https://fly.io/) | Persistent connections require a long-lived process |
+| Concern                            | Host                          | Why                                                 |
+| ---------------------------------- | ----------------------------- | --------------------------------------------------- |
+| Landing page & SaaS app (Vite SPA) | [Vercel](https://vercel.com/) | Static files on edge CDN                            |
+| API (Hono routes)                  | [Vercel](https://vercel.com/) | Serverless function via `hono/vercel` adapter       |
+| WebSocket collaboration            | [Fly.io](https://fly.io/)     | Persistent connections require a long-lived process |
 
 - **SPA** — Vite React app in `app/`. Deployed as Vercel's static output.
 - **API** — Hono routes under `/api` (Better Auth, reports, comments, Stripe billing, contact form) plus an MCP endpoint at `/mcp`. Served by a Vercel serverless function (`api/serverless.ts` → `src/server/vercel.ts`).
@@ -45,10 +45,10 @@ Multi-stage Dockerfile:
 
 ## Deployment
 
-| Component | Host | Dev Trigger | Prod Trigger |
-|-----------|------|-------------|--------------|
-| SPA + API | Vercel | Push to `main` (preview) | GitHub Release (production) |
-| WebSocket | Fly.io (`deloop-ws-dev` / `deloop-ws-prod`) | Push to `main` | GitHub Release |
+| Component | Host                                        | Dev Trigger              | Prod Trigger                |
+| --------- | ------------------------------------------- | ------------------------ | --------------------------- |
+| SPA + API | Vercel                                      | Push to `main` (preview) | GitHub Release (production) |
+| WebSocket | Fly.io (`deloop-ws-dev` / `deloop-ws-prod`) | Push to `main`           | GitHub Release              |
 
 ### First-time setup
 
@@ -90,22 +90,22 @@ Add these in the repo's Settings → Secrets and variables → Actions:
 
 ### GitHub Actions
 
-| Workflow | File | Purpose |
-|----------|------|---------|
-| **CI** | `.github/workflows/ci.yml` | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS, Windows) |
-| **Deploy** | `.github/workflows/deploy.yml` | Deploy SPA + API to Vercel and WebSocket to Fly.io |
-| **Release** | `.github/workflows/release.yml` | Publish npm package |
+| Workflow    | File                            | Purpose                                                                         |
+| ----------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| **CI**      | `.github/workflows/ci.yml`      | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS, Windows) |
+| **Deploy**  | `.github/workflows/deploy.yml`  | Deploy SPA + API to Vercel and WebSocket to Fly.io                              |
+| **Release** | `.github/workflows/release.yml` | Publish npm package                                                             |
 
 ### Required GitHub Configuration
 
 **Secrets:**
 
-| Name | Purpose |
-|------|---------|
-| `FLY_API_TOKEN` | Fly.io deploy authentication |
-| `VERCEL_TOKEN` | Vercel deploy authentication |
-| `VERCEL_ORG_ID` | Vercel organization ID |
-| `VERCEL_PROJECT_ID` | Vercel project ID |
+| Name                | Purpose                      |
+| ------------------- | ---------------------------- |
+| `FLY_API_TOKEN`     | Fly.io deploy authentication |
+| `VERCEL_TOKEN`      | Vercel deploy authentication |
+| `VERCEL_ORG_ID`     | Vercel organization ID       |
+| `VERCEL_PROJECT_ID` | Vercel project ID            |
 
 ### Vercel Environment Variables
 
@@ -113,34 +113,34 @@ Set in the Vercel dashboard (Project Settings → Environment Variables). Use Ve
 
 **Build-time (baked into SPA):**
 
-| Name | Purpose |
-|------|---------|
-| `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID |
-| `VITE_STRIPE_ORG_PRICE_ID` | Stripe Org plan price ID |
-| `VITE_UMAMI_URL` | Umami analytics URL |
-| `VITE_UMAMI_WEBSITE_ID` | Umami analytics website ID |
-| `VITE_DELOOP_WS_SERVER` | Fly.io WebSocket URL (e.g. `https://deloop-ws-prod.fly.dev`) |
-| `VITE_DELOOP_SERVER` | API server URL (leave empty to use same origin) |
+| Name                        | Purpose                                                      |
+| --------------------------- | ------------------------------------------------------------ |
+| `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                                    |
+| `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                                     |
+| `VITE_UMAMI_URL`            | Umami analytics URL                                          |
+| `VITE_UMAMI_WEBSITE_ID`     | Umami analytics website ID                                   |
+| `VITE_DELOOP_WS_SERVER`     | Fly.io WebSocket URL (e.g. `https://deloop-ws-prod.fly.dev`) |
+| `VITE_DELOOP_SERVER`        | API server URL (leave empty to use same origin)              |
 
 **Runtime (serverless function):**
 
-| Name | Purpose |
-|------|---------|
-| `DATABASE_URL` | Postgres connection string |
-| `BETTER_AUTH_SECRET` | Better Auth session signing secret (required) |
-| `BETTER_AUTH_URL` | Better Auth base URL (e.g. `https://deloop.dev`) |
-| `BETTER_AUTH_GITHUB_CLIENT_ID` | GitHub OAuth client ID (optional) |
-| `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional) |
-| `BETTER_AUTH_GOOGLE_CLIENT_ID` | Google OAuth client ID (optional) |
-| `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional) |
-| `STRIPE_SECRET_KEY` | Stripe API key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
-| `STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID (runtime, for subscription creation) |
-| `STRIPE_ORG_PRICE_ID` | Stripe Org plan price ID (runtime) |
-| `APP_URL` | App URL for Stripe redirect URLs (falls back to `BETTER_AUTH_URL`) |
-| `DELOOP_HMAC_SECRET` | HMAC signing for WebSocket auth tokens |
-| `DISCORD_WEBHOOK_URL` | Contact form Discord webhook |
-| `DELOOP_TRUSTED_ORIGINS` | Comma-separated allowed CORS origins |
+| Name                               | Purpose                                                            |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`                     | Postgres connection string                                         |
+| `BETTER_AUTH_SECRET`               | Better Auth session signing secret (required)                      |
+| `BETTER_AUTH_URL`                  | Better Auth base URL (e.g. `https://deloop.dev`)                   |
+| `BETTER_AUTH_GITHUB_CLIENT_ID`     | GitHub OAuth client ID (optional)                                  |
+| `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional)                              |
+| `BETTER_AUTH_GOOGLE_CLIENT_ID`     | Google OAuth client ID (optional)                                  |
+| `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional)                              |
+| `STRIPE_SECRET_KEY`                | Stripe API key                                                     |
+| `STRIPE_WEBHOOK_SECRET`            | Stripe webhook signing secret                                      |
+| `STRIPE_TEAM_PRICE_ID`             | Stripe Team plan price ID (runtime, for subscription creation)     |
+| `STRIPE_ORG_PRICE_ID`              | Stripe Org plan price ID (runtime)                                 |
+| `APP_URL`                          | App URL for Stripe redirect URLs (falls back to `BETTER_AUTH_URL`) |
+| `DELOOP_HMAC_SECRET`               | HMAC signing for WebSocket auth tokens                             |
+| `DISCORD_WEBHOOK_URL`              | Contact form Discord webhook                                       |
+| `DELOOP_TRUSTED_ORIGINS`           | Comma-separated allowed CORS origins                               |
 
 ### Fly.io Runtime Secrets
 

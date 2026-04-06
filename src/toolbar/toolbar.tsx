@@ -843,7 +843,10 @@ export function Deloop({
 
 		async function fetchToken() {
 			try {
-				const r = await fetch(`${server!.replace(/\/$/, "")}/api/ws-token`, { method: "POST", credentials: "include" });
+				const r = await fetch(`${server!.replace(/\/$/, "")}/api/ws-token`, {
+					method: "POST",
+					credentials: "include",
+				});
 				if (cancelled) return;
 				if (r.ok) {
 					const data = await r.json();
@@ -859,15 +862,18 @@ export function Deloop({
 
 		fetchToken();
 		const interval = setInterval(fetchToken, 4 * 60 * 1000);
-		return () => { cancelled = true; clearInterval(interval); };
+		return () => {
+			cancelled = true;
+			clearInterval(interval);
+		};
 	}, [wsServer, server, auth.authUser]);
 
 	// Don't connect to WS until token is ready when cross-origin
-	const collabServer = wsServer
-		? (wsToken ? wsServer : undefined)
-		: server;
+	const collabServer = wsServer ? (wsToken ? wsServer : undefined) : server;
 
-	const collab = useCollaboration(collabServer, auth.authUser ?? user, orgId, collabCallbacks, { authToken: wsToken });
+	const collab = useCollaboration(collabServer, auth.authUser ?? user, orgId, collabCallbacks, {
+		authToken: wsToken,
+	});
 	useCursorTracker(collab.sendCursor, collab.connected);
 	useViewportTracker(collab.sendViewport, collab.connected);
 

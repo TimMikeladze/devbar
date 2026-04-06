@@ -1,12 +1,12 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "bun install --frozen-lockfile && bun run build && cd app && bun install --frozen-lockfile && bunx vite build",
-  "outputDirectory": "app/dist",
-  "framework": null,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/serverless" },
-    { "source": "/mcp", "destination": "/api/serverless" },
-    { "source": "/health", "destination": "/api/serverless" },
-    { "source": "/((?!api|mcp|health).*)", "destination": "/index.html" }
-  ]
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"buildCommand": "bun install --frozen-lockfile && bun run build && cd app && bun install --frozen-lockfile && bunx vite build",
+	"outputDirectory": "app/dist",
+	"framework": null,
+	"rewrites": [
+		{ "source": "/api/(.*)", "destination": "/api/serverless" },
+		{ "source": "/mcp", "destination": "/api/serverless" },
+		{ "source": "/health", "destination": "/api/serverless" },
+		{ "source": "/((?!api|mcp|health).*)", "destination": "/index.html" }
+	]
 }

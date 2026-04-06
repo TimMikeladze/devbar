@@ -239,7 +239,11 @@ function Hero() {
 			</div>
 
 			{/* Real Deloop toolbar — rendered here, floats freely via position:fixed */}
-			<Deloop server={import.meta.env.VITE_DELOOP_SERVER || ""} wsServer={import.meta.env.VITE_DELOOP_WS_SERVER} project="deloop" />
+			<Deloop
+				server={import.meta.env.VITE_DELOOP_SERVER || ""}
+				wsServer={import.meta.env.VITE_DELOOP_WS_SERVER}
+				project="deloop"
+			/>
 		</section>
 	);
 }
