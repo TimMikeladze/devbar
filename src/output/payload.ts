@@ -1,9 +1,4 @@
-import type {
-	Annotation,
-	DeloopPayload,
-	DeloopSettings,
-	PromptTemplate,
-} from "@/session/types";
+import type { Annotation, DeloopPayload, DeloopSettings, PromptTemplate } from "@/session/types";
 import { DEFAULT_CAPTURE_CONFIG } from "@/session/types";
 import { defaultPromptTemplate } from "./prompt";
 

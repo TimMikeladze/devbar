@@ -191,9 +191,7 @@ export const defaultPromptTemplate: PromptTemplate = (context) => {
 			? `\n\n## Console Errors\n\n${context.consoleErrors.map((e) => `- \`${e}\``).join("\n")}`
 			: "";
 
-	const routeSuffix = cap.mediaPreferences
-		? `${context.route.search}${context.route.hash}`
-		: "";
+	const routeSuffix = cap.mediaPreferences ? `${context.route.search}${context.route.hash}` : "";
 	const pageInfoLines = [
 		`- **URL:** ${context.url}`,
 		`- **Route:** ${context.route.pathname}${routeSuffix}`,

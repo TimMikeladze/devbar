@@ -121,10 +121,7 @@ export function extractReactContext(
 			const name = getComponentName(current);
 			components.unshift({
 				name,
-				props:
-					includeProps && current.memoizedProps
-						? serializeProps(current.memoizedProps)
-						: {},
+				props: includeProps && current.memoizedProps ? serializeProps(current.memoizedProps) : {},
 				source: current._debugSource
 					? {
 							fileName: current._debugSource.fileName,

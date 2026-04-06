@@ -3411,8 +3411,8 @@ export function Deloop({
 								}}
 							>
 								Paste the token printed by{" "}
-								<code style={{ fontSize: 11, opacity: 0.8 }}>deloop.dev</code> when you
-								started the local server.
+								<code style={{ fontSize: 11, opacity: 0.8 }}>deloop.dev</code> when you started the
+								local server.
 							</p>
 							<input
 								className="deloop-auth-input"

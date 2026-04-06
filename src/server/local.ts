@@ -226,8 +226,17 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 				if (project) {
 					const projectConfig = registry.get(project);
 					if (!projectConfig) {
-						console.log(`[deloop] report has project="${project}" but no project registered with that slug`);
-						console.log(`[deloop]   registered projects: ${registry.list().map((p) => p.slug).join(", ") || "(none)"}`);
+						console.log(
+							`[deloop] report has project="${project}" but no project registered with that slug`,
+						);
+						console.log(
+							`[deloop]   registered projects: ${
+								registry
+									.list()
+									.map((p) => p.slug)
+									.join(", ") || "(none)"
+							}`,
+						);
 					} else if (!projectConfig.autoDispatch) {
 						console.log(`[deloop] report for "${project}" saved (auto-dispatch disabled)`);
 					} else {

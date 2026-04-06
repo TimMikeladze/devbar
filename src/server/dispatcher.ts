@@ -68,7 +68,9 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 	async function runTask(task: Task): Promise<void> {
 		const project = options.getProject(task.projectSlug);
 		if (!project) {
-			console.log(`[dispatch] task ${task.id.slice(0, 8)} failed — project "${task.projectSlug}" not found`);
+			console.log(
+				`[dispatch] task ${task.id.slice(0, 8)} failed — project "${task.projectSlug}" not found`,
+			);
 			task.status = "failed";
 			task.completedAt = Date.now();
 			task.result = {
@@ -96,9 +98,12 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 		}
 
 		const promptPreview = prompt.length > 120 ? `${prompt.slice(0, 120)}...` : prompt;
-		const cmdDisplay = command === "echo" ? "echo" : `claude --model ${project.model} --effort ${project.effort}`;
+		const cmdDisplay =
+			command === "echo" ? "echo" : `claude --model ${project.model} --effort ${project.effort}`;
 
-		console.log(`[dispatch] starting task ${task.id.slice(0, 8)} for project "${task.projectSlug}"`);
+		console.log(
+			`[dispatch] starting task ${task.id.slice(0, 8)} for project "${task.projectSlug}"`,
+		);
 		console.log(`[dispatch]   command: ${cmdDisplay}`);
 		console.log(`[dispatch]   cwd: ${project.dir}`);
 		console.log(`[dispatch]   prompt: ${promptPreview.replace(/\n/g, " ")}`);
@@ -158,15 +163,18 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 				};
 
 				const duration = formatDuration(task.result.durationMs);
-				const outputPreview = task.result.output.length > 200
-					? `${task.result.output.slice(0, 200)}...`
-					: task.result.output;
+				const outputPreview =
+					task.result.output.length > 200
+						? `${task.result.output.slice(0, 200)}...`
+						: task.result.output;
 
 				if (task.status === "completed") {
 					console.log(`[dispatch] task ${task.id.slice(0, 8)} completed in ${duration}`);
 					console.log(`[dispatch]   output: ${outputPreview.replace(/\n/g, " ")}`);
 				} else {
-					console.log(`[dispatch] task ${task.id.slice(0, 8)} failed (exit ${exitCode}) in ${duration}`);
+					console.log(
+						`[dispatch] task ${task.id.slice(0, 8)} failed (exit ${exitCode}) in ${duration}`,
+					);
 					console.log(`[dispatch]   output: ${outputPreview.replace(/\n/g, " ")}`);
 				}
 
@@ -199,7 +207,9 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 			if (!project) return "";
 
 			const id = randomUUID();
-			console.log(`[dispatch] enqueued task ${id.slice(0, 8)} for "${projectSlug}" (auto=${project.autoDispatch})`);
+			console.log(
+				`[dispatch] enqueued task ${id.slice(0, 8)} for "${projectSlug}" (auto=${project.autoDispatch})`,
+			);
 			const task: Task = {
 				id,
 				reportPath,
@@ -219,7 +229,9 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 		},
 
 		async dispatchAll(projectSlug?) {
-			console.log(`[dispatch] batch dispatch${projectSlug ? ` for "${projectSlug}"` : " (all projects)"}`);
+			console.log(
+				`[dispatch] batch dispatch${projectSlug ? ` for "${projectSlug}"` : " (all projects)"}`,
+			);
 			const files = await readdir(options.reportsDir);
 			const jsonFiles = files.filter((f) => f.endsWith(".json")).sort();
 			const newTaskIds: string[] = [];
