@@ -1,17 +1,13 @@
-# Shared config — deploy with: fly deploy -a deloop-dev / fly deploy -a deloop-prod
-app = "deloop-prod"
+# WebSocket collaboration server
+# Deploy with: fly deploy -a deloop-ws-dev / fly deploy -a deloop-ws-prod
+app = "deloop-ws-dev"
 primary_region = "ord"
 
 [build]
 dockerfile = "Dockerfile"
-# Pass VITE_ vars as build args so the SPA bakes them in at build time
-[build.args]
-VITE_STRIPE_TEAM_PRICE_ID = ""
-VITE_STRIPE_ORG_PRICE_ID = ""
 
 [env]
 NODE_ENV = "production"
-DELOOP_STATIC_DIR = "./public"
 
 [http_service]
 internal_port = 3100

@@ -5,7 +5,6 @@ import type { ClientMessage, ServerMessage, Peer } from "@/collaboration/types";
 import { getPeerColor } from "@/collaboration/types";
 import type { DeloopAuth } from "./auth";
 import { verify } from "./hmac";
-import { verifyOrgMembership } from "./middleware";
 
 const MAX_MESSAGE_SIZE = 1_048_576; // 1MB
 const RATE_LIMIT_WINDOW_MS = 1_000;
@@ -114,7 +113,7 @@ function checkRateLimit(conn: Connection): boolean {
 	return conn.rateLimitCount <= RATE_LIMIT_MAX_MESSAGES;
 }
 
-export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
+export function addWebSocketRoute(app: Hono, auth?: DeloopAuth): void {
 	app.get(
 		"/ws/:roomKey",
 		// Fly.io instance affinity — route to the deterministic owner before auth/upgrade
@@ -143,26 +142,30 @@ export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
 			pendingRoomKeys.set(c.req.raw, rk);
 
 			// Mode B: Better Auth session (cookies sent automatically with upgrade)
-			const session = await auth.api.getSession({
-				headers: c.req.raw.headers,
-			});
-			if (session?.user) {
-				// Verify org membership if room key contains an org ID
-				const orgId = extractOrgId(rk);
-				if (orgId && session.user.id) {
-					const isMember = await verifyOrgMembership(session.user.id, orgId);
-					if (!isMember) {
-						return c.json({ error: "Not a member of this organization" }, 403);
-					}
-				}
-
-				pendingUsers.set(c.req.raw, {
-					id: session.user.id,
-					name: session.user.name,
-					email: session.user.email,
-					avatar: session.user.image ?? undefined,
+			// Only available when auth is provided (same-origin deployments)
+			if (auth) {
+				const session = await auth.api.getSession({
+					headers: c.req.raw.headers,
 				});
-				return next();
+				if (session?.user) {
+					// Verify org membership if room key contains an org ID
+					const orgId = extractOrgId(rk);
+					if (orgId && session.user.id) {
+						const { verifyOrgMembership } = await import("./middleware");
+						const isMember = await verifyOrgMembership(session.user.id, orgId);
+						if (!isMember) {
+							return c.json({ error: "Not a member of this organization" }, 403);
+						}
+					}
+
+					pendingUsers.set(c.req.raw, {
+						id: session.user.id,
+						name: session.user.name,
+						email: session.user.email,
+						avatar: session.user.image ?? undefined,
+					});
+					return next();
+				}
 			}
 
 			// Mode C: HMAC token via query param (WS doesn't support custom headers)
@@ -327,6 +330,26 @@ export function addWebSocketRoute(app: Hono, auth: DeloopAuth): void {
 									type: "comment:add",
 									annotationId: msg.annotationId,
 									comment: msg.comment,
+									peerId: connId,
+								},
+								connId,
+							);
+							break;
+
+						case "comment:edit":
+							if (
+								typeof msg.annotationId !== "string" ||
+								typeof msg.commentId !== "string" ||
+								typeof msg.text !== "string"
+							)
+								return;
+							broadcast(
+								conn.roomKey,
+								{
+									type: "comment:edit",
+									annotationId: msg.annotationId,
+									commentId: msg.commentId,
+									text: msg.text,
 									peerId: connId,
 								},
 								connId,

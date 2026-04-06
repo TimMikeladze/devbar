@@ -1,6 +1,15 @@
 // Simple HMAC-based token for auth proxy (Mode C)
 // Token format: base64url(JSON payload).base64url(HMAC-SHA256 signature)
 
+function toBase64Url(str: string): string {
+	return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+function fromBase64Url(str: string): string {
+	const padded = str + "=".repeat((4 - (str.length % 4)) % 4);
+	return atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+}
+
 export async function sign(
 	payload: { name: string; email: string; avatar?: string; exp?: number },
 	secret: string,
@@ -9,7 +18,7 @@ export async function sign(
 		...payload,
 		exp: payload.exp ?? Date.now() + 5 * 60 * 1000,
 	}; // 5 min default expiry
-	const encoded = btoa(JSON.stringify(data));
+	const encoded = toBase64Url(JSON.stringify(data));
 	const key = await crypto.subtle.importKey(
 		"raw",
 		new TextEncoder().encode(secret),
@@ -18,7 +27,7 @@ export async function sign(
 		["sign"],
 	);
 	const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(encoded));
-	const sigStr = btoa(String.fromCharCode(...new Uint8Array(sig)));
+	const sigStr = toBase64Url(String.fromCharCode(...new Uint8Array(sig)));
 	return `${encoded}.${sigStr}`;
 }
 
@@ -37,11 +46,11 @@ export async function verify(
 			false,
 			["verify"],
 		);
-		const sig = Uint8Array.from(atob(sigStr), (c) => c.charCodeAt(0));
+		const sig = Uint8Array.from(fromBase64Url(sigStr), (c) => c.charCodeAt(0));
 		const valid = await crypto.subtle.verify("HMAC", key, sig, new TextEncoder().encode(encoded));
 		if (!valid) return null;
 
-		const payload = JSON.parse(atob(encoded));
+		const payload = JSON.parse(fromBase64Url(encoded));
 		if (payload.exp && payload.exp < Date.now()) return null; // expired
 
 		return {

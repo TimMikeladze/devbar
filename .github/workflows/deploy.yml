@@ -11,8 +11,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Deploy to ${{ github.event_name == 'release' && 'prod' || 'dev' }}
+  deploy-vercel:
+    name: Deploy to Vercel (${{ github.event_name == 'release' && 'production' || 'preview' }})
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ENV: ${{ github.event_name == 'release' && 'production' || 'preview' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Vercel CLI
+        run: bun add -g vercel
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment "$VERCEL_ENV" --token "$VERCEL_TOKEN"
+
+      - name: Build
+        run: vercel build ${{ github.event_name == 'release' && '--prod' || '' }} --token "$VERCEL_TOKEN"
+
+      - name: Deploy
+        run: vercel deploy --prebuilt ${{ github.event_name == 'release' && '--prod' || '' }} --token "$VERCEL_TOKEN"
+
+  deploy-fly:
+    name: Deploy WS to Fly (${{ github.event_name == 'release' && 'prod' || 'dev' }})
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -22,9 +51,9 @@ jobs:
         id: target
         run: |
           if [ "$GITHUB_EVENT_NAME" = "release" ]; then
-            echo "app=deloop-prod" >> "$GITHUB_OUTPUT"
+            echo "app=deloop-ws-prod" >> "$GITHUB_OUTPUT"
           else
-            echo "app=deloop-dev" >> "$GITHUB_OUTPUT"
+            echo "app=deloop-ws-dev" >> "$GITHUB_OUTPUT"
           fi
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
@@ -33,17 +62,7 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly
-        run: |
-          flyctl deploy \
-            --app "$FLY_APP" \
-            --build-arg VITE_STRIPE_TEAM_PRICE_ID="$VITE_STRIPE_TEAM_PRICE_ID" \
-            --build-arg VITE_STRIPE_ORG_PRICE_ID="$VITE_STRIPE_ORG_PRICE_ID" \
-            --build-arg VITE_UMAMI_URL="$VITE_UMAMI_URL" \
-            --build-arg VITE_UMAMI_WEBSITE_ID="$VITE_UMAMI_WEBSITE_ID"
+        run: flyctl deploy --app "$FLY_APP"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           FLY_APP: ${{ steps.target.outputs.app }}
-          VITE_STRIPE_TEAM_PRICE_ID: ${{ vars.VITE_STRIPE_TEAM_PRICE_ID }}
-          VITE_STRIPE_ORG_PRICE_ID: ${{ vars.VITE_STRIPE_ORG_PRICE_ID }}
-          VITE_UMAMI_URL: ${{ vars.VITE_UMAMI_URL }}
-          VITE_UMAMI_WEBSITE_ID: ${{ vars.VITE_UMAMI_WEBSITE_ID }}

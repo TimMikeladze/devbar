@@ -53,7 +53,7 @@ export function useCollaboration(
 	}, []);
 
 	useEffect(() => {
-		if (!server || !user) return;
+		if (server == null || !user) return;
 
 		// Room key: "orgId:pathname" or "public:pathname"
 		const roomKey = encodeURIComponent(

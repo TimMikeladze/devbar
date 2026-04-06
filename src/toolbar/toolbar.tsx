@@ -90,6 +90,8 @@ export type DeloopProps = {
 	tools?: ToolMode[];
 	plugins?: DeloopPlugin[];
 	server?: string;
+	/** Separate WebSocket server URL for collaboration (defaults to server) */
+	wsServer?: string;
 	/** Bearer token sent as Authorization header with server submissions */
 	token?: string;
 	/** Project slug for dispatch routing */
@@ -774,6 +776,7 @@ export function Deloop({
 	theme: initialTheme = "auto",
 	plugins = [],
 	server,
+	wsServer,
 	token,
 	project,
 	user,
@@ -831,7 +834,40 @@ export function Deloop({
 		],
 	);
 
-	const collab = useCollaboration(server, auth.authUser ?? user, orgId, collabCallbacks);
+	// When WS is cross-origin (wsServer set), exchange session cookie for HMAC token
+	// Refreshes every 4 minutes (token expires in 5)
+	const [wsToken, setWsToken] = useState<string | undefined>(undefined);
+	useEffect(() => {
+		if (!wsServer || !server || !auth.authUser) return;
+		let cancelled = false;
+
+		async function fetchToken() {
+			try {
+				const r = await fetch(`${server!.replace(/\/$/, "")}/api/ws-token`, { method: "POST", credentials: "include" });
+				if (cancelled) return;
+				if (r.ok) {
+					const data = await r.json();
+					if (data?.token) setWsToken(data.token);
+				} else {
+					// Session expired or subscription lapsed — clear token to disconnect WS
+					setWsToken(undefined);
+				}
+			} catch {
+				setWsToken(undefined);
+			}
+		}
+
+		fetchToken();
+		const interval = setInterval(fetchToken, 4 * 60 * 1000);
+		return () => { cancelled = true; clearInterval(interval); };
+	}, [wsServer, server, auth.authUser]);
+
+	// Don't connect to WS until token is ready when cross-origin
+	const collabServer = wsServer
+		? (wsToken ? wsServer : undefined)
+		: server;
+
+	const collab = useCollaboration(collabServer, auth.authUser ?? user, orgId, collabCallbacks, { authToken: wsToken });
 	useCursorTracker(collab.sendCursor, collab.connected);
 	useViewportTracker(collab.sendViewport, collab.connected);
 

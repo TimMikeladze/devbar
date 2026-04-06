@@ -12,7 +12,7 @@ export default defineConfig([
 	},
 	{
 		name: "server",
-		entry: ["src/server/index.ts", "src/server/cli.ts", "src/server/vercel.ts"],
+		entry: ["src/server/index.ts", "src/server/cli.ts", "src/server/vercel.ts", "src/server/ws-server.ts", "src/server/ws-cli.ts"],
 		outDir: "dist/server",
 		format: "esm",
 		dts: true,

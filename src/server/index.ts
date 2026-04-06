@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { serveStatic } from "hono/bun";
 import { createAuth } from "./auth";
 import { getDb } from "./db";
-import { authMiddleware, subscriptionGuard } from "./middleware";
+import { sign } from "./hmac";
+import { authMiddleware, subscriptionGuard, type AuthUser } from "./middleware";
 import commentRoutes from "./routes/comments";
 import reportRoutes from "./routes/reports";
 import stripeRoutes, { createWebhookRoute } from "./routes/stripe";
@@ -70,11 +70,24 @@ export async function createDeloopServer(): Promise<{
 	api.route("/stripe", stripeRoutes);
 
 	// Feature routes — require active subscription
-	const gated = new Hono();
+	const gated = new Hono<{ Variables: { user: AuthUser } }>();
 	gated.use("*", subscriptionGuard());
 	gated.route("/reports", reportRoutes);
 	gated.route("/reports", commentRoutes); // comments are nested under /reports/:id/comments
 	gated.route("", commentRoutes); // for DELETE /api/comments/:id
+
+	// WS token exchange — behind subscription guard so only active subscribers can collaborate
+	gated.post("/ws-token", async (c) => {
+		const user = c.get("user");
+		const hmacSecret = process.env.DELOOP_HMAC_SECRET;
+		if (!hmacSecret) return c.json({ error: "HMAC not configured" }, 500);
+		const token = await sign(
+			{ name: user.name, email: user.email, avatar: user.avatar },
+			hmacSecret,
+		);
+		return c.json({ token });
+	});
+
 	api.route("", gated);
 
 	// Stripe webhook - MUST be mounted before the protected api routes
@@ -92,9 +105,10 @@ export async function createDeloopServer(): Promise<{
 	// Health check
 	app.get("/health", (c) => c.json({ ok: true }));
 
-	// Static files & SPA fallback
+	// Static files & SPA fallback (Bun only — skipped on Vercel)
 	const staticRoot = process.env.DELOOP_STATIC_DIR;
 	if (staticRoot) {
+		const { serveStatic } = await import("hono/bun");
 		app.use("*", serveStatic({ root: staticRoot }));
 		app.get("*", serveStatic({ path: `${staticRoot}/index.html` }));
 	}
