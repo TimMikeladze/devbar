@@ -1,6 +1,5 @@
 import type {
 	Annotation,
-	CaptureConfig,
 	DeloopPayload,
 	DeloopSettings,
 	PromptTemplate,
