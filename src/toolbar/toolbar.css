@@ -306,6 +306,7 @@
 	box-shadow: var(--deloop-shadow-lg);
 	overflow: hidden;
 	animation: deloop-panel-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+	z-index: 10;
 }
 
 .deloop-panel-header {
@@ -1996,10 +1997,14 @@
 }
 
 /* ─── Drawing overlay (persistent) ─── */
+/* Drawings sit below all toolbar UI and dialogs but above page content.
+   The parent .deloop-toolbar already has max z-index in the root stacking
+   context, so small values here keep drawings above the page but ensure
+   the bar, panels, and other UI paint on top. */
 .deloop-drawing-overlay {
 	position: fixed;
 	pointer-events: none;
-	z-index: 2147483643;
+	z-index: 1;
 }
 
 .deloop-drawing-note {
@@ -2012,7 +2017,7 @@
 	padding: 3px 8px;
 	border-radius: 6px;
 	pointer-events: none;
-	z-index: 2147483644;
+	z-index: 2;
 	white-space: nowrap;
 	max-width: 200px;
 	overflow: hidden;

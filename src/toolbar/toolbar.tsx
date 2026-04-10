@@ -2122,8 +2122,9 @@ export function Deloop({
 					<div className="deloop-toggle-thumb" />
 				</button>
 			</div>
-			<div className="deloop-settings-divider" />
-			<div className="deloop-settings-section-title">Data capture</div>
+			<div className="deloop-settings-section-title" style={{ marginTop: 12 }}>
+				Data capture
+			</div>
 			<div className="deloop-settings-desc" style={{ marginBottom: 8 }}>
 				Control what element and page data is collected
 			</div>
