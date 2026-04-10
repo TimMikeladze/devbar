@@ -18,13 +18,13 @@ function formatReactContext(
 	includeProps = false,
 ): string[] {
 	if (!ctx) return [];
-	const lines = [`${prefix}- **React Component Path:** \`${ctx.componentPath}\``];
+	const lines = [`${prefix}- **React component path:** \`${ctx.componentPath}\``];
 	for (const comp of ctx.components) {
 		const propsStr =
 			includeProps && Object.keys(comp.props).length > 0
 				? ` props={${JSON.stringify(comp.props).slice(0, 300)}}`
 				: "";
-		const sourceStr = comp.source ? ` (${comp.source.fileName}:${comp.source.lineNumber})` : "";
+		const sourceStr = comp.source ? ` → \`${comp.source.fileName}:${comp.source.lineNumber}\`` : "";
 		lines.push(`${prefix}  - \`<${comp.name}${propsStr}>\`${sourceStr}`);
 	}
 	return lines;
@@ -32,7 +32,7 @@ function formatReactContext(
 
 function formatAnnotation(annotation: Annotation, index: number, settings: DeloopSettings): string {
 	const labelStr = annotation.label ? ` [${annotation.label}]` : "";
-	const header = `### Annotation ${index + 1}: ${annotation.type}${labelStr}`;
+	const header = `### Annotation ${index + 1} — ${annotation.type}${labelStr}`;
 	const comments =
 		annotation.comments.length > 0
 			? annotation.comments.map((c) => `> **${c.author}:** ${c.text}`).join("\n")
@@ -43,45 +43,52 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 	switch (annotation.type) {
 		case "element": {
 			const d = annotation.data as ElementData;
+			// Lead with the user's comment, then the LLM's highest-signal field
+			// (React component path + source), then identification, then details.
+			const ident = [
+				`<${d.tagName}`,
+				d.id ? `#${d.id}` : "",
+				d.classes.length > 0 ? `.${d.classes.slice(0, 4).join(".")}` : "",
+				">",
+			].join("");
+
 			return [
 				header,
 				comments,
-				`- **Tag:** ${d.tagName}`,
-				d.id ? `- **ID:** ${d.id}` : "",
-				d.classes.length > 0 ? `- **Classes:** ${d.classes.join(", ")}` : "",
-				d.xpath ? `- **XPath:** \`${d.xpath}\`` : "",
-				d.cssSelector ? `- **CSS Selector:** \`${d.cssSelector}\`` : "",
-				`- **Size:** ${d.boundingRect.width.toFixed(0)}x${d.boundingRect.height.toFixed(0)}`,
-				d.parentContext
-					? `- **Parent:** ${d.parentContext.tagName}${d.parentContext.id ? `#${d.parentContext.id}` : ""}${d.parentContext.classes.length > 0 ? `.${d.parentContext.classes.join(".")}` : ""}`
+				`- **Element:** \`${ident}\``,
+				...formatReactContext(d.reactContext, "", cap.reactContextProps),
+				d.accessibility && (d.accessibility.role || d.accessibility.name)
+					? `- **Accessibility:** role="${d.accessibility.role}" name="${d.accessibility.name}"${d.accessibility.tabIndex >= 0 ? ` tabIndex=${d.accessibility.tabIndex}` : ""}`
 					: "",
-				d.accessibility
-					? `- **Accessibility:** role="${d.accessibility.role}" name="${d.accessibility.name}" tabIndex=${d.accessibility.tabIndex}`
+				d.innerText ? `- **Text:** ${JSON.stringify(d.innerText.slice(0, 200))}` : "",
+				d.parentContext
+					? `- **Parent:** <${d.parentContext.tagName}${d.parentContext.id ? `#${d.parentContext.id}` : ""}${d.parentContext.classes.length > 0 ? `.${d.parentContext.classes.slice(0, 3).join(".")}` : ""}>`
+					: "",
+				d.xpath ? `- **XPath:** \`${d.xpath}\`` : "",
+				d.cssSelector ? `- **CSS selector:** \`${d.cssSelector}\`` : "",
+				`- **Bounds:** ${d.boundingRect.width.toFixed(0)}×${d.boundingRect.height.toFixed(0)} at (${d.boundingRect.x.toFixed(0)}, ${d.boundingRect.y.toFixed(0)})`,
+				d.formState
+					? `- **Form state:** valid=${d.formState.valid}${d.formState.required ? ", required" : ""}${d.formState.message ? `, message="${d.formState.message}"` : ""}`
+					: "",
+				d.imageDimensions
+					? `- **Image:** natural ${d.imageDimensions.naturalWidth}×${d.imageDimensions.naturalHeight}, rendered ${d.imageDimensions.renderedWidth}×${d.imageDimensions.renderedHeight}`
 					: "",
 				d.overflowClipped
-					? `- **⚠ Overflow Clipped:** Element is visually clipped by a parent with overflow: hidden`
+					? `- **⚠ Overflow clipped:** visually clipped by a parent with overflow: hidden`
 					: "",
-				d.renderedFont ? `- **Rendered Font:** ${d.renderedFont}` : "",
-				d.imageDimensions
-					? `- **Image Dimensions:** natural=${d.imageDimensions.naturalWidth}x${d.imageDimensions.naturalHeight}, rendered=${d.imageDimensions.renderedWidth}x${d.imageDimensions.renderedHeight}`
-					: "",
-				d.formState
-					? `- **Form State:** valid=${d.formState.valid}${d.formState.required ? ", required" : ""}${d.formState.message ? `, message="${d.formState.message}"` : ""}`
-					: "",
+				d.renderedFont ? `- **Rendered font:** ${d.renderedFont}` : "",
 				d.pseudoContent
-					? `- **Pseudo Elements:**${d.pseudoContent.before ? ` ::before=${d.pseudoContent.before}` : ""}${d.pseudoContent.after ? ` ::after=${d.pseudoContent.after}` : ""}`
+					? `- **Pseudo-elements:**${d.pseudoContent.before ? ` ::before=${d.pseudoContent.before}` : ""}${d.pseudoContent.after ? ` ::after=${d.pseudoContent.after}` : ""}`
 					: "",
 				d.attributes && Object.keys(d.attributes).length > 0 ? `- **Attributes:**` : "",
-				...(d.attributes ? Object.entries(d.attributes).map(([k, v]) => `  - ${k}: ${v}`) : []),
-				Object.keys(d.computedStyles).length > 0 ? `- **Computed Styles:**` : "",
-				...Object.entries(d.computedStyles).map(([k, v]) => `  - ${k}: ${v}`),
-				d.innerText ? `- **Text:** ${d.innerText.slice(0, 200)}` : "",
-				d.outerHTML ? `- **HTML:** \`\`\`\n${d.outerHTML}\n\`\`\`` : "",
-				...formatReactContext(d.reactContext, "", cap.reactContextProps),
+				...(d.attributes ? Object.entries(d.attributes).map(([k, v]) => `  - \`${k}\`: ${v}`) : []),
+				Object.keys(d.computedStyles).length > 0 ? `- **Computed styles:**` : "",
+				...Object.entries(d.computedStyles).map(([k, v]) => `  - \`${k}\`: ${v}`),
+				d.outerHTML ? `- **HTML:**\n\`\`\`html\n${d.outerHTML}\n\`\`\`` : "",
 				settings.includeImages && d.elementScreenshot
 					? `- **Screenshot:** ![element](${d.elementScreenshot})`
 					: d.elementScreenshot
-						? `- **Screenshot:** *(image captured, omitted from text)*`
+						? `- **Screenshot:** *(captured, omitted from text)*`
 						: "",
 			]
 				.filter(Boolean)
@@ -94,9 +101,21 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 				: `- **Drawing:** *(image omitted)*`;
 			const contextImg =
 				settings.includeImages && dd.screenshotDataUri
-					? `- **Context Screenshot:** ![context](${dd.screenshotDataUri})`
+					? `- **Page context:** ![context](${dd.screenshotDataUri})`
 					: "";
-			return [header, comments, `- **Type:** Freehand drawing`, drawingImg, contextImg]
+			const bounds = dd.strokesBounds
+				? `- **Strokes bounds:** ${dd.strokesBounds.width.toFixed(0)}×${dd.strokesBounds.height.toFixed(0)} at (${dd.strokesBounds.x.toFixed(0)}, ${dd.strokesBounds.y.toFixed(0)})`
+				: "";
+			const offset = `- **Captured at scroll:** (${dd.viewportOffset.x}, ${dd.viewportOffset.y})`;
+			return [
+				header,
+				comments,
+				`- **Type:** Freehand drawing`,
+				drawingImg,
+				contextImg,
+				bounds,
+				offset,
+			]
 				.filter(Boolean)
 				.join("\n");
 		}
@@ -104,12 +123,13 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 			const d = annotation.data as TextData;
 			return [
 				header,
-				`- **Text:** "${d.text}"`,
-				d.nearestElementXPath ? `- **Nearest Element XPath:** \`${d.nearestElementXPath}\`` : "",
-				d.nearestElementCssSelector
-					? `- **Nearest Element CSS Selector:** \`${d.nearestElementCssSelector}\``
-					: "",
+				`- **Text:** ${JSON.stringify(d.text)}`,
+				`- **Position:** (${d.position.x.toFixed(0)}, ${d.position.y.toFixed(0)})`,
 				...formatReactContext(d.nearestReactContext, "", cap.reactContextProps),
+				d.nearestElementXPath ? `- **Nearest element XPath:** \`${d.nearestElementXPath}\`` : "",
+				d.nearestElementCssSelector
+					? `- **Nearest element CSS:** \`${d.nearestElementCssSelector}\``
+					: "",
 			]
 				.filter(Boolean)
 				.join("\n");
@@ -119,13 +139,13 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 			return [
 				header,
 				comments,
-				`- **Marker #${md.number}**`,
-				md.nearestElementTagName ? `- **Nearest Element:** ${md.nearestElementTagName}` : "",
-				md.nearestElementXPath ? `- **Nearest Element XPath:** \`${md.nearestElementXPath}\`` : "",
-				md.nearestElementCssSelector
-					? `- **Nearest Element CSS Selector:** \`${md.nearestElementCssSelector}\``
-					: "",
+				`- **Marker #${md.number}** at (${md.position.x.toFixed(0)}, ${md.position.y.toFixed(0)})`,
+				md.nearestElementTagName ? `- **Nearest element:** <${md.nearestElementTagName}>` : "",
 				...formatReactContext(md.nearestReactContext, "", cap.reactContextProps),
+				md.nearestElementXPath ? `- **Nearest element XPath:** \`${md.nearestElementXPath}\`` : "",
+				md.nearestElementCssSelector
+					? `- **Nearest element CSS:** \`${md.nearestElementCssSelector}\``
+					: "",
 			]
 				.filter(Boolean)
 				.join("\n");
@@ -138,10 +158,10 @@ function formatAnnotation(annotation: Annotation, index: number, settings: Deloo
 			return [
 				header,
 				comments,
-				`- **Type:** Screenshot capture`,
+				`- **Type:** ${sd.fullPage ? "Full-page" : "Region"} screenshot`,
 				sd.region
-					? `- **Region:** ${sd.region.width.toFixed(0)}x${sd.region.height.toFixed(0)} at (${sd.region.x.toFixed(0)}, ${sd.region.y.toFixed(0)})`
-					: `- **Full page**`,
+					? `- **Region:** ${sd.region.width.toFixed(0)}×${sd.region.height.toFixed(0)} at (${sd.region.x.toFixed(0)}, ${sd.region.y.toFixed(0)})`
+					: "",
 				img,
 			]
 				.filter(Boolean)
@@ -186,38 +206,71 @@ export const defaultPromptTemplate: PromptTemplate = (context) => {
 
 	const cap = settings.capture ?? DEFAULT_CAPTURE_CONFIG;
 
-	const consoleSection =
-		cap.consoleErrors && context.consoleErrors.length > 0
-			? `\n\n## Console Errors\n\n${context.consoleErrors.map((e) => `- \`${e}\``).join("\n")}`
-			: "";
+	// ─── Page info ──────────────────────────────────────────────────────────
+	const routeStr =
+		context.route.pathname + (context.route.search || "") + (context.route.hash || "");
 
-	const routeSuffix = cap.mediaPreferences ? `${context.route.search}${context.route.hash}` : "";
-	const pageInfoLines = [
+	const pageLines: string[] = [
 		`- **URL:** ${context.url}`,
-		`- **Route:** ${context.route.pathname}${routeSuffix}`,
-		cap.mediaPreferences ? `- **Title:** ${context.title}` : "",
-		cap.mediaPreferences
-			? `- **Viewport:** ${context.viewport.width}x${context.viewport.height} @${context.devicePixelRatio}x`
-			: "",
-		cap.mediaPreferences
-			? `- **Color Scheme:** ${context.colorScheme}${context.reducedMotion ? " (reduced motion)" : ""}`
-			: "",
-		cap.mediaPreferences ? `- **Language:** ${context.language}` : "",
-		cap.mediaPreferences && context.userAgent ? `- **User Agent:** ${context.userAgent}` : "",
-	]
-		.filter(Boolean)
-		.join("\n");
+		`- **Route:** ${routeStr}`,
+		context.title ? `- **Title:** ${context.title}` : "",
+	];
 
-	return `# Bug Report
+	if (context.pageMeta.description) {
+		pageLines.push(`- **Description:** ${context.pageMeta.description}`);
+	}
+	if (context.pageMeta.canonical && context.pageMeta.canonical !== context.url) {
+		pageLines.push(`- **Canonical:** ${context.pageMeta.canonical}`);
+	}
 
-## Page Information
-${pageInfoLines}
+	if (cap.mediaPreferences) {
+		pageLines.push(
+			`- **Viewport:** ${context.viewport.width}×${context.viewport.height} @${context.devicePixelRatio}x`,
+		);
+		pageLines.push(
+			`- **Document:** ${context.documentSize.width}×${context.documentSize.height} (scroll: ${context.scrollPosition.x}, ${context.scrollPosition.y})`,
+		);
+		pageLines.push(
+			`- **Color scheme:** ${context.colorScheme}${context.reducedMotion ? " (reduced motion)" : ""}`,
+		);
+		if (context.language) pageLines.push(`- **Language:** ${context.language}`);
+		if (context.timezone) pageLines.push(`- **Timezone:** ${context.timezone}`);
+		if (context.userAgent) pageLines.push(`- **User agent:** ${context.userAgent}`);
+	}
+
+	if (context.frameworks.length > 0) {
+		pageLines.push(`- **Detected stack:** ${context.frameworks.join(", ")}`);
+	}
+
+	const pageInfo = pageLines.filter(Boolean).join("\n");
+
+	// ─── Diagnostics ────────────────────────────────────────────────────────
+	const sections: string[] = [];
+
+	if (cap.consoleErrors && context.consoleErrors.length > 0) {
+		sections.push(
+			`## Console errors\n\n${context.consoleErrors.map((e) => `- \`${e}\``).join("\n")}`,
+		);
+	}
+
+	if (cap.networkErrors && context.networkErrors.length > 0) {
+		sections.push(
+			`## Failed network requests\n\n${context.networkErrors.map((e) => `- \`${e}\``).join("\n")}`,
+		);
+	}
+
+	const diagnosticsSection = sections.length > 0 ? `\n\n${sections.join("\n\n")}` : "";
+
+	return `# Bug report
+
+## Page information
+${pageInfo}
 
 ## Annotations
 
-${annotationText}${consoleSection}
+${annotationText}${diagnosticsSection}
 
 ## Request
 
-Based on the annotations above, please analyze the issues found on this page and suggest specific fixes. Include code changes where applicable.`;
+Based on the annotations above, please analyze the issues and suggest specific fixes. When suggesting code changes, use the React component paths and source file locations provided to pinpoint exactly where to edit.`;
 };

@@ -961,7 +961,11 @@ export function Deloop({
 			capture: { ...DEFAULT_CAPTURE_CONFIG },
 		};
 		try {
-			const saved = localStorage.getItem("deloop-settings");
+			// Try to clean up the v1 key — no backwards compat with the old shape.
+			try {
+				localStorage.removeItem("deloop-settings");
+			} catch {}
+			const saved = localStorage.getItem("deloop-settings-v2");
 			if (saved) {
 				const parsed = JSON.parse(saved) as Partial<DeloopSettings>;
 				return {
@@ -1491,7 +1495,7 @@ export function Deloop({
 			const next = patch.capture
 				? { ...prev, ...patch, capture: { ...prev.capture, ...patch.capture } }
 				: { ...prev, ...patch };
-			localStorage.setItem("deloop-settings", JSON.stringify(next));
+			localStorage.setItem("deloop-settings-v2", JSON.stringify(next));
 			return next;
 		});
 	}, []);
@@ -2160,7 +2164,16 @@ export function Deloop({
 						"Console errors",
 						"Capture console.error, window errors, and unhandled rejections",
 					],
-					["mediaPreferences", "Media preferences", "Color scheme, reduced motion, and language"],
+					[
+						"networkErrors",
+						"Network errors",
+						"Capture failed fetch/XHR requests (non-2xx responses and errors)",
+					],
+					[
+						"mediaPreferences",
+						"Environment context",
+						"Viewport, color scheme, language, timezone, and user agent",
+					],
 				] as const
 			).map(([key, title, desc]) => (
 				<div className="deloop-settings-row deloop-settings-row-compact" key={key}>

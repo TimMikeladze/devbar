@@ -91,7 +91,7 @@ export type DeloopTheme = "light" | "dark" | "auto";
 
 export type DeloopPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
-export type PromptTemplate = (context: {
+export type PageContext = {
 	url: string;
 	route: {
 		pathname: string;
@@ -99,16 +99,30 @@ export type PromptTemplate = (context: {
 		hash: string;
 	};
 	title: string;
+	pageMeta: {
+		description: string;
+		canonical: string;
+		ogTitle: string;
+		ogDescription: string;
+		themeColor: string;
+	};
 	viewport: { width: number; height: number };
+	documentSize: { width: number; height: number };
+	scrollPosition: { x: number; y: number };
 	devicePixelRatio: number;
 	colorScheme: "light" | "dark";
 	reducedMotion: boolean;
 	language: string;
+	timezone: string;
 	consoleErrors: string[];
+	networkErrors: string[];
+	frameworks: string[];
 	userAgent: string;
 	annotations: Annotation[];
 	settings?: DeloopSettings;
-}) => string;
+};
+
+export type PromptTemplate = (context: PageContext) => string;
 
 export type ToolbarOrientation = "horizontal" | "vertical";
 
@@ -137,29 +151,51 @@ export type CaptureConfig = {
 	elementScreenshot: boolean;
 	// Page-level
 	consoleErrors: boolean;
+	networkErrors: boolean;
 	mediaPreferences: boolean;
 };
 
+/**
+ * Tight, high-confidence defaults. Every ON field earns its place:
+ * - compact & high-signal (cssSelector, classes, attributes, accessibility, innerText)
+ * - the single highest-value field for code fixes (reactContext with source file/line)
+ * - visual grounding (elementScreenshot)
+ * - runtime diagnostics (consoleErrors, networkErrors)
+ * - reproduction context (mediaPreferences)
+ * - conditional fields that produce nothing when not applicable (imageDimensions, formState)
+ *
+ * Everything else is OFF by default to maximize signal-to-noise. Users can
+ * opt into verbose fields (computedStyles, outerHTML) or niche diagnostics
+ * (overflowClipped, renderedFont, pseudoContent) when debugging specific
+ * problem classes.
+ */
 export const DEFAULT_CAPTURE_CONFIG: CaptureConfig = {
-	xpath: true,
-	cssSelector: false,
-	classes: false,
+	// Selectors — cssSelector alone is enough; xpath is redundant
+	xpath: false,
+	cssSelector: true,
+	// Element metadata — compact, high-signal
+	classes: true,
 	attributes: true,
-	accessibility: false,
-	parentContext: false,
-	computedStyles: false,
+	accessibility: true,
+	parentContext: false, // redundant with cssSelector path
+	computedStyles: false, // verbose (~35 props); opt-in for style bugs
 	innerText: true,
-	outerHTML: false,
+	outerHTML: false, // verbose; redundant with tag + classes + text + react context
+	// Element diagnostics — conditional fields only (zero noise when not applicable)
 	overflowClipped: false,
 	renderedFont: false,
-	imageDimensions: false,
-	formState: false,
+	imageDimensions: true,
+	formState: true,
 	pseudoContent: false,
+	// React — component path + source location is the highest-signal field for LLMs
 	reactContext: true,
-	reactContextProps: false,
+	reactContextProps: false, // verbose + privacy risk
+	// Element screenshot — visual grounding
 	elementScreenshot: true,
+	// Page-level — essential reproduction + runtime diagnostics
 	consoleErrors: true,
-	mediaPreferences: false,
+	networkErrors: true,
+	mediaPreferences: true,
 };
 
 export type DeloopSettings = {
@@ -196,12 +232,24 @@ export type DeloopPayload = {
 		hash: string;
 	};
 	title: string;
+	pageMeta: {
+		description: string;
+		canonical: string;
+		ogTitle: string;
+		ogDescription: string;
+		themeColor: string;
+	};
 	viewport: { width: number; height: number };
+	documentSize: { width: number; height: number };
+	scrollPosition: { x: number; y: number };
 	devicePixelRatio: number;
 	colorScheme: "light" | "dark";
 	reducedMotion: boolean;
 	language: string;
+	timezone: string;
 	consoleErrors: string[];
+	networkErrors: string[];
+	frameworks: string[];
 	userAgent: string;
 	timestamp: number;
 	annotations: Annotation[];
