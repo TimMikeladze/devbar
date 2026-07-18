@@ -298,4 +298,3 @@ export function HistoryIcon(): React.ReactNode {
 		</svg>
 	);
 }
-

@@ -1196,14 +1196,7 @@ export function Deloop({
 			localArchiveAndClear("clipboard");
 			setPanelOpen(false);
 		}
-	}, [
-		state.annotations,
-		promptTemplate,
-		settings,
-		onSubmit,
-		showToast,
-		localArchiveAndClear,
-	]);
+	}, [state.annotations, promptTemplate, settings, onSubmit, showToast, localArchiveAndClear]);
 	handleCopyRef.current = handleCopy;
 
 	const handleCopyJson = useCallback(async () => {
@@ -1230,14 +1223,7 @@ export function Deloop({
 			localArchiveAndClear("json");
 			setPanelOpen(false);
 		}
-	}, [
-		state.annotations,
-		promptTemplate,
-		settings,
-		onSubmit,
-		showToast,
-		localArchiveAndClear,
-	]);
+	}, [state.annotations, promptTemplate, settings, onSubmit, showToast, localArchiveAndClear]);
 
 	const handleExport = useCallback(
 		(format: "json" | "md" = "md") => {
@@ -1250,14 +1236,7 @@ export function Deloop({
 				setPanelOpen(false);
 			}
 		},
-		[
-			state.annotations,
-			promptTemplate,
-			settings,
-			onSubmit,
-			showToast,
-			localArchiveAndClear,
-		],
+		[state.annotations, promptTemplate, settings, onSubmit, showToast, localArchiveAndClear],
 	);
 
 	const handleServerSubmit = useCallback(async () => {
