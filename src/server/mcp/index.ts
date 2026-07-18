@@ -19,7 +19,6 @@ export type McpConfig = {
 	apiKeyCacheMaxSize?: number;
 	rateLimitWindowMs?: number;
 	rateLimitMaxInit?: number;
-	labelScanLimit?: number;
 };
 
 const DEFAULTS = {
@@ -30,7 +29,6 @@ const DEFAULTS = {
 	apiKeyCacheMaxSize: 10_000,
 	rateLimitWindowMs: 60 * 1000,
 	rateLimitMaxInit: 100,
-	labelScanLimit: 10_000,
 } as const;
 
 const API_KEY_HEADER = "x-deloop-api-key";
@@ -353,7 +351,7 @@ const REPORT_NOT_FOUND_ERROR = {
 // is coupled to a single transport connection. Tool handlers share helper
 // functions above for cross-cutting concerns.
 
-function createMcpServerInstance(ctx: McpContext, labelScanLimit: number): McpServer {
+function createMcpServerInstance(ctx: McpContext): McpServer {
 	const server = new McpServer(
 		{
 			name: "deloop",
@@ -371,13 +369,9 @@ function createMcpServerInstance(ctx: McpContext, labelScanLimit: number): McpSe
 		"list_reports",
 		{
 			title: "List Reports",
-			description: "List bug reports with pagination. Filter by URL, label, or date range.",
+			description: "List bug reports with pagination. Filter by URL or date range.",
 			inputSchema: {
 				url: z.string().optional().describe("Filter by page URL"),
-				label: z
-					.string()
-					.optional()
-					.describe("Filter by report label (stored in payload JSON, filtered in-memory)"),
 				limit: z.number().min(1).max(100).default(20).describe("Number of results (max 100)"),
 				offset: z.number().min(0).default(0).describe("Pagination offset"),
 				since: z.string().optional().describe("ISO date string — only reports after this date"),
@@ -435,64 +429,7 @@ function createMcpServerInstance(ctx: McpContext, labelScanLimit: number): McpSe
 				payload: reports.payload,
 			};
 
-			// M3: When label filter is active, fetch all SQL-matching rows and
-			// paginate in memory so total reflects the actual label-filtered count.
-			if (args.label) {
-				let labelQuery = db
-					.select(selectFields)
-					.from(reports)
-					.orderBy(desc(reports.createdAt))
-					.limit(labelScanLimit);
-
-				if (where) {
-					labelQuery = labelQuery.where(where) as typeof labelQuery;
-				}
-
-				const allResults = await labelQuery;
-				const filtered = allResults.filter((r) => {
-					const p = parsePayload(r.payload);
-					return p?.label === args.label;
-				});
-
-				const total = filtered.length;
-				const paged = filtered.slice(args.offset, args.offset + args.limit);
-
-				const items = paged.map((r) => {
-					const p = parsePayload(r.payload);
-					return {
-						id: r.id,
-						url: r.url,
-						title: r.title,
-						label: p?.label ?? null,
-						authorName: r.authorName,
-						annotationCount: p?.annotations?.length ?? 0,
-						createdAt: r.createdAt,
-					};
-				});
-
-				const response: Record<string, unknown> = {
-					reports: items,
-					total,
-					limit: args.limit,
-					offset: args.offset,
-				};
-				// M3: Signal when scan cap was reached (results may be incomplete)
-				if (allResults.length >= labelScanLimit) {
-					response.truncated = true;
-					response.scanLimit = labelScanLimit;
-				}
-
-				return {
-					content: [
-						{
-							type: "text" as const,
-							text: JSON.stringify(response, null, 2),
-						},
-					],
-				};
-			}
-
-			// Non-label path: H3 — wrap data + count in a transaction for consistency
+			// H3 — wrap data + count in a transaction for consistency
 			const { results, total } = await db.transaction(async (tx) => {
 				let query = tx
 					.select(selectFields)
@@ -523,7 +460,6 @@ function createMcpServerInstance(ctx: McpContext, labelScanLimit: number): McpSe
 					id: r.id,
 					url: r.url,
 					title: r.title,
-					label: p?.label ?? null,
 					authorName: r.authorName,
 					annotationCount: p?.annotations?.length ?? 0,
 					createdAt: r.createdAt,
@@ -656,7 +592,6 @@ function createMcpServerInstance(ctx: McpContext, labelScanLimit: number): McpSe
 					id: r.id,
 					url: r.url,
 					title: r.title,
-					label: p?.label ?? null,
 					authorName: r.authorName,
 					annotationCount: p?.annotations?.length ?? 0,
 					createdAt: r.createdAt,
@@ -774,7 +709,6 @@ function createMcpServerInstance(ctx: McpContext, labelScanLimit: number): McpSe
 								type: annotation.type,
 								data: annotation.data,
 								comments: annotation.comments,
-								label: annotation.label,
 								timestamp: annotation.timestamp,
 							},
 							null,
@@ -979,7 +913,7 @@ export function createMcpRoutes(config?: McpConfig): Hono {
 				}
 			};
 
-			const server = createMcpServerInstance(ctx, cfg.labelScanLimit);
+			const server = createMcpServerInstance(ctx);
 			await server.connect(transport);
 			return transport.handleRequest(c.req.raw, { parsedBody: body });
 		}

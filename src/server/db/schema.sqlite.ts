@@ -613,7 +613,6 @@ export const apiKeys: any = sqliteTable(
 			.notNull()
 			.unique()
 			.$defaultFn(() => `dlp_${crypto.randomUUID().replace(/-/g, "")}`),
-		label: text("label"),
 		revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
 		createdAt: integer("created_at", { mode: "timestamp_ms" })
 			.notNull()

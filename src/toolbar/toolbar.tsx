@@ -62,7 +62,6 @@ import {
 	UserIcon,
 	SendIcon,
 	KeyIcon,
-	LabelIcon,
 	HistoryIcon,
 	RecordIcon,
 	RecordItemIcon,
@@ -98,7 +97,6 @@ export type DeloopProps = {
 	project?: string;
 	user?: DeloopUser;
 	authProxy?: string;
-	labels?: string[];
 	orgId?: string;
 };
 
@@ -781,7 +779,6 @@ export function Deloop({
 	project,
 	user,
 	authProxy,
-	labels: propLabels = [],
 	orgId,
 }: DeloopProps): React.ReactNode {
 	const state = useDeloopState();
@@ -917,10 +914,10 @@ export function Deloop({
 
 	const localArchiveAndClear = useCallback(
 		(method: ExportMethod) => {
-			state.archiveAndClear(method, state.activeLabel);
+			state.archiveAndClear(method);
 			collab.sendClear();
 		},
-		[state.archiveAndClear, state.activeLabel, collab.sendClear],
+		[state.archiveAndClear, collab.sendClear],
 	);
 
 	const [uiMode] = useState<"toolbar" | "panel">("toolbar");
@@ -977,8 +974,6 @@ export function Deloop({
 		} catch {}
 		return defaults;
 	});
-	const [labelDraft, setLabelDraft] = useState(state.activeLabel ?? "");
-	const [showLabels, setShowLabels] = useState(false);
 	const [showHistory, setShowHistory] = useState(false);
 	const [expandedExportId, setExpandedExportId] = useState<string | null>(null);
 	const [showExportMenu, setShowExportMenu] = useState(false);
@@ -987,44 +982,6 @@ export function Deloop({
 	const toolMenuRef = useRef<HTMLDivElement>(null);
 	const [captureSubMode, setCaptureSubMode] = useState<"fullpage" | "region" | null>(null);
 	const [recordSubMode, setRecordSubMode] = useState<"tab" | "screen" | null>(null);
-	const [savedLabels, setSavedLabels] = useState<string[]>(() => {
-		try {
-			const stored = localStorage.getItem("deloop-labels");
-			if (stored) return JSON.parse(stored) as string[];
-		} catch {}
-		return [];
-	});
-	const allLabels = Array.from(new Set([...propLabels, ...savedLabels]));
-
-	const persistLabels = useCallback((labels: string[]) => {
-		setSavedLabels(labels);
-		try {
-			localStorage.setItem("deloop-labels", JSON.stringify(labels));
-		} catch {}
-	}, []);
-
-	const addLabel = useCallback(
-		(label: string) => {
-			const trimmed = label.trim();
-			if (!trimmed) return;
-			if (!savedLabels.includes(trimmed)) {
-				persistLabels([...savedLabels, trimmed]);
-			}
-			state.setActiveLabel(trimmed);
-			setLabelDraft("");
-		},
-		[savedLabels, persistLabels, state.setActiveLabel],
-	);
-
-	const removeLabel = useCallback(
-		(label: string) => {
-			persistLabels(savedLabels.filter((l) => l !== label));
-			if (state.activeLabel === label) {
-				state.setActiveLabel(null);
-			}
-		},
-		[savedLabels, persistLabels, state.activeLabel, state.setActiveLabel],
-	);
 
 	const prevAnnotationCount = useRef(0);
 	const panelRef = useRef<HTMLDivElement>(null);
@@ -1137,8 +1094,6 @@ export function Deloop({
 					setToolMenu(null);
 				} else if (focusedAnnotation) {
 					setFocusedAnnotation(null);
-				} else if (showLabels) {
-					setShowLabels(false);
 				} else if (showSettings) {
 					setShowSettings(false);
 				} else if (showHelp) {
@@ -1167,26 +1122,6 @@ export function Deloop({
 				});
 				setShowSettings(false);
 				setShowHelp(false);
-				setShowLabels(false);
-				setShowExportMenu(false);
-				setToolMenu(null);
-				return;
-			}
-
-			// Toggle labels: Alt+L
-			if (key === "l") {
-				e.preventDefault();
-				setShowLabels((v) => {
-					if (!v) {
-						panelOpenAboveRef.current = drag.offset
-							? drag.offset.y >= window.innerHeight / 2
-							: true;
-					}
-					return !v;
-				});
-				setPanelOpen(false);
-				setShowSettings(false);
-				setShowHelp(false);
 				setShowExportMenu(false);
 				setToolMenu(null);
 				return;
@@ -1205,7 +1140,6 @@ export function Deloop({
 				});
 				setPanelOpen(false);
 				setShowSettings(false);
-				setShowLabels(false);
 				setShowExportMenu(false);
 				setToolMenu(null);
 				return;
@@ -1222,7 +1156,6 @@ export function Deloop({
 					setPanelOpen(false);
 					setShowSettings(false);
 					setShowHelp(false);
-					setShowLabels(false);
 					setShowExportMenu(false);
 					return;
 				}
@@ -1240,7 +1173,6 @@ export function Deloop({
 		panelOpen,
 		showHelp,
 		showSettings,
-		showLabels,
 		toolMenu,
 	]);
 
@@ -1253,7 +1185,7 @@ export function Deloop({
 
 	const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const handleCopy = useCallback(async () => {
-		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
+		const payload = buildPayload(state.annotations, promptTemplate, settings);
 		await copyToClipboard(payload);
 		setCopied(true);
 		showToast("Copied to clipboard!");
@@ -1268,7 +1200,6 @@ export function Deloop({
 		state.annotations,
 		promptTemplate,
 		settings,
-		state.activeLabel,
 		onSubmit,
 		showToast,
 		localArchiveAndClear,
@@ -1276,7 +1207,7 @@ export function Deloop({
 	handleCopyRef.current = handleCopy;
 
 	const handleCopyJson = useCallback(async () => {
-		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
+		const payload = buildPayload(state.annotations, promptTemplate, settings);
 		const json = JSON.stringify(payload, null, 2);
 		try {
 			await navigator.clipboard.writeText(json);
@@ -1303,7 +1234,6 @@ export function Deloop({
 		state.annotations,
 		promptTemplate,
 		settings,
-		state.activeLabel,
 		onSubmit,
 		showToast,
 		localArchiveAndClear,
@@ -1311,7 +1241,7 @@ export function Deloop({
 
 	const handleExport = useCallback(
 		(format: "json" | "md" = "md") => {
-			const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
+			const payload = buildPayload(state.annotations, promptTemplate, settings);
 			exportToFile(payload, format, settings);
 			showToast(format === "md" ? "Saved markdown!" : "Saved JSON!");
 			onSubmit?.(payload);
@@ -1324,7 +1254,6 @@ export function Deloop({
 			state.annotations,
 			promptTemplate,
 			settings,
-			state.activeLabel,
 			onSubmit,
 			showToast,
 			localArchiveAndClear,
@@ -1333,7 +1262,7 @@ export function Deloop({
 
 	const handleServerSubmit = useCallback(async () => {
 		if (!server) return;
-		const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
+		const payload = buildPayload(state.annotations, promptTemplate, settings);
 		const headers: Record<string, string> = { "Content-Type": "application/json" };
 
 		if (effectiveToken) {
@@ -1396,7 +1325,6 @@ export function Deloop({
 		state.annotations,
 		promptTemplate,
 		settings,
-		state.activeLabel,
 		authProxy,
 		auth.authUser,
 		user,
@@ -1409,7 +1337,6 @@ export function Deloop({
 		setPanelOpen(false);
 		setShowSettings(false);
 		setShowHelp(false);
-		setShowLabels(false);
 		setShowExportMenu(false);
 		setToolMenu(null);
 	}, []);
@@ -1422,7 +1349,6 @@ export function Deloop({
 				setPanelOpen(false);
 				setShowSettings(false);
 				setShowHelp(false);
-				setShowLabels(false);
 				setShowExportMenu(false);
 				return;
 			}
@@ -1446,11 +1372,10 @@ export function Deloop({
 
 	const handleCapture = useCallback(
 		(annotation: Annotation) => {
-			const a = state.activeLabel ? { ...annotation, label: state.activeLabel } : annotation;
-			state.addAnnotation(a);
-			collab.sendAnnotationAdd(a);
+			state.addAnnotation(annotation);
+			collab.sendAnnotationAdd(annotation);
 		},
-		[state.addAnnotation, state.activeLabel, collab.sendAnnotationAdd],
+		[state.addAnnotation, collab.sendAnnotationAdd],
 	);
 
 	// Rapid mode: stay in tool after capture for supported tools
@@ -1460,12 +1385,11 @@ export function Deloop({
 
 	const handleRapidCapture = useCallback(
 		(annotation: Annotation) => {
-			const a = state.activeLabel ? { ...annotation, label: state.activeLabel } : annotation;
-			state.addAnnotation(a);
-			collab.sendAnnotationAdd(a);
+			state.addAnnotation(annotation);
+			collab.sendAnnotationAdd(annotation);
 			// Don't deactivate - stay in tool mode
 		},
-		[state.addAnnotation, state.activeLabel, collab.sendAnnotationAdd],
+		[state.addAnnotation, collab.sendAnnotationAdd],
 	);
 
 	const handleFocusAnnotation = useCallback(
@@ -1485,7 +1409,6 @@ export function Deloop({
 		});
 		setShowSettings(false);
 		setShowHelp(false);
-		setShowLabels(false);
 		setShowExportMenu(false);
 		setToolMenu(null);
 	}, [drag.offset]);
@@ -1702,7 +1625,6 @@ export function Deloop({
 				});
 				setPanelOpen(false);
 				setShowHelp(false);
-				setShowLabels(false);
 				setShowExportMenu(false);
 				setToolMenu(null);
 			}}
@@ -1809,7 +1731,6 @@ export function Deloop({
 					setPanelOpen(false);
 					setShowSettings(false);
 					setShowHelp(false);
-					setShowLabels(false);
 					setToolMenu(null);
 				}}
 				style={
@@ -1980,51 +1901,16 @@ export function Deloop({
 			);
 		});
 
-	// Shared label button
-	const renderLabelButton = (tooltipBelow?: boolean) => (
-		<button
-			type="button"
-			className={`deloop-bar-btn ${showLabels || state.activeLabel ? "deloop-bar-btn-active" : ""}`}
-			onClick={() => {
-				setShowLabels((v) => {
-					if (!v) {
-						if (!tooltipBelow) {
-							panelOpenAboveRef.current = drag.offset
-								? drag.offset.y >= window.innerHeight / 2
-								: true;
-						}
-					}
-					return !v;
-				});
-				setPanelOpen(false);
-				setShowSettings(false);
-				setShowHelp(false);
-				setShowExportMenu(false);
-				setToolMenu(null);
-			}}
-			title={state.activeLabel ? `Label: ${state.activeLabel}` : "Labels"}
-		>
-			<LabelIcon />
-			<span
-				className="deloop-tooltip"
-				style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}
-			>
-				{state.activeLabel ?? "Labels"}
-				<span className="deloop-tooltip-key">L</span>
-			</span>
-		</button>
-	);
-
 	// Preview content generator
 	const getPreviewContent = useCallback(
 		(format: "md" | "json"): string => {
-			const payload = buildPayload(state.annotations, promptTemplate, settings, state.activeLabel);
+			const payload = buildPayload(state.annotations, promptTemplate, settings);
 			if (format === "json") {
 				return JSON.stringify(payload, null, 2);
 			}
 			return payload.prompt;
 		},
-		[state.annotations, promptTemplate, settings, state.activeLabel],
+		[state.annotations, promptTemplate, settings],
 	);
 
 	// Settings content renderer
@@ -2200,134 +2086,6 @@ export function Deloop({
 		</div>
 	);
 
-	// Labels panel content renderer
-	const renderLabelsContent = () => (
-		<div className="deloop-panel-body" style={{ padding: 12 }}>
-			<div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-				<input
-					className="deloop-thread-input"
-					type="text"
-					placeholder="Add a new label…"
-					value={labelDraft}
-					onChange={(e) => setLabelDraft(e.target.value)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" && labelDraft.trim()) {
-							addLabel(labelDraft.trim());
-						}
-					}}
-					style={{ flex: 1 }}
-				/>
-				<button
-					type="button"
-					className="deloop-settings-seg-btn"
-					onClick={() => {
-						if (labelDraft.trim()) {
-							addLabel(labelDraft.trim());
-						}
-					}}
-					disabled={!labelDraft.trim()}
-					style={{ whiteSpace: "nowrap", fontSize: 11, padding: "4px 8px" }}
-				>
-					Add
-				</button>
-			</div>
-			{allLabels.length === 0 && (
-				<div style={{ fontSize: 11, opacity: 0.5, textAlign: "center", padding: "8px 0" }}>
-					No labels yet. Add one above.
-				</div>
-			)}
-			{allLabels.map((label) => {
-				const isActive = state.activeLabel === label;
-				const isProp = propLabels.includes(label);
-				return (
-					<div
-						key={label}
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: 6,
-							padding: "5px 6px",
-							borderRadius: 6,
-							cursor: "pointer",
-							background: isActive ? "var(--deloop-accent)" : "transparent",
-							color: isActive ? "#fff" : "inherit",
-							fontSize: 12,
-							transition: "background 0.1s",
-						}}
-						onClick={() => {
-							if (isActive) {
-								state.setActiveLabel(null);
-							} else {
-								state.setActiveLabel(label);
-							}
-						}}
-					>
-						<span
-							style={{
-								width: 16,
-								height: 16,
-								flexShrink: 0,
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-							}}
-						>
-							{isActive && <CheckIcon />}
-						</span>
-						<span
-							style={{
-								flex: 1,
-								overflow: "hidden",
-								textOverflow: "ellipsis",
-								whiteSpace: "nowrap",
-							}}
-						>
-							{label}
-						</span>
-						{!isProp && (
-							<button
-								type="button"
-								className="deloop-panel-close"
-								onClick={(e) => {
-									e.stopPropagation();
-									removeLabel(label);
-								}}
-								style={{ width: 18, height: 18, fontSize: 10, flexShrink: 0 }}
-								title="Remove label"
-							>
-								✕
-							</button>
-						)}
-					</div>
-				);
-			})}
-			{state.activeLabel && (
-				<div
-					style={{
-						marginTop: 8,
-						paddingTop: 8,
-						borderTop: "1px solid var(--deloop-border)",
-						display: "flex",
-						alignItems: "center",
-						gap: 4,
-					}}
-				>
-					<button
-						type="button"
-						className="deloop-settings-seg-btn"
-						onClick={() => {
-							state.setActiveLabel(null);
-							setLabelDraft("");
-						}}
-						style={{ whiteSpace: "nowrap", fontSize: 11, padding: "4px 8px", width: "100%" }}
-					>
-						Clear active label
-					</button>
-				</div>
-			)}
-		</div>
-	);
-
 	// Help content renderer
 	const renderHelpContent = () => (
 		<div className="deloop-panel-body" style={{ padding: 12 }}>
@@ -2337,7 +2095,6 @@ export function Deloop({
 				["Alt+M", "Marker tool"],
 				["Alt+C", "Capture tool"],
 				["Alt+A", "Toggle annotations"],
-				["Alt+L", "Labels"],
 				["Alt+/", "This help"],
 				["Esc", "Close / Minimize"],
 				["⌘Z", "Undo last annotation"],
@@ -2364,7 +2121,7 @@ export function Deloop({
 					totalComments += ann.comments.length;
 				}
 
-				const getPayload = () => buildPayload(exp.annotations, promptTemplate, settings, exp.label);
+				const getPayload = () => buildPayload(exp.annotations, promptTemplate, settings);
 
 				return (
 					<div
@@ -2396,7 +2153,6 @@ export function Deloop({
 										</span>
 									)}
 								</div>
-								{exp.label && <span className="deloop-history-item-label">{exp.label}</span>}
 							</div>
 							<span
 								className="deloop-history-item-date"
@@ -3042,7 +2798,7 @@ export function Deloop({
 			{/* Bottom bar — only in toolbar mode */}
 			{uiMode === "toolbar" && !state.activeMode && !collapsed && (
 				<div
-					className={`deloop-bar deloop-theme-${resolvedTheme}${showSettings || showHelp || showLabels ? " deloop-bar-panel-open" : ""}${settings.toolbarOrientation === "vertical" ? " deloop-bar-vertical" : ""}`}
+					className={`deloop-bar deloop-theme-${resolvedTheme}${showSettings || showHelp ? " deloop-bar-panel-open" : ""}${settings.toolbarOrientation === "vertical" ? " deloop-bar-vertical" : ""}`}
 					style={
 						drag.offset
 							? {
@@ -3101,7 +2857,6 @@ export function Deloop({
 							<span className="deloop-tooltip-key">A</span>
 						</span>
 					</button>
-					{renderLabelButton()}
 					<div className="deloop-bar-divider" />
 					{renderExportButton()}
 					{collab.peers.length > 0 && (
@@ -3335,30 +3090,6 @@ export function Deloop({
 						/>
 					);
 				})()}
-
-			{/* Labels panel (floating, toolbar mode only) */}
-			{showLabels && !state.activeMode && (
-				<div
-					className={`deloop-panel deloop-theme-${resolvedTheme}`}
-					style={{
-						...floatingPanelStyle,
-						width: 280,
-					}}
-				>
-					<div className="deloop-panel-header">
-						<span className="deloop-panel-title">Labels</span>
-						<button
-							type="button"
-							className="deloop-panel-close"
-							onClick={() => setShowLabels(false)}
-							title="Close (Esc)"
-						>
-							Esc
-						</button>
-					</div>
-					{renderLabelsContent()}
-				</div>
-			)}
 
 			{/* Settings panel (floating, toolbar mode only) */}
 			{showSettings && !state.activeMode && (

@@ -2495,20 +2495,6 @@
 	font-size: 9.5px;
 }
 
-/* Label badge */
-.deloop-history-item-label {
-	font-size: 10px;
-	padding: 1px 5px;
-	border-radius: 4px;
-	background: var(--deloop-blue-muted);
-	color: var(--deloop-blue);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	max-width: 72px;
-	font-weight: 500;
-}
-
 /* Relative timestamp */
 .deloop-history-item-date {
 	font-size: 10px;

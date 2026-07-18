@@ -628,7 +628,6 @@ export const apiKeys: any = pgTable(
 			.notNull()
 			.unique()
 			.$defaultFn(() => `dlp_${crypto.randomUUID().replace(/-/g, "")}`),
-		label: text("label"),
 		revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
 		createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
 			.notNull()

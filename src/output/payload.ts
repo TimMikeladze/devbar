@@ -243,7 +243,6 @@ export function buildPayload(
 	annotations: Annotation[],
 	promptTemplate?: PromptTemplate,
 	settings?: DeloopSettings,
-	label?: string | null,
 ): DeloopPayload {
 	const template = promptTemplate ?? defaultPromptTemplate;
 	const cap = settings?.capture ?? DEFAULT_CAPTURE_CONFIG;
@@ -296,7 +295,6 @@ export function buildPayload(
 	return {
 		...context,
 		timestamp: Date.now(),
-		label: label ?? undefined,
 		prompt: template(context),
 	};
 }

@@ -35,7 +35,6 @@ app.get("/", async (c) => {
 	const user = c.get("user");
 	const db = await getDb();
 	const url = c.req.query("url");
-	const label = c.req.query("label");
 	const limit = Math.min(parseInt(c.req.query("limit") ?? "50"), 100);
 	const offset = parseInt(c.req.query("offset") ?? "0");
 
@@ -62,14 +61,7 @@ app.get("/", async (c) => {
 		query = query.where(and(...conditions)) as typeof query;
 	}
 
-	let results = await query;
-
-	if (label) {
-		results = results.filter((r: any) => {
-			const p = typeof r.payload === "string" ? JSON.parse(r.payload) : r.payload;
-			return p?.label === label;
-		});
-	}
+	const results = await query;
 
 	return c.json(results);
 });

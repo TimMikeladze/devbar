@@ -82,7 +82,6 @@ export type Annotation = {
 	timestamp: number;
 	data: ElementData | DrawingData | TextData | ScreenshotData | MarkerData | RecordingData;
 	comments: Comment[];
-	label?: string;
 };
 
 export type ToolMode = "select" | "draw" | "capture" | "marker" | "record" | null;
@@ -219,7 +218,6 @@ export type ExportRecord = {
 	timestamp: number;
 	url: string;
 	title: string;
-	label?: string;
 	annotations: Annotation[];
 	method: ExportMethod;
 };
@@ -253,6 +251,5 @@ export type DeloopPayload = {
 	userAgent: string;
 	timestamp: number;
 	annotations: Annotation[];
-	label?: string;
 	prompt: string;
 };

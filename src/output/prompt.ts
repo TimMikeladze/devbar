@@ -31,8 +31,7 @@ function formatReactContext(
 }
 
 function formatAnnotation(annotation: Annotation, index: number, settings: DeloopSettings): string {
-	const labelStr = annotation.label ? ` [${annotation.label}]` : "";
-	const header = `### Annotation ${index + 1} — ${annotation.type}${labelStr}`;
+	const header = `### Annotation ${index + 1} — ${annotation.type}`;
 	const comments =
 		annotation.comments.length > 0
 			? annotation.comments.map((c) => `> **${c.author}:** ${c.text}`).join("\n")

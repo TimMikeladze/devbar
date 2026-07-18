@@ -5,10 +5,8 @@ export type DeloopState = {
 	annotations: Annotation[];
 	exports: ExportRecord[];
 	activeMode: ToolMode;
-	activeLabel: string | null;
 	minimized: boolean;
 	setMinimized: (v: boolean) => void;
-	setActiveLabel: (label: string | null) => void;
 	addAnnotation: (annotation: Annotation, remote?: boolean) => void;
 	updateAnnotation: (id: string, data: Annotation["data"]) => void;
 	removeAnnotation: (id: string, remote?: boolean) => void;
@@ -16,7 +14,7 @@ export type DeloopState = {
 	updateComment: (annotationId: string, commentId: string, text: string, remote?: boolean) => void;
 	removeComment: (annotationId: string, commentId: string, remote?: boolean) => void;
 	clearAnnotations: () => void;
-	archiveAndClear: (method: ExportMethod, label?: string | null) => void;
+	archiveAndClear: (method: ExportMethod) => void;
 	deleteExport: (id: string) => void;
 	activateTool: (mode: ToolMode) => void;
 	deactivateTool: () => void;
@@ -124,13 +122,6 @@ export function useDeloopState(): DeloopState {
 	const loaded = useRef(false);
 	const annotationsRef = useRef(annotations);
 	annotationsRef.current = annotations;
-	const [activeLabel, setActiveLabel] = useState<string | null>(() => {
-		try {
-			return localStorage.getItem("deloop-label") || null;
-		} catch {
-			return null;
-		}
-	});
 
 	useEffect(() => {
 		if (loaded.current) return;
@@ -151,17 +142,6 @@ export function useDeloopState(): DeloopState {
 				})
 				.catch((e) => console.warn("[deloop] failed to load exports:", e)),
 		]);
-	}, []);
-
-	const updateLabel = useCallback((label: string | null) => {
-		setActiveLabel(label);
-		try {
-			if (label) {
-				localStorage.setItem("deloop-label", label);
-			} else {
-				localStorage.removeItem("deloop-label");
-			}
-		} catch {}
 	}, []);
 
 	const addAnnotation = useCallback((annotation: Annotation, _remote?: boolean): void => {
@@ -255,7 +235,7 @@ export function useDeloopState(): DeloopState {
 		dbClearStore(STORE_NAME).catch((e) => console.warn("[deloop] clear error:", e));
 	}, []);
 
-	const archiveAndClear = useCallback((method: ExportMethod, label?: string | null): void => {
+	const archiveAndClear = useCallback((method: ExportMethod): void => {
 		const current = annotationsRef.current;
 		if (current.length === 0) return;
 		const record: ExportRecord = {
@@ -263,7 +243,6 @@ export function useDeloopState(): DeloopState {
 			timestamp: Date.now(),
 			url: window.location.href,
 			title: document.title,
-			label: label ?? undefined,
 			annotations: [...current],
 			method,
 		};
@@ -295,10 +274,8 @@ export function useDeloopState(): DeloopState {
 		annotations,
 		exports,
 		activeMode,
-		activeLabel,
 		minimized,
 		setMinimized,
-		setActiveLabel: updateLabel,
 		addAnnotation,
 		updateAnnotation,
 		removeAnnotation,
