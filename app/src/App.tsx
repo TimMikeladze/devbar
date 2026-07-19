@@ -1246,15 +1246,7 @@ function Footer() {
 					</a>
 				))}
 				<div className="ml-auto flex items-center gap-4">
-					<a href="/privacy" className="text-muted/50 text-xs hover:text-muted transition-colors">
-						Privacy
-					</a>
-					<a href="/terms" className="text-muted/50 text-xs hover:text-muted transition-colors">
-						Terms
-					</a>
-					<span className="text-muted/40 text-xs">
-						&copy; {new Date().getFullYear()} deloop.dev
-					</span>
+					<span className="text-muted text-xs">&copy; {new Date().getFullYear()} deloop.dev</span>
 				</div>
 			</div>
 		</footer>

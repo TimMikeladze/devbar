@@ -493,6 +493,12 @@ html.dark .pricing-card:hover {
 .code-block-wrap:hover .code-copy-btn {
 	opacity: 1;
 }
+/* Touch devices have no hover — keep the copy button discoverable. */
+@media (hover: none) {
+	.code-copy-btn {
+		opacity: 0.6;
+	}
+}
 .code-copy-btn:hover {
 	color: var(--color-fg);
 	background: var(--color-bg-hover);
@@ -1401,5 +1407,14 @@ html.dark .page-grid::before {
 	}
 	html {
 		@apply font-sans;
+	}
+}
+
+/* ──────── Landing: hide the dogfooded toolbar on mobile ────────
+   Its default fixed position overlaps hero/pricing content below sm.
+   Docks cleanly on desktop, so only hide on narrow screens. */
+@media (max-width: 640px) {
+	.deloop-toolbar {
+		display: none !important;
 	}
 }
