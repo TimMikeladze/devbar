@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import type { Destination } from "../config";
 
 export type ProjectConfig = {
 	slug: string;
@@ -9,6 +10,8 @@ export type ProjectConfig = {
 	concurrency: number;
 	permissionMode: string;
 	autoDispatch: boolean;
+	/** Destinations every report for this project is routed to. When set, these replace the implicit auto-dispatch. */
+	routes?: Destination[];
 };
 
 export type Registry = {

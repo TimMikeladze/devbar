@@ -109,7 +109,10 @@ function Header() {
 	return (
 		<header className="fixed top-0 left-0 right-0 z-50 bg-bg/70 backdrop-blur-xl border-b border-border/60">
 			<div className="max-w-6xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
-				<a href="/" className="flex items-center gap-2 text-fg font-semibold tracking-tight text-[15px]">
+				<a
+					href="/"
+					className="flex items-center gap-2 text-fg font-semibold tracking-tight text-[15px]"
+				>
 					<Wordmark />
 				</a>
 
@@ -208,8 +211,8 @@ function Hero() {
 					</h1>
 					<p className="text-dim text-[15px] sm:text-[17px] leading-[1.65] mb-7 max-w-xl mx-auto lg:mx-0">
 						deloop is a drop-in inspector for any website. Point at an element, note the change you
-						want, and it captures the exact context — selectors, computed styles, the React tree, and
-						the source file. Iterate at agent speed, or send it to a GitHub issue or your team.
+						want, and it captures the exact context — selectors, computed styles, the React tree,
+						and the source file. Iterate at agent speed, or send it to a GitHub issue or your team.
 					</p>
 					<div className="max-w-sm mx-auto lg:mx-0 mb-6">
 						<InstallTabs />
@@ -436,7 +439,9 @@ function BeforeAfter() {
 							</div>
 							<div className="border-t border-border pt-2 mt-2 flex gap-2">
 								<span className="text-muted/60 w-[52px] shrink-0">note</span>
-								<span className="text-fg font-sans">“Increase top padding to 96px — feels cramped”</span>
+								<span className="text-fg font-sans">
+									“Increase top padding to 96px — feels cramped”
+								</span>
 							</div>
 							<div className="flex gap-2">
 								<span className="text-muted/60 w-[52px] shrink-0">📷</span>
@@ -486,7 +491,9 @@ function HowItWorks() {
 			<div className="text-center mb-10 sm:mb-14">
 				<Eyebrow center>How it works</Eyebrow>
 				<h2 className="section-title">Annotate. Capture. Route.</h2>
-				<p className="section-sub">Three steps from “change this” to a payload your agent can act on.</p>
+				<p className="section-sub">
+					Three steps from “change this” to a payload your agent can act on.
+				</p>
 			</div>
 
 			<div className="grid sm:grid-cols-3 gap-4">
@@ -532,13 +539,18 @@ function CapturedData() {
 						teammate) changes exactly the right thing, the first time.
 					</p>
 					<div className="flex flex-wrap gap-2 mt-6 justify-center lg:justify-start">
-						{["Selectors", "Computed styles", "React tree", "Bounding rect", "Source path", "HTML"].map(
-							(t) => (
-								<span key={t} className="tagpill">
-									{t}
-								</span>
-							),
-						)}
+						{[
+							"Selectors",
+							"Computed styles",
+							"React tree",
+							"Bounding rect",
+							"Source path",
+							"HTML",
+						].map((t) => (
+							<span key={t} className="tagpill">
+								{t}
+							</span>
+						))}
 					</div>
 				</div>
 
@@ -680,8 +692,8 @@ import "deloop.dev/styles.css";
 				<Eyebrow center>Integrate</Eyebrow>
 				<h2 className="section-title">Add it once. Context flows everywhere.</h2>
 				<p className="section-sub">
-					Ship it as a React component, a script tag, or a programmatic init — then route each change
-					to your agent over MCP, a GitHub issue, a webhook, Slack, Jira, or Linear.
+					Ship it as a React component, a script tag, or a programmatic init — then route each
+					change to your agent over MCP, a GitHub issue, a webhook, Slack, Jira, or Linear.
 				</p>
 			</div>
 
@@ -787,8 +799,8 @@ function Pricing() {
 				<Eyebrow center>Pricing</Eyebrow>
 				<h2 className="section-title">Capture context. Free.</h2>
 				<p className="section-sub">
-					The inspector is free and open source. Add the hosted dashboard when your team wants shared
-					history and change requests in one place.
+					The inspector is free and open source. Add the hosted dashboard when your team wants
+					shared history and change requests in one place.
 				</p>
 			</div>
 			<PricingCards
@@ -1240,7 +1252,9 @@ function Footer() {
 					<a href="/terms" className="text-muted/50 text-xs hover:text-muted transition-colors">
 						Terms
 					</a>
-					<span className="text-muted/40 text-xs">&copy; {new Date().getFullYear()} deloop.dev</span>
+					<span className="text-muted/40 text-xs">
+						&copy; {new Date().getFullYear()} deloop.dev
+					</span>
 				</div>
 			</div>
 		</footer>
@@ -1412,7 +1426,16 @@ function BlocksGlyph() {
 }
 function XGlyph() {
 	return (
-		<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+		<svg
+			width="14"
+			height="14"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="3"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
 			<circle cx="12" cy="12" r="10" />
 			<line x1="15" y1="9" x2="9" y2="15" />
 			<line x1="9" y1="9" x2="15" y2="15" />
@@ -1421,7 +1444,16 @@ function XGlyph() {
 }
 function CheckGlyph() {
 	return (
-		<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+		<svg
+			width="14"
+			height="14"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="3"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
 			<path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
 			<polyline points="22 4 12 14.01 9 11.01" />
 		</svg>

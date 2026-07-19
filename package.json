@@ -50,6 +50,12 @@
 				"default": "./dist/local/local.js"
 			}
 		},
+		"./config": {
+			"import": {
+				"types": "./dist/config/config.d.ts",
+				"default": "./dist/config/config.js"
+			}
+		},
 		"./cdn": "./dist/cdn/cdn.global.js",
 		"./styles.css": "./dist/index.css",
 		"./package.json": "./package.json"
@@ -84,6 +90,7 @@
 		"drizzle-orm": "^0.45.1",
 		"hono": "^4.12.5",
 		"html-to-image": "^1.11.13",
+		"jiti": "^2.6.1",
 		"postgres": "^3.4.8",
 		"stripe": "^20.4.1"
 	},
