@@ -40,11 +40,21 @@ export default defineConfig([
 		dts: true,
 	},
 	{
+		name: "config",
+		entry: "src/config.ts",
+		outDir: "dist/config",
+		format: "esm",
+		dts: true,
+	},
+	{
 		name: "local-cli",
 		entry: "src/server/local-cli.ts",
 		outDir: "dist/local",
 		format: "esm",
 		packages: "bundle",
+		// jiti lazily require()s its own transform at runtime and cannot be
+		// bundled; keep it external so it resolves from node_modules.
+		external: ["jiti"],
 	},
 	{
 		name: "cdn",

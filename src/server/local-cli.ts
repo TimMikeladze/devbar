@@ -3,7 +3,10 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
 import { randomUUID } from "node:crypto";
+import type { DeloopConfig } from "../config";
 import { createLocalServer } from "./local";
+import { loadConfig } from "./config-loader";
+import type { ProjectConfig } from "./registry";
 
 const DELOOP_DIR = join(homedir(), ".deloop");
 const TOKEN_PATH = join(DELOOP_DIR, "token");
@@ -97,16 +100,7 @@ function parseArgs(argv: string[]): CliArgs {
 	return args;
 }
 
-function buildProjectConfig(args: CliArgs): {
-	slug: string;
-	dir: string;
-	model: string;
-	effort: string;
-	maxBudgetUsd?: number;
-	concurrency: number;
-	permissionMode: string;
-	autoDispatch: boolean;
-} {
+function buildProjectConfig(args: CliArgs): ProjectConfig {
 	const cwd = process.cwd();
 	return {
 		slug: args.name ?? basename(cwd),
@@ -117,6 +111,27 @@ function buildProjectConfig(args: CliArgs): {
 		concurrency: args.concurrency,
 		permissionMode: args.permissionMode,
 		autoDispatch: args.autoDispatch,
+	};
+}
+
+/**
+ * Merge a project-root deloop.config.ts over the flag-derived config.
+ * Config-file values take precedence over CLI flag defaults; `dir` is always
+ * the current directory (where the config lives).
+ */
+function applyConfig(base: ProjectConfig, file: DeloopConfig | undefined): ProjectConfig {
+	if (!file) return base;
+	const agent = file.agent ?? {};
+	return {
+		...base,
+		...(file.project ? { slug: file.project } : {}),
+		...(agent.model ? { model: agent.model } : {}),
+		...(agent.effort ? { effort: agent.effort } : {}),
+		...(agent.concurrency !== undefined ? { concurrency: agent.concurrency } : {}),
+		...(agent.permissionMode ? { permissionMode: agent.permissionMode } : {}),
+		...(agent.autoDispatch !== undefined ? { autoDispatch: agent.autoDispatch } : {}),
+		...(agent.maxBudgetUsd !== undefined ? { maxBudgetUsd: agent.maxBudgetUsd } : {}),
+		...(file.routes ? { routes: file.routes } : {}),
 	};
 }
 
@@ -154,7 +169,8 @@ async function registerWithExistingServer(
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv);
 	const token = args.token ?? process.env.DELOOP_TOKEN ?? (await loadOrCreateToken());
-	const projectConfig = buildProjectConfig(args);
+	const fileConfig = await loadConfig(process.cwd());
+	const projectConfig = applyConfig(buildProjectConfig(args), fileConfig);
 
 	if (await isServerRunning(args.host, args.port)) {
 		await registerWithExistingServer(args.host, args.port, token, projectConfig);
@@ -184,6 +200,10 @@ async function main(): Promise<void> {
 	console.log(
 		`  auto-dispatch=${projectConfig.autoDispatch} permission-mode=${projectConfig.permissionMode}`,
 	);
+	if (projectConfig.routes?.length) {
+		const names = projectConfig.routes.map((r) => (r === "agent" ? "agent" : "webhook"));
+		console.log(`  routes=${names.join(", ")}`);
+	}
 	console.log(`token: ${token}`);
 }
 

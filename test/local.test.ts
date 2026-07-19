@@ -129,3 +129,109 @@ describe("local server API", () => {
 		expect(res.status).toBe(401);
 	});
 });
+
+describe("local server destination routing", () => {
+	let stop: () => Promise<void>;
+	let baseUrl: string;
+	let reportsDir: string;
+	let resultsDir: string;
+	let projectsFile: string;
+	let hookStop: () => Promise<void>;
+	let hookUrl: string;
+	let hookHits: string[];
+	const token = "test-token";
+
+	beforeAll(async () => {
+		hookHits = [];
+		const { createServer } = await import("node:http");
+		const hookServer = createServer((req, res) => {
+			const chunks: Buffer[] = [];
+			req.on("data", (c: Buffer) => chunks.push(c));
+			req.on("end", () => {
+				hookHits.push(Buffer.concat(chunks).toString("utf-8"));
+				res.writeHead(200);
+				res.end("{}");
+			});
+		});
+		await new Promise<void>((r) => hookServer.listen(0, "127.0.0.1", () => r()));
+		const hookAddr = hookServer.address();
+		const hookPort = hookAddr && typeof hookAddr === "object" ? hookAddr.port : 0;
+		hookUrl = `http://127.0.0.1:${hookPort}/hook`;
+		hookStop = () => new Promise<void>((r) => hookServer.close(() => r()));
+
+		reportsDir = tmpDir();
+		resultsDir = tmpDir();
+		const tmpBase = tmpDir();
+		projectsFile = join(tmpBase, "projects.json");
+		await mkdir(reportsDir, { recursive: true });
+		await mkdir(resultsDir, { recursive: true });
+		await mkdir(tmpBase, { recursive: true });
+
+		const server = await createLocalServer({
+			port: 0,
+			host: "127.0.0.1",
+			token,
+			dir: reportsDir,
+			resultsDir,
+			projectsFile,
+			dispatchCommand: "echo",
+		});
+		const addr = await server.start();
+		baseUrl = `http://${addr.host}:${addr.port}`;
+		stop = server.stop;
+	});
+
+	afterAll(async () => {
+		await stop();
+		await hookStop();
+		await rm(reportsDir, { recursive: true, force: true });
+		await rm(resultsDir, { recursive: true, force: true });
+	});
+
+	const headers = () => ({
+		"Content-Type": "application/json",
+		Authorization: `Bearer ${token}`,
+	});
+
+	test("a report fans out to webhook + agent routes", async () => {
+		await fetch(`${baseUrl}/api/projects`, {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({
+				slug: "routed",
+				dir: "/tmp/routed",
+				model: "sonnet",
+				effort: "medium",
+				concurrency: 1,
+				permissionMode: "plan",
+				autoDispatch: false,
+				routes: [{ webhook: hookUrl }, "agent"],
+			}),
+		});
+
+		const res = await fetch(`${baseUrl}/api/reports`, {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({
+				project: "routed",
+				payload: { prompt: "fix the button", url: "http://x" },
+			}),
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		// "agent" route enqueued a task
+		expect(data.taskId).toBeTruthy();
+		// webhook route delivered the saved payload (with project merged in)
+		expect(hookHits.length).toBe(1);
+		const body = JSON.parse(hookHits[0]!);
+		expect(body.prompt).toBe("fix the button");
+		expect(body.project).toBe("routed");
+	});
+
+	test("routes persist on the registered project config", async () => {
+		const res = await fetch(`${baseUrl}/api/projects`, { headers: headers() });
+		const data = await res.json();
+		const proj = data.projects.find((p: { slug: string }) => p.slug === "routed");
+		expect(proj.routes).toEqual([{ webhook: hookUrl }, "agent"]);
+	});
+});

@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { createRegistry, type Registry, type ProjectConfig } from "./registry";
 import { createDispatcher, type Dispatcher } from "./dispatcher";
+import { fanOut } from "./destinations";
 
 const DELOOP_DIR = join(homedir(), ".deloop");
 const REPORTS_DIR = join(DELOOP_DIR, "reports");
@@ -124,6 +125,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 					permissionMode: body.permissionMode ?? "plan",
 					autoDispatch: body.autoDispatch ?? false,
 					...(body.maxBudgetUsd !== undefined ? { maxBudgetUsd: body.maxBudgetUsd } : {}),
+					...(body.routes ? { routes: body.routes } : {}),
 				};
 
 				await registry.register(config);
@@ -237,6 +239,14 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 									.join(", ") || "(none)"
 							}`,
 						);
+					} else if (projectConfig.routes && projectConfig.routes.length > 0) {
+						// Explicit routes replace the implicit auto-dispatch behavior.
+						const result = await fanOut(
+							projectConfig.routes,
+							{ filePath, project, payload: toSave },
+							{ enqueue: (fp, slug) => dispatcher.enqueue(fp, slug) },
+						);
+						taskId = result.taskId;
 					} else if (!projectConfig.autoDispatch) {
 						console.log(`[deloop] report for "${project}" saved (auto-dispatch disabled)`);
 					} else {
