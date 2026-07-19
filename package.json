@@ -15,6 +15,7 @@
 		"deloop.dev": "./dist/local/local-cli.js"
 	},
 	"workspaces": [
+		"app",
 		"test/**"
 	],
 	"files": [

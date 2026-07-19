@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { auth } from "../lib/auth";
 import { PasswordInput } from "../components/PasswordInput";
+import { LogoMark } from "../components/Logo";
 
 export function LoginPage() {
 	const [searchParams] = useSearchParams();
@@ -105,7 +106,11 @@ export function LoginPage() {
 			<div className="w-full max-w-[380px] fade-up">
 				{/* Logo */}
 				<div className="text-center mb-10">
-					<a href="/" className="inline-block text-[18px] font-bold tracking-tight text-fg">
+					<a
+						href="/"
+						className="inline-flex items-center gap-2 text-[18px] font-bold tracking-tight text-fg"
+					>
+						<LogoMark />
 						deloop<span className="text-muted">.dev</span>
 					</a>
 				</div>

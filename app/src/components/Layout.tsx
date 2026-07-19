@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { auth } from "../lib/auth";
 import { setActiveOrgId } from "../lib/api";
 import { useTheme } from "../hooks/useTheme";
+import { LogoMark } from "./Logo";
 
 export function DashboardLayout() {
 	const session = auth.useSession();
@@ -103,7 +104,11 @@ export function DashboardLayout() {
 			<header className="shrink-0 border-b border-border bg-bg-card relative z-50">
 				<div className="max-w-5xl mx-auto px-5 h-[52px] flex items-center">
 					{/* Brand */}
-					<Link to="/" className="text-[14px] font-semibold tracking-tight text-fg shrink-0">
+					<Link
+						to="/"
+						className="flex items-center gap-2 text-[14px] font-semibold tracking-tight text-fg shrink-0"
+					>
+						<LogoMark />
 						deloop<span className="text-muted">.dev</span>
 					</Link>
 					<span className="text-border text-[18px] font-light mx-3 select-none">/</span>
