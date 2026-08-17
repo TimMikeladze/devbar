@@ -639,7 +639,7 @@ import "devbar/styles.css";
 			label: "Script tag",
 			desc: "No build step. Drop one tag on any HTML page and start capturing.",
 			lang: "html",
-			code: `<script src="https://unpkg.com/devbar/cdn"></script>
+			code: `<script src="https://devbar.sh/cdn.global.js"></script>
 <script>window.Devbar.init();</script>`,
 		},
 		{

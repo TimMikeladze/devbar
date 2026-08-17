@@ -15,6 +15,8 @@ function distPaths(value: unknown, out: string[] = []): string[] {
 	return out;
 }
 
+const targets = [...distPaths(pkg.exports), ...distPaths(pkg.bin)];
+
 describe("package metadata", () => {
 	test("publishable fields are filled in", () => {
 		expect(pkg.name).toBe("devbar");
@@ -25,22 +27,38 @@ describe("package metadata", () => {
 		expect(pkg.repository.url).toContain("github.com/TimMikeladze/devbar");
 	});
 
-	test("every published path lives under a directory in `files`", () => {
-		const targets = [...distPaths(pkg.exports), ...distPaths(pkg.bin)];
+	test("every published path is covered by `files`", () => {
 		expect(targets.length).toBeGreaterThan(0);
 		for (const target of targets) {
-			const top = target.slice("./".length).split("/")[0] as string;
-			expect(pkg.files).toContain(top);
+			const relative = target.slice("./".length);
+			const covered = pkg.files.some(
+				(entry) => relative === entry || relative.startsWith(`${entry}/`),
+			);
+			expect(covered).toBe(true);
 		}
+	});
+
+	// The SaaS server (Better Auth, Stripe, reports, MCP) is built for this
+	// repo's own Vercel/Fly deploys but is deliberately not published: the npm
+	// package is the embeddable toolbar plus its local CLI.
+	test("the SaaS server is not part of the package", () => {
+		expect(targets.filter((t) => t.startsWith("./dist/server"))).toEqual([]);
+		expect(pkg.files.filter((f) => f.startsWith("dist/server"))).toEqual([]);
+		expect(Object.keys(pkg.exports)).not.toContain("./server");
+	});
+
+	// The toolbar and CLI only need these two at runtime; everything the SaaS
+	// server pulls in (hono, drizzle, better-auth, stripe, …) stays a devDep so
+	// consumers do not install it.
+	test("runtime dependencies stay minimal", () => {
+		expect(Object.keys(pkg.dependencies).sort()).toEqual(["html-to-image", "jiti"]);
 	});
 
 	// Guards a build regression: two bunup configs sharing an outDir made the
 	// second one wipe the first's output, so `devbar/local` resolved to nothing.
 	test("built output satisfies the export map", () => {
 		if (!existsSync(join(ROOT, "dist"))) return; // not built yet — CI builds first
-		const missing = [...distPaths(pkg.exports), ...distPaths(pkg.bin)].filter(
-			(target) => !existsSync(join(ROOT, target)),
-		);
+		const missing = targets.filter((target) => !existsSync(join(ROOT, target)));
 		expect(missing).toEqual([]);
 	});
 });

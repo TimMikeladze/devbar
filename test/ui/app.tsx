@@ -11,6 +11,7 @@ import { LightThemePage } from "./pages/light-theme";
 import { DarkThemePage } from "./pages/dark-theme";
 import { AutoThemePage } from "./pages/auto-theme";
 import { ClipboardOnlyPage } from "./pages/clipboard-only";
+import { HostileHostCssPage } from "./pages/hostile-host-css";
 
 const routes: Record<string, { label: string; group: string; component: () => React.ReactNode }> = {
 	"/": { label: "Default (no server, no auth)", group: "Auth Variations", component: DefaultPage },
@@ -43,6 +44,11 @@ const routes: Record<string, { label: string; group: string; component: () => Re
 		label: "Custom Tools (select + marker)",
 		group: "Configuration",
 		component: CustomToolsPage,
+	},
+	"/hostile-host-css": {
+		label: "Hostile Host CSS",
+		group: "Configuration",
+		component: HostileHostCssPage,
 	},
 	"/light-theme": { label: "Light Theme", group: "Themes", component: LightThemePage },
 	"/dark-theme": { label: "Dark Theme", group: "Themes", component: DarkThemePage },

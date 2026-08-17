@@ -8,6 +8,9 @@ import { createLocalServer } from "./local";
 import { loadConfig } from "./config-loader";
 import type { ProjectConfig } from "./registry";
 
+/** Replaced with the package version at build time (see bunup.config.ts). */
+declare const DEVBAR_VERSION: string;
+
 const DEVBAR_DIR = join(homedir(), ".devbar");
 const TOKEN_PATH = join(DEVBAR_DIR, "token");
 
@@ -166,7 +169,40 @@ async function registerWithExistingServer(
 	}
 }
 
+const HELP = `devbar — local dispatch server
+
+Usage
+  devbar [options]
+
+Starts (or registers this project with) the local dispatch server, so reports
+captured by the toolbar are routed to the destinations in devbar.config.ts.
+
+Options
+  -p, --port <n>            Port to listen on (default: 3100)
+      --host <host>         Host to bind (default: ::)
+  -t, --token <token>       Auth token (default: DEVBAR_TOKEN, or ~/.devbar/token)
+      --name <slug>         Project slug (default: current directory name)
+      --model <model>       Agent model (default: sonnet)
+      --effort <level>      Agent reasoning effort (default: medium)
+      --concurrency <n>     Concurrent agent tasks (default: 1)
+      --max-budget <usd>    Spend ceiling per project
+      --permission-mode <m> Agent permission mode (default: plan)
+      --no-auto             Do not dispatch reports automatically
+  -h, --help                Show this help
+  -v, --version             Show the version
+`;
+
 async function main(): Promise<void> {
+	const flags = process.argv.slice(2);
+	if (flags.includes("--help") || flags.includes("-h")) {
+		console.log(HELP);
+		return;
+	}
+	if (flags.includes("--version") || flags.includes("-v")) {
+		console.log(DEVBAR_VERSION);
+		return;
+	}
+
 	const args = parseArgs(process.argv);
 	const token = args.token ?? process.env.DEVBAR_TOKEN ?? (await loadOrCreateToken());
 	const fileConfig = await loadConfig(process.cwd());

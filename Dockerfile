@@ -8,10 +8,12 @@ RUN bun install --frozen-lockfile
 COPY src/ src/
 RUN bun run build
 
-# Production dependencies only (root)
+# Runtime dependencies for the WS server. Not `--production`: the SaaS server's
+# packages (hono, drizzle-orm, @drizzle-team/brocli) are devDependencies, since
+# the published npm package ships only the toolbar and its CLI.
 FROM base AS deps
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile
 
 # Run server (WebSocket-only — SPA + API served by Vercel)
 FROM base AS production

@@ -53,8 +53,15 @@
 			<p>Try using the marker tool to pin a note here.</p>
 		</div>
 
-		<!-- Single script tag loads Devbar -->
-		<script src="https://devbar.sh/cdn.global.js"></script>
+		<!--
+			Single script tag loads Devbar. This uses the copy that ships with the
+			extension (written by `bun run build:extension`) so the page works
+			offline over file://. On a real site, point at a CDN instead:
+
+			<script src="https://devbar.sh/cdn.global.js"></script>
+			<script src="https://unpkg.com/devbar/dist/cdn/cdn.global.js"></script>
+		-->
+		<script src="./devbar.cdn.js"></script>
 		<script>
 			Devbar.init({ theme: "dark" });
 		</script>

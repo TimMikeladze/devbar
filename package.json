@@ -45,8 +45,19 @@
 		"test/**"
 	],
 	"files": [
-		"dist",
-		"extension"
+		"dist/index.js",
+		"dist/index.css",
+		"dist/index.d.ts",
+		"dist/shared",
+		"dist/cdn",
+		"dist/local",
+		"dist/config",
+		"dist/bin",
+		"extension/manifest.json",
+		"extension/background.js",
+		"extension/devbar.cdn.js",
+		"extension/example.html",
+		"extension/icons"
 	],
 	"type": "module",
 	"module": "./dist/index.js",
@@ -56,18 +67,6 @@
 			"import": {
 				"types": "./dist/index.d.ts",
 				"default": "./dist/index.js"
-			}
-		},
-		"./server": {
-			"import": {
-				"types": "./dist/server/index.d.ts",
-				"default": "./dist/server/index.js"
-			}
-		},
-		"./server/vercel": {
-			"import": {
-				"types": "./dist/server/vercel.d.ts",
-				"default": "./dist/server/vercel.js"
 			}
 		},
 		"./local": {
@@ -90,7 +89,8 @@
 		"access": "public"
 	},
 	"scripts": {
-		"build": "bunup",
+		"build": "bunup && bun run build:extension",
+		"build:extension": "bun run scripts/build-extension.ts",
 		"dev": "bun run dev:lib & bun run dev:ui & bun run dev:app & bun run dev:server & wait",
 		"dev:lib": "bunup --watch",
 		"dev:ui": "bun run --cwd test/ui dev",
@@ -112,29 +112,29 @@
 		"db:sqlite:migrate": "drizzle-kit migrate --config=drizzle.config.sqlite.ts"
 	},
 	"dependencies": {
+		"html-to-image": "^1.11.13",
+		"jiti": "^2.6.1"
+	},
+	"devDependencies": {
 		"@drizzle-team/brocli": "^0.11.0",
 		"@libsql/client": "^0.17.0",
 		"@modelcontextprotocol/sdk": "^1.27.1",
-		"better-auth": "^1.5.4",
-		"drizzle-orm": "^0.45.1",
-		"hono": "^4.12.5",
-		"html-to-image": "^1.11.13",
-		"jiti": "^2.6.1",
-		"postgres": "^3.4.8",
-		"stripe": "^20.4.1"
-	},
-	"devDependencies": {
 		"@playwright/test": "^1.58.2",
 		"@types/bun": "^1.3.10",
 		"@types/react": "^19.2.14",
+		"better-auth": "^1.5.4",
 		"bumpp": "^10.4.1",
 		"bunup": "^0.16.31",
 		"drizzle-kit": "^0.31.9",
+		"drizzle-orm": "^0.45.1",
+		"hono": "^4.12.5",
 		"oxfmt": "^0.36.0",
 		"oxlint": "^1.51.0",
+		"postgres": "^3.4.8",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
 		"simple-git-hooks": "^2.13.1",
+		"stripe": "^20.4.1",
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {

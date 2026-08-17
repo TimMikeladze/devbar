@@ -23,3 +23,11 @@ yarn-error.log*
 *.db*
 .vercel
 .env*
+
+# Generated: copies of dist/cdn/cdn.global.js (see scripts/build-extension.ts)
+extension/devbar.cdn.js
+app/public/cdn.global.js
+
+# Playwright
+test-results/
+playwright-report/

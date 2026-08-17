@@ -4,6 +4,7 @@
 	"version": "0.1.0",
 	"description": "Annotate any website and capture selectors, styles, and screenshots as an agent-ready prompt.",
 	"homepage_url": "https://devbar.sh",
+	"minimum_chrome_version": "111",
 	"permissions": ["activeTab", "scripting"],
 	"action": {
 		"default_title": "Toggle Devbar"
@@ -15,5 +16,11 @@
 	},
 	"background": {
 		"service_worker": "background.js"
-	}
+	},
+	"web_accessible_resources": [
+		{
+			"resources": ["devbar.cdn.js"],
+			"matches": ["<all_urls>"]
+		}
+	]
 }

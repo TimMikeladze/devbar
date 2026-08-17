@@ -1,5 +1,6 @@
 import { defineConfig } from "bunup";
 import { injectStyles } from "bunup/plugins";
+import pkg from "./package.json";
 
 export default defineConfig([
 	{
@@ -59,6 +60,9 @@ export default defineConfig([
 		outDir: "dist/bin",
 		format: "esm",
 		packages: "bundle",
+		define: {
+			DEVBAR_VERSION: JSON.stringify(pkg.version),
+		},
 		// jiti lazily require()s its own transform at runtime and cannot be
 		// bundled; keep it external so it resolves from node_modules.
 		external: ["jiti"],
