@@ -1,0 +1,3233 @@
+.devbar-toolbar {
+	position: fixed;
+	z-index: 2147483647;
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		BlinkMacSystemFont,
+		"Segoe UI",
+		system-ui,
+		sans-serif;
+	font-size: 13px;
+	line-height: 1.4;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	--devbar-bg: #0c0c0c;
+	--devbar-bg-elevated: #161616;
+	--devbar-bg-surface: rgba(255, 255, 255, 0.03);
+	--devbar-border: rgba(255, 255, 255, 0.07);
+	--devbar-border-hover: rgba(255, 255, 255, 0.13);
+	--devbar-border-active: rgba(255, 255, 255, 0.2);
+	--devbar-text: #f0f0f0;
+	--devbar-text-secondary: #8a8a8a;
+	--devbar-text-muted: #4a4a4a;
+	/* Bar glyphs sit on the darkest surface and are 1.5px strokes — they need
+	   more contrast than body-secondary text to stay legible at 15px. */
+	--devbar-icon: #a3a3a3;
+	--devbar-accent: #f0f0f0;
+	--devbar-accent-glow: rgba(255, 255, 255, 0.05);
+	--devbar-accent-hover: rgba(255, 255, 255, 0.08);
+	--devbar-blue: #6e8efb;
+	--devbar-blue-muted: rgba(110, 142, 251, 0.12);
+	--devbar-blue-hover: #8da4fc;
+	--devbar-red: #f25c5c;
+	--devbar-green: #4ade80;
+	--devbar-radius: 12px;
+	--devbar-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+	--devbar-shadow-md:
+		0 0 0 1px rgba(0, 0, 0, 0.4), 0 16px 48px -8px rgba(0, 0, 0, 0.5),
+		0 0 1px rgba(255, 255, 255, 0.05) inset;
+	--devbar-shadow-lg:
+		0 0 0 1px rgba(0, 0, 0, 0.5), 0 24px 72px -12px rgba(0, 0, 0, 0.6),
+		0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+.devbar-theme-light {
+	--devbar-bg: #fafafa;
+	--devbar-bg-elevated: #f0f0f0;
+	--devbar-bg-surface: rgba(0, 0, 0, 0.02);
+	--devbar-border: rgba(0, 0, 0, 0.08);
+	--devbar-border-hover: rgba(0, 0, 0, 0.14);
+	--devbar-border-active: rgba(0, 0, 0, 0.22);
+	--devbar-text: #1a1a1a;
+	--devbar-text-secondary: #666;
+	--devbar-text-muted: #aaa;
+	--devbar-icon: #52525b;
+	--devbar-accent: #1a1a1a;
+	--devbar-accent-glow: rgba(0, 0, 0, 0.04);
+	--devbar-accent-hover: rgba(0, 0, 0, 0.07);
+	--devbar-blue: #5a7cf7;
+	--devbar-blue-muted: rgba(90, 124, 247, 0.1);
+	--devbar-blue-hover: #4a6ce7;
+	--devbar-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+	--devbar-shadow-md:
+		0 0 0 1px rgba(0, 0, 0, 0.06), 0 16px 48px -8px rgba(0, 0, 0, 0.12),
+		0 0 1px rgba(255, 255, 255, 0.8) inset;
+	--devbar-shadow-lg:
+		0 0 0 1px rgba(0, 0, 0, 0.08), 0 24px 72px -12px rgba(0, 0, 0, 0.15),
+		0 0 1px rgba(255, 255, 255, 0.9) inset;
+}
+
+@media (prefers-color-scheme: light) {
+	.devbar-theme-auto {
+		--devbar-bg: #fafafa;
+		--devbar-bg-elevated: #f0f0f0;
+		--devbar-bg-surface: rgba(0, 0, 0, 0.02);
+		--devbar-border: rgba(0, 0, 0, 0.08);
+		--devbar-border-hover: rgba(0, 0, 0, 0.14);
+		--devbar-border-active: rgba(0, 0, 0, 0.22);
+		--devbar-text: #1a1a1a;
+		--devbar-text-secondary: #666;
+		--devbar-text-muted: #aaa;
+		--devbar-icon: #52525b;
+		--devbar-accent: #1a1a1a;
+		--devbar-accent-glow: rgba(0, 0, 0, 0.04);
+		--devbar-accent-hover: rgba(0, 0, 0, 0.07);
+		--devbar-blue: #5a7cf7;
+		--devbar-blue-muted: rgba(90, 124, 247, 0.1);
+		--devbar-blue-hover: #4a6ce7;
+		--devbar-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+		--devbar-shadow-md:
+			0 0 0 1px rgba(0, 0, 0, 0.06), 0 16px 48px -8px rgba(0, 0, 0, 0.12),
+			0 0 1px rgba(255, 255, 255, 0.8) inset;
+		--devbar-shadow-lg:
+			0 0 0 1px rgba(0, 0, 0, 0.08), 0 24px 72px -12px rgba(0, 0, 0, 0.15),
+			0 0 1px rgba(255, 255, 255, 0.9) inset;
+	}
+}
+
+/* ─── Bottom bar ─── */
+.devbar-bar {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 16px;
+	padding: 4px 5px;
+	box-shadow: var(--devbar-shadow-md);
+	transition: box-shadow 0.3s ease;
+	z-index: 2147483647;
+}
+
+.devbar-bar:hover {
+	box-shadow: var(--devbar-shadow-lg);
+}
+
+.devbar-bar-vertical {
+	bottom: auto;
+	left: 24px;
+	top: 50%;
+	transform: translateY(-50%);
+	flex-direction: column;
+	padding: 5px 4px;
+}
+
+.devbar-bar-vertical .devbar-bar-divider {
+	width: 16px;
+	height: 1px;
+	margin: 2px 0;
+}
+
+.devbar-bar-vertical .devbar-bar-drag {
+	width: 32px;
+	height: 26px;
+	cursor: grab;
+}
+
+.devbar-bar-vertical .devbar-tooltip {
+	bottom: auto;
+	left: calc(100% + 10px);
+	top: 50%;
+	transform: translateY(-50%) translateX(3px);
+}
+
+.devbar-bar-vertical .devbar-bar-btn:hover .devbar-tooltip {
+	transform: translateY(-50%) translateX(0);
+}
+
+.devbar-bar-vertical.devbar-bar-panel-open .devbar-bar-btn:hover .devbar-tooltip {
+	opacity: 0;
+}
+
+.devbar-bar-drag {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 32px;
+	cursor: grab;
+	color: var(--devbar-text-secondary);
+	transition:
+		color 0.2s,
+		background 0.2s;
+	user-select: none;
+	border-radius: 8px;
+}
+
+.devbar-bar-drag:hover {
+	color: var(--devbar-text-secondary);
+	background: var(--devbar-accent-glow);
+}
+
+.devbar-bar-drag:active {
+	cursor: grabbing;
+}
+
+.devbar-bar-drag svg {
+	width: 13px;
+	height: 13px;
+}
+
+.devbar-bar-divider {
+	width: 1px;
+	height: 16px;
+	background: var(--devbar-border);
+	margin: 0 2px;
+	flex-shrink: 0;
+}
+
+.devbar-bar-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 9px;
+	border: none;
+	background: transparent;
+	color: var(--devbar-icon);
+	cursor: pointer;
+	transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	outline: none;
+}
+
+/* The commit action. Ghosted like every other glyph, "send this somewhere"
+   — the entire point of the toolbar — was indistinguishable from "minimize". */
+.devbar-bar-btn-primary {
+	width: auto;
+	gap: 6px;
+	padding: 0 10px;
+	background: var(--devbar-text);
+	color: var(--devbar-bg);
+	font-family: inherit;
+	font-size: 11.5px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+.devbar-bar-btn-primary:hover {
+	background: var(--devbar-text);
+	color: var(--devbar-bg);
+	opacity: 0.88;
+}
+
+.devbar-bar-btn-primary .devbar-bar-btn-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 15px;
+	height: 15px;
+	padding: 0 4px;
+	border-radius: 5px;
+	background: rgba(128, 128, 128, 0.28);
+	font-size: 10px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.devbar-bar-btn:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+}
+
+.devbar-bar-btn:active {
+	transform: scale(0.92);
+	transition-duration: 0.08s;
+}
+
+.devbar-bar-btn-active {
+	background: var(--devbar-accent-glow);
+	color: var(--devbar-accent);
+	box-shadow: 0 0 0 1px var(--devbar-border-hover) inset;
+}
+
+.devbar-bar-btn svg {
+	width: 15px;
+	height: 15px;
+}
+
+.devbar-badge {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	min-width: 14px;
+	height: 14px;
+	padding: 0 3.5px;
+	border-radius: 7px;
+	background: var(--devbar-blue);
+	color: #fff;
+	font-size: 8px;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+	letter-spacing: -0.03em;
+	box-shadow: 0 0 6px var(--devbar-blue-muted);
+}
+
+/* ─── Tooltip ─── */
+.devbar-tooltip {
+	position: absolute;
+	bottom: calc(100% + 10px);
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 5px 10px;
+	background: var(--devbar-text);
+	color: var(--devbar-bg);
+	font-size: 11px;
+	font-weight: 500;
+	border-radius: 7px;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	transition:
+		opacity 0.12s ease,
+		transform 0.12s ease;
+	transform: translateX(-50%) translateY(3px);
+	box-shadow: var(--devbar-shadow-sm);
+	letter-spacing: -0.01em;
+}
+
+.devbar-tooltip-key {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	margin-left: 6px;
+	border-radius: 4px;
+	background: rgba(128, 128, 128, 0.2);
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
+}
+
+.devbar-bar-btn:hover .devbar-tooltip {
+	opacity: 1;
+	transform: translateX(-50%) translateY(0);
+}
+
+.devbar-bar-panel-open .devbar-bar-btn:hover .devbar-tooltip {
+	opacity: 0;
+}
+
+/* ─── Panel ─── */
+.devbar-panel {
+	position: fixed;
+	bottom: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 360px;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 14px;
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	box-shadow: var(--devbar-shadow-lg);
+	overflow: hidden;
+	animation: devbar-panel-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+	z-index: 10;
+}
+
+.devbar-panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 13px 14px 11px;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-panel-title {
+	font-size: 12.5px;
+	font-weight: 600;
+	color: var(--devbar-text);
+	letter-spacing: -0.02em;
+}
+
+.devbar-panel-close {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 22px;
+	padding: 0 7px;
+	border-radius: 6px;
+	border: 1px solid var(--devbar-border);
+	background: transparent;
+	color: var(--devbar-text-muted);
+	cursor: pointer;
+	font-size: 10px;
+	font-weight: 500;
+	font-family: inherit;
+	transition: all 0.15s;
+	letter-spacing: 0.01em;
+}
+
+.devbar-panel-close:hover {
+	background: var(--devbar-accent-hover);
+	border-color: var(--devbar-border-hover);
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-panel-body {
+	padding: 4px;
+	max-height: 280px;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--devbar-border) transparent;
+}
+
+.devbar-panel-body::-webkit-scrollbar {
+	width: 4px;
+}
+
+.devbar-panel-body::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.devbar-panel-body::-webkit-scrollbar-thumb {
+	background: var(--devbar-border);
+	border-radius: 2px;
+}
+
+.devbar-empty {
+	padding: 20px 14px 14px;
+	color: var(--devbar-text-muted);
+	font-size: 12px;
+	line-height: 1.6;
+	letter-spacing: -0.01em;
+}
+
+.devbar-empty-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--devbar-text);
+	text-align: center;
+}
+
+.devbar-empty-desc {
+	margin: 3px auto 14px;
+	max-width: 30ch;
+	font-size: 11.5px;
+	line-height: 1.5;
+	text-align: center;
+	color: var(--devbar-text-muted);
+}
+
+/* The empty state doubles as the launcher — no reason to make someone read a
+   hint, dismiss the panel, and go hunting for the matching glyph. */
+.devbar-empty-tools {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.devbar-empty-tool {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	width: 100%;
+	height: 30px;
+	padding: 0 9px;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--devbar-text);
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: 500;
+	text-align: left;
+	cursor: pointer;
+	transition: background 0.12s;
+}
+
+.devbar-empty-tool:hover {
+	background: var(--devbar-accent-hover);
+}
+
+.devbar-empty-tool svg {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	color: var(--devbar-icon);
+}
+
+.devbar-empty-tool kbd {
+	margin-left: auto;
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: var(--devbar-accent-glow);
+	border: 1px solid var(--devbar-border);
+	font-size: 10px;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	color: var(--devbar-text-muted);
+}
+
+/* ─── Annotation items ─── */
+.devbar-annotation-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 7px 8px;
+	border-radius: 9px;
+	transition: background 0.12s;
+}
+
+.devbar-annotation-item:hover {
+	background: var(--devbar-accent-glow);
+}
+
+.devbar-annotation-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 7px;
+	background: var(--devbar-bg-surface);
+	border: 1px solid var(--devbar-border);
+	flex-shrink: 0;
+}
+
+.devbar-annotation-icon svg {
+	width: 13px;
+	height: 13px;
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-annotation-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.devbar-annotation-label {
+	font-size: 12.5px;
+	font-weight: 500;
+	color: var(--devbar-text);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	letter-spacing: -0.01em;
+	font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+}
+
+.devbar-annotation-time {
+	font-size: 10px;
+	font-weight: 400;
+	color: var(--devbar-text-muted);
+	margin-left: 6px;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	font-variant-numeric: tabular-nums;
+}
+
+.devbar-annotation-remove {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 5px;
+	border: none;
+	background: transparent;
+	color: var(--devbar-text-muted);
+	cursor: pointer;
+	font-size: 13px;
+	flex-shrink: 0;
+	transition: all 0.12s;
+	opacity: 0;
+}
+
+.devbar-annotation-item:hover .devbar-annotation-remove,
+.devbar-annotation-item:hover .devbar-annotation-locate {
+	opacity: 1;
+}
+
+/* Scrolls the annotated element back into view — the list previously had no way
+   to reach an annotation that had scrolled off screen. */
+.devbar-annotation-locate {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 5px;
+	border: none;
+	background: transparent;
+	color: var(--devbar-text-muted);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: all 0.12s;
+	opacity: 0;
+}
+
+.devbar-annotation-locate svg {
+	width: 13px;
+	height: 13px;
+}
+
+.devbar-annotation-locate:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-blue);
+}
+
+.devbar-annotation-remove:hover {
+	background: rgba(242, 92, 92, 0.1);
+	color: var(--devbar-red);
+}
+
+/* ─── Panel footer ─── */
+.devbar-panel-footer {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px;
+	border-top: 1px solid var(--devbar-border);
+}
+
+.devbar-panel-footer-spacer {
+	flex: 1 1 auto;
+}
+
+/* Primary action + caret read as one control */
+.devbar-panel-footer-split {
+	position: relative;
+	display: inline-flex;
+	align-items: stretch;
+	gap: 1px;
+	flex-shrink: 0;
+}
+
+.devbar-panel-footer-split .devbar-submit-btn:first-child {
+	border-top-right-radius: 2px;
+	border-bottom-right-radius: 2px;
+}
+
+.devbar-submit-btn-caret {
+	padding: 0 5px;
+	border-top-left-radius: 2px;
+	border-bottom-left-radius: 2px;
+}
+
+.devbar-submit-btn-caret svg {
+	width: 12px;
+	height: 12px;
+}
+
+/* Anchored to the viewport (see toolbar.tsx) so the panel's overflow can't clip it.
+   Doubled class beats the base .devbar-export-menu positioning. */
+.devbar-export-menu.devbar-panel-footer-menu {
+	position: fixed;
+	left: auto;
+	top: auto;
+	margin: 0;
+	z-index: 2147483647;
+}
+
+.devbar-submit-btn-key {
+	font-size: 10px;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	opacity: 0.55;
+	margin-left: 2px;
+}
+
+.devbar-submit-btn {
+	flex: 0 1 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	height: 26px;
+	padding: 0 10px;
+	font-size: 11px;
+	font-weight: 550;
+	font-family: inherit;
+	border: none;
+	background: var(--devbar-text);
+	color: var(--devbar-bg);
+	border-radius: 7px;
+	cursor: pointer;
+	transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+	letter-spacing: -0.01em;
+	white-space: nowrap;
+}
+
+.devbar-submit-btn svg {
+	width: 11px;
+	height: 11px;
+	flex-shrink: 0;
+}
+
+.devbar-submit-btn:hover {
+	opacity: 0.85;
+	transform: translateY(-0.5px);
+}
+
+.devbar-submit-btn:active {
+	transform: scale(0.97) translateY(0);
+	opacity: 0.9;
+}
+
+.devbar-submit-btn-secondary {
+	background: transparent;
+	color: var(--devbar-text);
+	border: 1px solid var(--devbar-border);
+}
+
+.devbar-submit-btn-secondary:hover {
+	background: var(--devbar-accent-glow);
+	border-color: var(--devbar-border-hover);
+	opacity: 1;
+	transform: translateY(-0.5px);
+}
+
+.devbar-clear-btn {
+	padding: 4px 8px;
+	font-size: 11px;
+	font-weight: 500;
+	font-family: inherit;
+	border: 1px solid var(--devbar-border);
+	background: transparent;
+	color: var(--devbar-text-secondary);
+	border-radius: 7px;
+	cursor: pointer;
+	transition: all 0.15s;
+	letter-spacing: -0.01em;
+}
+
+.devbar-clear-btn:hover {
+	background: rgba(242, 92, 92, 0.06);
+	border-color: rgba(242, 92, 92, 0.2);
+	color: var(--devbar-red);
+}
+
+/* ─── Toast ─── */
+.devbar-toast {
+	position: fixed;
+	bottom: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: var(--devbar-text);
+	color: var(--devbar-bg);
+	padding: 7px 8px 7px 14px;
+	border-radius: 9px;
+	font-size: 12.5px;
+	font-weight: 500;
+	z-index: 2147483647;
+	animation: devbar-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	box-shadow: var(--devbar-shadow-md);
+	letter-spacing: -0.01em;
+}
+
+/* ─── Instruction banner (shared by overlays) ─── */
+.devbar-instruction {
+	position: fixed;
+	bottom: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	color: var(--devbar-text-secondary);
+	padding: 7px 14px;
+	border-radius: 9px;
+	font-size: 12px;
+	font-weight: 450;
+	z-index: 2147483646;
+	pointer-events: none;
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	box-shadow: var(--devbar-shadow-md);
+	animation: devbar-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	white-space: nowrap;
+	letter-spacing: -0.01em;
+}
+
+.devbar-instruction kbd {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	margin: 0 2px;
+	border-radius: 4px;
+	background: var(--devbar-accent-glow);
+	border: 1px solid var(--devbar-border);
+	font-size: 10px;
+	font-weight: 500;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	color: var(--devbar-text);
+}
+
+/* ─── Export menu ─── */
+.devbar-bar-export-wrap {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.devbar-export-menu {
+	position: absolute;
+	right: 0;
+	z-index: 2147483646;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 10px;
+	padding: 4px;
+	width: 170px;
+	box-shadow: var(--devbar-shadow-md);
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	animation: devbar-panel-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+	white-space: nowrap;
+}
+
+.devbar-export-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 7px 10px;
+	border: none;
+	border-radius: 7px;
+	background: none;
+	color: var(--devbar-text);
+	font-size: 12px;
+	font-weight: 450;
+	cursor: pointer;
+	transition: background 0.1s;
+	font-family: inherit;
+}
+
+.devbar-export-menu-item:hover {
+	background: var(--devbar-accent-hover);
+}
+
+.devbar-export-menu-item svg {
+	width: 14px;
+	height: 14px;
+	opacity: 0.7;
+}
+
+.devbar-export-menu-key {
+	margin-left: auto;
+	font-size: 10px;
+	color: var(--devbar-text-muted);
+}
+
+.devbar-export-menu-divider {
+	height: 1px;
+	background: var(--devbar-border);
+	margin: 4px 0;
+}
+
+.devbar-export-menu-item-danger {
+	color: var(--devbar-red);
+}
+
+.devbar-export-menu-item-danger:hover {
+	background: rgba(242, 92, 92, 0.1);
+}
+
+/* ─── Mini bar (visible during tool mode) ─── */
+.devbar-minibar {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 12px;
+	padding: 3px 4px;
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	box-shadow: var(--devbar-shadow-md);
+	animation: devbar-minibar-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.devbar-minibar-label {
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--devbar-text-secondary);
+	padding: 0 7px 0 5px;
+	white-space: nowrap;
+	letter-spacing: -0.01em;
+}
+
+.devbar-minibar-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 26px;
+	padding: 0 9px;
+	border-radius: 7px;
+	border: none;
+	background: transparent;
+	color: var(--devbar-text-secondary);
+	cursor: pointer;
+	font-size: 11px;
+	font-weight: 500;
+	font-family: inherit;
+	transition: all 0.12s;
+	white-space: nowrap;
+}
+
+.devbar-minibar-btn:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+}
+
+.devbar-minibar-btn svg {
+	width: 13px;
+	height: 13px;
+}
+
+.devbar-minibar-active-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 7px;
+	background: var(--devbar-blue-muted);
+	color: var(--devbar-blue);
+}
+
+.devbar-minibar-active-icon svg {
+	width: 13px;
+	height: 13px;
+}
+
+/* ─── Minimize dot ─── */
+.devbar-dot {
+	position: fixed;
+	bottom: 24px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 34px;
+	height: 34px;
+	border-radius: 50%;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	backdrop-filter: blur(24px) saturate(1.6);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	box-shadow: var(--devbar-shadow-md);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+	animation: devbar-dot-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.devbar-dot:hover {
+	transform: translateX(-50%) scale(1.14);
+	box-shadow: var(--devbar-shadow-lg);
+	border-color: var(--devbar-border-hover);
+}
+
+.devbar-dot svg {
+	width: 15px;
+	height: 15px;
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-dot .devbar-badge {
+	position: absolute;
+	top: -3px;
+	right: -3px;
+}
+
+/* ─── Comment threads ─── */
+.devbar-annotation-item-wrapper {
+	border-radius: 9px;
+	transition: background 0.15s;
+}
+
+.devbar-annotation-item-wrapper.devbar-thread-expanded,
+.devbar-annotation-item-wrapper.devbar-detail-expanded {
+	background: var(--devbar-bg-surface);
+}
+
+/* ── Annotation readout card ── */
+.devbar-readout {
+	margin: 0 8px 6px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-top: 2px solid var(--devbar-blue);
+	font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+	font-size: 11.5px;
+	line-height: 1.5;
+	animation: devbar-readout-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.devbar-readout-collapse {
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-readout-collapse summary {
+	padding: 6px 12px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--devbar-text-secondary);
+	cursor: pointer;
+	user-select: none;
+	list-style: none;
+}
+
+.devbar-readout-collapse summary::-webkit-details-marker {
+	display: none;
+}
+
+.devbar-readout-collapse summary::before {
+	content: "▸ ";
+}
+
+.devbar-readout-collapse[open] summary::before {
+	content: "▾ ";
+}
+
+.devbar-readout-collapse[open] summary {
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-thread-popover-body .devbar-readout {
+	margin: 0 0 4px;
+	border-radius: 0;
+	border-left: none;
+	border-right: none;
+	border-bottom-color: var(--devbar-border);
+}
+
+@keyframes devbar-readout-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.devbar-readout-header {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--devbar-blue);
+	margin-bottom: 8px;
+}
+
+.devbar-readout-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--devbar-blue);
+	flex-shrink: 0;
+}
+
+.devbar-readout-section {
+	padding: 6px 0;
+	border-top: 1px solid var(--devbar-border);
+}
+
+.devbar-readout-section:first-of-type {
+	border-top: none;
+	padding-top: 0;
+}
+
+.devbar-readout-row {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	padding: 1px 0;
+}
+
+.devbar-readout-key {
+	width: 40px;
+	flex-shrink: 0;
+	color: var(--devbar-text-muted);
+	font-size: 11px;
+}
+
+.devbar-readout-val {
+	color: var(--devbar-text);
+	word-break: break-all;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.devbar-readout-swatch {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	border: 1px solid var(--devbar-border);
+}
+
+.devbar-readout-heading {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--devbar-text-muted);
+	margin-bottom: 4px;
+}
+
+.devbar-readout-react-path {
+	color: var(--devbar-green);
+	font-size: 11px;
+	word-break: break-all;
+}
+
+.devbar-readout-source {
+	color: var(--devbar-text-muted);
+	font-size: 10.5px;
+	margin-top: 2px;
+}
+
+.devbar-readout-props {
+	margin-top: 6px;
+	padding-top: 5px;
+	border-top: 1px dashed var(--devbar-border);
+}
+
+.devbar-readout-props .devbar-readout-key {
+	color: var(--devbar-blue);
+	opacity: 0.7;
+}
+
+.devbar-readout-text {
+	color: var(--devbar-text-secondary);
+	font-size: 11px;
+	word-break: break-word;
+	line-height: 1.5;
+}
+
+.devbar-readout-warning {
+	color: #f59e0b;
+	font-size: 10.5px;
+	font-weight: 500;
+	padding: 4px 0;
+}
+
+.devbar-annotation-thread-toggle {
+	font-size: 10.5px;
+	color: var(--devbar-text-muted);
+	cursor: pointer;
+	margin-top: 2px;
+	padding: 2px 4px;
+	border-radius: 4px;
+	transition:
+		color 0.15s,
+		background 0.15s;
+	font-family: inherit;
+}
+
+.devbar-annotation-thread-toggle:hover {
+	color: var(--devbar-blue);
+	background: var(--devbar-blue-muted);
+}
+
+/* Thread preview (avatar stack + count + last comment) */
+.devbar-thread-preview {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.devbar-thread-avatar-stack {
+	display: inline-flex;
+	flex-direction: row-reverse;
+}
+
+.devbar-thread-avatar-mini {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	font-size: 8px;
+	font-weight: 700;
+	color: #fff;
+	margin-right: -4px;
+	border: 1.5px solid var(--devbar-bg);
+	line-height: 1;
+}
+
+.devbar-thread-avatar-stack .devbar-thread-avatar-mini:first-child {
+	margin-right: 0;
+}
+
+.devbar-thread-count-pill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	border-radius: 8px;
+	background: var(--devbar-accent-glow);
+	border: 1px solid var(--devbar-border);
+	font-size: 9px;
+	font-weight: 650;
+	color: var(--devbar-text-secondary);
+	font-variant-numeric: tabular-nums;
+}
+
+.devbar-thread-last-text {
+	color: var(--devbar-text-muted);
+	font-size: 10px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 120px;
+}
+
+/* Thread body */
+.devbar-thread {
+	padding: 2px 10px 10px 10px;
+	animation: devbar-thread-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes devbar-thread-enter {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.devbar-thread-comment {
+	padding: 5px 0;
+}
+
+.devbar-thread-comment + .devbar-thread-comment {
+	border-top: 1px solid var(--devbar-border);
+}
+
+/* Comment row with avatar */
+.devbar-thread-comment-row {
+	display: flex;
+	gap: 8px;
+	align-items: flex-start;
+}
+
+.devbar-thread-avatar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	font-size: 9.5px;
+	font-weight: 700;
+	color: #fff;
+	flex-shrink: 0;
+	letter-spacing: 0.02em;
+	margin-top: 1px;
+}
+
+.devbar-thread-comment-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.devbar-thread-comment-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 2px;
+}
+
+.devbar-thread-author {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--devbar-text);
+	letter-spacing: -0.01em;
+}
+
+.devbar-thread-time {
+	font-size: 10px;
+	color: var(--devbar-text-muted);
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	font-variant-numeric: tabular-nums;
+}
+
+.devbar-thread-edit {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 4px;
+	border: none;
+	background: transparent;
+	color: var(--devbar-text-muted);
+	cursor: pointer;
+	font-size: 10px;
+	opacity: 0;
+	transition: all 0.12s;
+	margin-left: auto;
+}
+
+.devbar-thread-comment:hover .devbar-thread-edit {
+	opacity: 1;
+}
+
+.devbar-thread-edit:hover {
+	background: var(--devbar-blue-muted);
+	color: var(--devbar-blue);
+}
+
+.devbar-thread-edit-wrap {
+	margin-top: 2px;
+}
+
+.devbar-thread-edit-wrap .devbar-thread-input {
+	width: 100%;
+}
+
+.devbar-thread-edit-actions {
+	display: flex;
+	gap: 4px;
+	margin-top: 4px;
+	justify-content: flex-end;
+}
+
+.devbar-thread-edit-save,
+.devbar-thread-edit-cancel {
+	border: none;
+	border-radius: 4px;
+	padding: 2px 8px;
+	font-size: 10px;
+	cursor: pointer;
+	transition: all 0.12s;
+}
+
+.devbar-thread-edit-save {
+	background: var(--devbar-blue);
+	color: #fff;
+}
+
+.devbar-thread-edit-save:hover {
+	background: var(--devbar-blue-hover);
+}
+
+.devbar-thread-edit-cancel {
+	background: transparent;
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-thread-edit-cancel:hover {
+	background: var(--devbar-accent-hover);
+}
+
+.devbar-thread-delete {
+	margin-left: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 4px;
+	border: none;
+	background: transparent;
+	color: var(--devbar-text-muted);
+	cursor: pointer;
+	font-size: 11px;
+	opacity: 0;
+	transition: all 0.12s;
+}
+
+.devbar-thread-comment:hover .devbar-thread-delete {
+	opacity: 1;
+}
+
+.devbar-thread-delete:hover {
+	background: rgba(242, 92, 92, 0.1);
+	color: var(--devbar-red);
+}
+
+.devbar-thread-comment-text {
+	font-size: 12px;
+	color: var(--devbar-text-secondary);
+	line-height: 1.5;
+	letter-spacing: -0.005em;
+	padding: 3px 8px;
+	background: var(--devbar-accent-glow);
+	border-radius: 6px;
+	margin-top: 2px;
+	word-break: break-word;
+}
+
+/* Input area */
+.devbar-thread-input-row {
+	display: flex;
+	gap: 8px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--devbar-border);
+	align-items: flex-start;
+}
+
+.devbar-thread-avatar-input {
+	opacity: 0.7;
+}
+
+.devbar-thread-input-group {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+
+.devbar-thread-input-wrap {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+}
+
+.devbar-thread-author-input {
+	width: 100%;
+	border: 1px solid var(--devbar-border);
+	border-radius: 7px;
+	padding: 5px 8px;
+	font-size: 11px;
+	background: var(--devbar-bg-surface);
+	color: var(--devbar-text);
+	outline: none;
+	font-family: inherit;
+	transition: border-color 0.15s;
+}
+
+.devbar-thread-author-input:focus {
+	border-color: var(--devbar-border-active);
+}
+
+.devbar-thread-author-input::placeholder {
+	color: var(--devbar-text-muted);
+}
+
+.devbar-thread-input {
+	flex: 1;
+	border: 1px solid var(--devbar-border);
+	border-radius: 7px;
+	padding: 5px 8px;
+	font-size: 11px;
+	background: var(--devbar-bg-surface);
+	color: var(--devbar-text);
+	outline: none;
+	font-family: inherit;
+	min-width: 0;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
+}
+
+.devbar-thread-input:focus {
+	border-color: var(--devbar-blue);
+	box-shadow: 0 0 0 2px var(--devbar-blue-muted);
+}
+
+.devbar-thread-input::placeholder {
+	color: var(--devbar-text-muted);
+}
+
+.devbar-thread-send {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 7px;
+	border: none;
+	background: var(--devbar-blue);
+	color: #fff;
+	cursor: pointer;
+	transition: all 0.15s;
+	flex-shrink: 0;
+}
+
+.devbar-thread-send:disabled {
+	opacity: 0.2;
+	cursor: default;
+}
+
+.devbar-thread-send:not(:disabled):hover {
+	background: var(--devbar-blue-hover);
+	transform: translateY(-0.5px);
+}
+
+.devbar-thread-send:not(:disabled):active {
+	transform: scale(0.94);
+}
+
+/* ─── Badge pulse ─── */
+@keyframes devbar-badge-pulse {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.3);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+.devbar-badge-pulse {
+	animation: devbar-badge-pulse 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Persistent selection markers ─── */
+.devbar-selection-marker {
+	position: fixed;
+	border: 1.5px dashed var(--devbar-blue);
+	background: var(--devbar-blue-muted);
+	border-radius: 4px;
+	pointer-events: none;
+	z-index: 2147483642;
+	transition:
+		background 0.15s,
+		border-color 0.15s;
+}
+
+.devbar-selection-marker-clickable {
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+.devbar-selection-marker-clickable:hover {
+	background: rgba(110, 142, 251, 0.15);
+	border-color: var(--devbar-blue-hover);
+	border-style: solid;
+}
+
+.devbar-selection-note {
+	position: fixed;
+	background: var(--devbar-blue);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 7px;
+	border-radius: 4px;
+	pointer-events: none;
+	z-index: 2147483642;
+	white-space: nowrap;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		system-ui,
+		sans-serif;
+	letter-spacing: -0.01em;
+	box-shadow: 0 2px 6px rgba(110, 142, 251, 0.3);
+}
+
+/* ─── Persistent marker pins ─── */
+.devbar-persistent-pin {
+	position: fixed;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: 2px solid rgba(255, 255, 255, 0.95);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10.5px;
+	font-weight: 700;
+	color: #fff;
+	z-index: 2147483642;
+	pointer-events: none;
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		system-ui,
+		sans-serif;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.devbar-persistent-pin-clickable {
+	pointer-events: auto;
+	cursor: grab;
+	transition:
+		transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+		box-shadow 0.2s;
+}
+
+.devbar-persistent-pin-clickable:active {
+	cursor: grabbing;
+}
+
+.devbar-persistent-pin-clickable:hover {
+	transform: scale(1.2);
+}
+
+.devbar-persistent-pin-note {
+	position: fixed;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	color: var(--devbar-text);
+	font-size: 11px;
+	font-weight: 500;
+	padding: 3px 8px;
+	border-radius: 6px;
+	pointer-events: auto;
+	cursor: pointer;
+	z-index: 2147483642;
+	white-space: nowrap;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	box-shadow: var(--devbar-shadow-sm);
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		system-ui,
+		sans-serif;
+	letter-spacing: -0.01em;
+}
+
+/* ─── Thread popover (inline on page) ─── */
+.devbar-thread-popover {
+	position: fixed;
+	width: 290px;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 13px;
+	z-index: 2147483645;
+	box-shadow: var(--devbar-shadow-lg);
+	animation: devbar-popover-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+	overflow: hidden;
+	backdrop-filter: blur(24px);
+	-webkit-backdrop-filter: blur(24px);
+}
+
+.devbar-thread-popover-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-thread-popover-body {
+	max-height: 200px;
+	overflow-y: auto;
+	padding: 4px 8px;
+	scrollbar-width: thin;
+	scrollbar-color: var(--devbar-border) transparent;
+}
+
+@keyframes devbar-popover-enter {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* ─── Settings panel ─── */
+.devbar-settings-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 0;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-settings-row:last-child {
+	border-bottom: none;
+}
+
+.devbar-settings-row-compact {
+	padding: 5px 0;
+}
+
+.devbar-settings-row-compact .devbar-settings-title {
+	font-size: 11.5px;
+}
+
+.devbar-settings-row-compact .devbar-settings-desc {
+	font-size: 10px;
+}
+
+.devbar-settings-divider {
+	height: 1px;
+	background: var(--devbar-border);
+	margin: 10px 0;
+}
+
+/* ─── Collapsible settings group ─── */
+.devbar-settings-group {
+	margin-top: 8px;
+	border-top: 1px solid var(--devbar-border);
+}
+
+.devbar-settings-summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 10px 0 9px;
+	cursor: pointer;
+	list-style: none;
+	user-select: none;
+}
+
+.devbar-settings-summary::-webkit-details-marker {
+	display: none;
+}
+
+.devbar-settings-summary-main {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+
+.devbar-settings-summary-main svg {
+	width: 12px;
+	height: 12px;
+	flex-shrink: 0;
+	color: var(--devbar-text-muted);
+	transition: transform 0.15s ease;
+	transform: rotate(-90deg);
+}
+
+.devbar-settings-group[open] .devbar-settings-summary-main svg {
+	transform: rotate(0deg);
+}
+
+.devbar-settings-summary-meta {
+	font-size: 10.5px;
+	font-variant-numeric: tabular-nums;
+	color: var(--devbar-text-muted);
+	white-space: nowrap;
+}
+
+.devbar-settings-group-body {
+	padding-bottom: 4px;
+}
+
+.devbar-settings-group-intro {
+	margin-bottom: 4px;
+}
+
+.devbar-settings-subgroup {
+	margin-top: 10px;
+}
+
+.devbar-settings-subgroup-title {
+	font-size: 9.5px;
+	font-weight: 700;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	color: var(--devbar-text-muted);
+	padding-bottom: 3px;
+}
+
+.devbar-settings-subgroup .devbar-settings-row:last-child {
+	border-bottom: none;
+}
+
+.devbar-settings-reset {
+	margin-top: 12px;
+	width: 100%;
+	height: 26px;
+	border-radius: 7px;
+	border: 1px solid var(--devbar-border);
+	background: transparent;
+	color: var(--devbar-text-secondary);
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.12s;
+}
+
+.devbar-settings-reset:hover:not(:disabled) {
+	background: var(--devbar-accent-hover);
+	border-color: var(--devbar-border-hover);
+	color: var(--devbar-text);
+}
+
+.devbar-settings-reset:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.devbar-settings-section-title {
+	font-size: 11.5px;
+	font-weight: 600;
+	color: var(--devbar-text);
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	margin-bottom: 2px;
+}
+
+.devbar-settings-label {
+	flex: 1;
+	min-width: 0;
+}
+
+.devbar-settings-title {
+	font-size: 12.5px;
+	font-weight: 500;
+	color: var(--devbar-text);
+	letter-spacing: -0.01em;
+}
+
+.devbar-settings-desc {
+	font-size: 10.5px;
+	color: var(--devbar-text-muted);
+	margin-top: 1px;
+	line-height: 1.4;
+}
+
+.devbar-toggle {
+	width: 36px;
+	height: 20px;
+	border-radius: 10px;
+	border: none;
+	background: var(--devbar-border-active);
+	cursor: pointer;
+	position: relative;
+	flex-shrink: 0;
+	transition: background 0.2s;
+	padding: 0;
+}
+
+.devbar-toggle-on {
+	background: var(--devbar-blue);
+}
+
+.devbar-toggle-thumb {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #fff;
+	transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.devbar-toggle-on .devbar-toggle-thumb {
+	transform: translateX(16px);
+}
+
+.devbar-settings-segmented {
+	display: flex;
+	border: 1px solid var(--devbar-border);
+	border-radius: 7px;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.devbar-settings-seg-btn {
+	padding: 4px 10px;
+	font-size: 11px;
+	font-weight: 500;
+	font-family: inherit;
+	border: none;
+	background: transparent;
+	color: var(--devbar-text-secondary);
+	cursor: pointer;
+	transition: all 0.15s;
+	letter-spacing: -0.01em;
+}
+
+.devbar-settings-seg-btn:not(:last-child) {
+	border-right: 1px solid var(--devbar-border);
+}
+
+.devbar-settings-seg-btn-active {
+	background: var(--devbar-blue-muted);
+	color: var(--devbar-blue);
+}
+
+.devbar-settings-seg-btn:hover:not(.devbar-settings-seg-btn-active) {
+	background: var(--devbar-accent-glow);
+}
+
+/* ─── Overlay shared styles ─── */
+.devbar-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	z-index: 2147483644;
+}
+
+.devbar-overlay-crosshair {
+	cursor: crosshair;
+}
+
+.devbar-overlay-scrim {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: rgba(0, 0, 0, 0.3);
+	z-index: 2147483645;
+}
+
+.devbar-overlay-toolbar {
+	position: fixed;
+	top: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	gap: 3px;
+	align-items: center;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 14px;
+	padding: 5px;
+	z-index: 2147483646;
+	box-shadow: var(--devbar-shadow-lg);
+	animation: devbar-panel-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.devbar-overlay-toolbar-divider {
+	width: 1px;
+	height: 18px;
+	background: var(--devbar-border);
+	margin: 0 2px;
+	flex-shrink: 0;
+}
+
+.devbar-overlay-btn {
+	padding: 6px 14px;
+	font-size: 12.5px;
+	font-weight: 500;
+	font-family: inherit;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: all 0.12s;
+	background: transparent;
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-overlay-btn:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+}
+
+.devbar-overlay-btn-active {
+	background: var(--devbar-accent-glow);
+	color: var(--devbar-text);
+	border-color: var(--devbar-border-hover);
+}
+
+.devbar-overlay-btn-primary {
+	background: var(--devbar-accent);
+	color: var(--devbar-bg);
+	border-color: transparent;
+}
+
+.devbar-overlay-btn-primary:hover {
+	opacity: 0.85;
+}
+
+.devbar-overlay-btn-muted {
+	color: var(--devbar-text-muted);
+}
+
+.devbar-overlay-btn-muted:hover {
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-overlay-btn:disabled {
+	opacity: 0.4;
+	cursor: default;
+	pointer-events: none;
+}
+
+.devbar-overlay-btn-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 28px;
+	padding: 0;
+}
+
+.devbar-overlay-btn-icon svg {
+	width: 15px;
+	height: 15px;
+}
+
+/* ─── Color swatch (draw toolbar) ─── */
+.devbar-color-swatch {
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	border: 2px solid transparent;
+	cursor: pointer;
+	padding: 0;
+	outline: none;
+	transition: all 0.12s;
+	flex-shrink: 0;
+}
+
+.devbar-color-swatch:hover {
+	transform: scale(1.15);
+}
+
+.devbar-color-swatch-active {
+	border-color: var(--devbar-text);
+}
+
+/* ─── Note input (shared across overlays) ─── */
+.devbar-note-input {
+	position: fixed;
+	z-index: 2147483646;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 12px;
+	padding: 8px;
+	box-shadow: var(--devbar-shadow-lg);
+	color: var(--devbar-text);
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	animation: devbar-popover-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Names the element being annotated, so the popover is never an anonymous box */
+.devbar-note-input-target {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 0 2px;
+	min-width: 0;
+}
+
+.devbar-note-input-target .devbar-el-label-tag {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.devbar-note-input input {
+	border: 1px solid var(--devbar-border);
+	border-radius: 8px;
+	padding: 7px 10px;
+	font-size: 13px;
+	width: 100%;
+	box-sizing: border-box;
+	outline: none;
+	background: var(--devbar-bg-surface);
+	color: var(--devbar-text);
+	font-family: inherit;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
+}
+
+.devbar-note-input input:focus {
+	border-color: var(--devbar-blue);
+	box-shadow: 0 0 0 2px var(--devbar-blue-muted);
+}
+
+.devbar-note-input input::placeholder {
+	color: var(--devbar-text-muted);
+}
+
+.devbar-note-input-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+.devbar-note-input-actions button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border-radius: 8px;
+	padding: 6px 12px;
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	font-family: inherit;
+	transition:
+		opacity 0.12s,
+		background 0.12s;
+}
+
+.devbar-note-input-cancel {
+	background: transparent;
+	border: 1px solid var(--devbar-border);
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-note-input-cancel:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+}
+
+.devbar-note-input-save {
+	background: var(--devbar-accent);
+	border: 1px solid transparent;
+	color: var(--devbar-bg);
+}
+
+.devbar-note-input-save:hover {
+	opacity: 0.85;
+}
+
+.devbar-note-input-actions kbd {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	height: 16px;
+	padding: 0 4px;
+	border-radius: 4px;
+	background: var(--devbar-accent-glow);
+	border: 1px solid var(--devbar-border);
+	font-size: 10px;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	color: inherit;
+	opacity: 0.7;
+}
+
+.devbar-note-input-save kbd {
+	background: rgba(0, 0, 0, 0.12);
+	border-color: transparent;
+}
+
+/* ─── Element inspector label (select tool) ─── */
+.devbar-el-label {
+	position: fixed;
+	z-index: 2147483646;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	height: 22px;
+	padding: 0 8px;
+	border-radius: 6px;
+	background: var(--devbar-blue, #6e8efb);
+	color: #fff;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	pointer-events: none;
+	box-shadow: var(--devbar-shadow-sm);
+	max-width: 60vw;
+	overflow: hidden;
+}
+
+.devbar-el-label-existing {
+	background: var(--devbar-green, #4ade80);
+	color: #08240f;
+}
+
+.devbar-el-label-tag {
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	font-weight: 600;
+}
+
+.devbar-el-label-ident {
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	opacity: 0.75;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.devbar-el-label-dim {
+	font-variant-numeric: tabular-nums;
+	opacity: 0.65;
+}
+
+.devbar-el-label-note {
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	font-size: 9px;
+	font-weight: 700;
+	opacity: 0.8;
+}
+
+.devbar-el-label-keys {
+	display: inline-flex;
+	gap: 2px;
+	opacity: 0.8;
+}
+
+.devbar-el-label-keys kbd {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 14px;
+	height: 14px;
+	border-radius: 3px;
+	background: rgba(0, 0, 0, 0.22);
+	font-size: 9px;
+	font-family: inherit;
+}
+
+/* ─── Draw comment input ─── */
+.devbar-draw-comment {
+	position: fixed;
+	top: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 2147483646;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 12px;
+	padding: 6px;
+	box-shadow: var(--devbar-shadow-lg);
+	display: flex;
+	gap: 4px;
+	animation: devbar-popover-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.devbar-draw-comment input {
+	border: 1px solid var(--devbar-border);
+	border-radius: 8px;
+	padding: 6px 10px;
+	font-size: 13px;
+	width: 240px;
+	outline: none;
+	background: var(--devbar-bg-surface);
+	color: var(--devbar-text);
+	font-family: inherit;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
+}
+
+.devbar-draw-comment input:focus {
+	border-color: var(--devbar-blue);
+	box-shadow: 0 0 0 2px var(--devbar-blue-muted);
+}
+
+.devbar-draw-comment input::placeholder {
+	color: var(--devbar-text-muted);
+}
+
+/* ─── Capture note dialog ─── */
+.devbar-capture-note {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 2147483646;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 16px;
+	padding: 20px;
+	box-shadow: var(--devbar-shadow-lg);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-width: 280px;
+	animation: devbar-popover-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.devbar-capture-note-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--devbar-text);
+	letter-spacing: -0.02em;
+}
+
+.devbar-capture-note input {
+	border: 1px solid var(--devbar-border);
+	border-radius: 10px;
+	padding: 8px 12px;
+	font-size: 13px;
+	outline: none;
+	background: var(--devbar-bg-surface);
+	color: var(--devbar-text);
+	font-family: inherit;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
+}
+
+.devbar-capture-note input:focus {
+	border-color: var(--devbar-blue);
+	box-shadow: 0 0 0 2px var(--devbar-blue-muted);
+}
+
+.devbar-capture-note input::placeholder {
+	color: var(--devbar-text-muted);
+}
+
+.devbar-capture-note-actions {
+	display: flex;
+	gap: 8px;
+}
+
+/* ─── Capture status ─── */
+.devbar-capture-status {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	color: var(--devbar-text);
+	padding: 16px 28px;
+	border-radius: 12px;
+	font-size: 14px;
+	font-weight: 500;
+	z-index: 2147483646;
+	box-shadow: var(--devbar-shadow-lg);
+	animation: devbar-capture-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes devbar-capture-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
+}
+
+/* ─── Recording indicator (inside overlay-toolbar) ─── */
+.devbar-record-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--devbar-red);
+	animation: devbar-record-blink 1s ease-in-out infinite;
+	flex-shrink: 0;
+}
+
+@keyframes devbar-record-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
+
+.devbar-record-time {
+	font-variant-numeric: tabular-nums;
+	font-size: 12.5px;
+	font-weight: 500;
+	color: var(--devbar-text);
+	min-width: 36px;
+}
+
+.devbar-record-stop {
+	background: var(--devbar-red) !important;
+	color: #fff !important;
+}
+
+.devbar-record-stop:hover {
+	opacity: 0.85;
+}
+
+/* ─── Selection region ─── */
+.devbar-region-selection {
+	position: fixed;
+	border: 1.5px solid var(--devbar-blue);
+	background: rgba(110, 142, 251, 0.06);
+	pointer-events: none;
+	z-index: 2147483645;
+	border-radius: 4px;
+}
+
+.devbar-region-dimensions {
+	position: fixed;
+	transform: translateX(-100%);
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	color: var(--devbar-text);
+	font-size: 11px;
+	border-radius: 6px;
+	padding: 2px 8px;
+	pointer-events: none;
+	z-index: 2147483645;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ─── Element highlight (select tool) ─── */
+.devbar-element-highlight {
+	position: fixed;
+	pointer-events: none;
+	z-index: 2147483645;
+	border-radius: 4px;
+}
+
+/* ─── Drawing overlay (persistent) ─── */
+/* Drawings sit below all toolbar UI and dialogs but above page content.
+   The parent .devbar-toolbar already has max z-index in the root stacking
+   context, so small values here keep drawings above the page but ensure
+   the bar, panels, and other UI paint on top. */
+.devbar-drawing-overlay {
+	position: fixed;
+	pointer-events: none;
+	z-index: 1;
+}
+
+.devbar-drawing-note {
+	position: fixed;
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	color: var(--devbar-text);
+	font-size: 11px;
+	font-weight: 500;
+	padding: 3px 8px;
+	border-radius: 6px;
+	pointer-events: none;
+	z-index: 2;
+	white-space: nowrap;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	box-shadow: var(--devbar-shadow-sm);
+}
+
+/* ─── Marker pin (shared in overlay and toolbar) ─── */
+.devbar-marker-pin {
+	position: fixed;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: 2.5px solid rgba(255, 255, 255, 0.9);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 11px;
+	font-weight: 700;
+	color: #fff;
+	z-index: 2147483644;
+	font-family:
+		"SF Pro Display",
+		-apple-system,
+		system-ui,
+		sans-serif;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+	cursor: pointer;
+	transition:
+		transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+		box-shadow 0.2s;
+}
+
+.devbar-marker-pin:hover {
+	transform: scale(1.2);
+}
+
+.devbar-marker-pin-preview {
+	pointer-events: none;
+	cursor: default;
+}
+
+/* ─── Shortcut row (help panel) ─── */
+.devbar-shortcut-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 4px 0;
+}
+
+.devbar-shortcut-desc {
+	font-size: 12px;
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-shortcut-key {
+	padding: 2px 7px;
+	border-radius: 5px;
+	background: var(--devbar-accent-glow);
+	border: 1px solid var(--devbar-border);
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--devbar-text);
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	min-width: 22px;
+	text-align: center;
+}
+
+/* ─── Animations ─── */
+
+@keyframes devbar-backdrop-enter {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes devbar-panel-enter {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(10px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0) scale(1);
+	}
+}
+
+@keyframes devbar-floating-panel-above {
+	from {
+		opacity: 0;
+		scale: 0.97;
+		translate: 0 8px;
+	}
+	to {
+		opacity: 1;
+		scale: 1;
+		translate: 0 0;
+	}
+}
+
+@keyframes devbar-floating-panel-below {
+	from {
+		opacity: 0;
+		scale: 0.97;
+		translate: 0 -8px;
+	}
+	to {
+		opacity: 1;
+		scale: 1;
+		translate: 0 0;
+	}
+}
+
+@keyframes devbar-minibar-enter {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(8px) scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0) scale(1);
+	}
+}
+
+@keyframes devbar-dot-enter {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) scale(0.4);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(-50%) scale(1);
+	}
+}
+
+/* Preview */
+
+.devbar-preview-body {
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+}
+
+.devbar-preview-tabs {
+	display: flex;
+	gap: 2px;
+	padding: 6px 8px 0;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-preview-tab {
+	padding: 5px 12px;
+	font-size: 11px;
+	font-weight: 500;
+	font-family: inherit;
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	color: var(--devbar-text-secondary);
+	cursor: pointer;
+	transition: all 0.12s ease;
+}
+
+.devbar-preview-tab:hover {
+	color: var(--devbar-text);
+}
+
+.devbar-preview-tab-active {
+	color: var(--devbar-text);
+	border-bottom-color: var(--devbar-blue);
+}
+
+.devbar-preview-content {
+	flex: 1;
+	margin: 0;
+	padding: 10px 12px;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--devbar-text-secondary);
+	white-space: pre-wrap;
+	word-break: break-word;
+	overflow: auto;
+	max-height: 400px;
+	-webkit-user-select: text;
+	user-select: text;
+}
+
+.devbar-submit-btn-active {
+	background: var(--devbar-blue-muted) !important;
+	border-color: var(--devbar-blue) !important;
+	color: var(--devbar-blue) !important;
+}
+
+.devbar-settings-seg-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* Auth modal */
+.devbar-auth-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.5);
+	backdrop-filter: blur(4px);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2147483647;
+}
+
+.devbar-auth-modal {
+	background: var(--devbar-bg-elevated);
+	border: 1px solid var(--devbar-border);
+	border-radius: 12px;
+	width: 320px;
+	overflow: hidden;
+	animation: devbar-panel-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.devbar-auth-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-auth-form {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 16px;
+}
+
+.devbar-auth-input {
+	background: var(--devbar-bg);
+	border: 1px solid var(--devbar-border);
+	border-radius: 8px;
+	padding: 8px 12px;
+	color: var(--devbar-text);
+	font-size: 13px;
+	font-family: inherit;
+	outline: none;
+	transition: border-color 0.15s;
+}
+
+.devbar-auth-input:focus {
+	border-color: var(--devbar-accent);
+}
+
+.devbar-auth-input::placeholder {
+	color: var(--devbar-text-muted);
+}
+
+.devbar-auth-error {
+	color: var(--devbar-red, #f25c5c);
+	font-size: 12px;
+	padding: 0 2px;
+}
+
+.devbar-auth-submit {
+	background: var(--devbar-blue);
+	color: #fff;
+	border: none;
+	border-radius: 8px;
+	padding: 8px 16px;
+	font-size: 13px;
+	font-family: inherit;
+	font-weight: 500;
+	cursor: pointer;
+	transition: opacity 0.15s;
+}
+
+.devbar-auth-submit:hover {
+	opacity: 0.9;
+}
+
+.devbar-auth-submit:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.devbar-auth-switch {
+	padding: 12px 16px;
+	text-align: center;
+	font-size: 12px;
+	color: var(--devbar-text-muted);
+	border-top: 1px solid var(--devbar-border);
+}
+
+.devbar-auth-link {
+	background: none;
+	border: none;
+	color: var(--devbar-blue);
+	cursor: pointer;
+	font-size: 12px;
+	font-family: inherit;
+	text-decoration: underline;
+	padding: 0;
+}
+
+.devbar-bar-btn-user {
+	opacity: 0.8;
+}
+
+.devbar-bar-btn-user:hover {
+	opacity: 1;
+}
+
+/* ─── History section (inside annotations panel) ─── */
+.devbar-history-section {
+	border-top: 1px solid var(--devbar-border);
+	margin-top: 4px;
+}
+
+.devbar-history-section-toggle {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding: 9px 12px;
+	background: none;
+	border: none;
+	color: var(--devbar-text-muted);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 500;
+	text-align: left;
+	transition: all 0.15s;
+	letter-spacing: -0.01em;
+}
+
+.devbar-history-section-toggle:hover {
+	color: var(--devbar-text-secondary);
+	background: var(--devbar-accent-hover);
+}
+
+.devbar-history-section-toggle svg {
+	width: 12px;
+	height: 12px;
+	flex-shrink: 0;
+	opacity: 0.6;
+}
+
+.devbar-history-section-toggle span {
+	flex: 1;
+}
+
+/* Slide-open animation for history content */
+.devbar-history-list {
+	overflow: hidden;
+	animation: devbar-history-slide 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+	background: var(--devbar-bg-surface);
+	border-top: 1px solid var(--devbar-border);
+}
+
+@keyframes devbar-history-slide {
+	from {
+		opacity: 0;
+		max-height: 0;
+	}
+	to {
+		opacity: 1;
+		max-height: 600px;
+	}
+}
+
+.devbar-panel-empty {
+	padding: 24px 14px;
+	text-align: center;
+	color: var(--devbar-text-muted);
+	font-size: 12px;
+}
+
+/* History items */
+.devbar-history-item {
+	border-bottom: 1px solid var(--devbar-border);
+	transition: background 0.12s;
+}
+
+.devbar-history-item:last-child {
+	border-bottom: none;
+}
+
+.devbar-history-item-expanded {
+	background: var(--devbar-accent-glow);
+}
+
+.devbar-history-item-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 7px 10px;
+	background: none;
+	border: none;
+	color: var(--devbar-text);
+	cursor: pointer;
+	font-family: inherit;
+	font-size: 12px;
+	text-align: left;
+	transition: background 0.12s;
+}
+
+.devbar-history-item-header:hover {
+	background: var(--devbar-accent-hover);
+}
+
+/* Method icon (left side) */
+.devbar-history-item-method {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 6px;
+	background: var(--devbar-bg-surface);
+	border: 1px solid var(--devbar-border);
+	flex-shrink: 0;
+}
+
+.devbar-history-item-method svg {
+	width: 12px;
+	height: 12px;
+	color: var(--devbar-text-secondary);
+}
+
+/* Info area */
+.devbar-history-item-info {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 1;
+	min-width: 0;
+}
+
+/* Type count chips */
+.devbar-history-item-chips {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	flex-wrap: wrap;
+}
+
+.devbar-history-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: var(--devbar-accent-glow);
+	border: 1px solid var(--devbar-border);
+	font-size: 10px;
+	font-weight: 500;
+	color: var(--devbar-text-secondary);
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.devbar-history-chip svg {
+	width: 10px;
+	height: 10px;
+}
+
+.devbar-history-chip-comment {
+	background: none;
+	border-color: transparent;
+	color: var(--devbar-text-muted);
+	font-weight: 400;
+	font-size: 9.5px;
+}
+
+/* Relative timestamp */
+.devbar-history-item-date {
+	font-size: 10px;
+	color: var(--devbar-text-muted);
+	white-space: nowrap;
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Expanded details */
+.devbar-history-item-details {
+	padding: 0 10px 8px 42px;
+	animation: devbar-history-detail-in 0.15s ease-out;
+}
+
+@keyframes devbar-history-detail-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.devbar-history-item-url {
+	font-size: 10px;
+	color: var(--devbar-text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	margin-bottom: 6px;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Action buttons row */
+.devbar-history-item-actions {
+	display: flex;
+	gap: 4px;
+}
+
+.devbar-history-action-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 24px;
+	border-radius: 5px;
+	border: 1px solid var(--devbar-border);
+	background: transparent;
+	color: var(--devbar-text-muted);
+	cursor: pointer;
+	font-size: 12px;
+	font-family: inherit;
+	transition: all 0.12s;
+}
+
+.devbar-history-action-btn:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+	border-color: var(--devbar-border-hover);
+}
+
+.devbar-history-action-btn svg {
+	width: 12px;
+	height: 12px;
+}
+
+.devbar-history-action-danger:hover {
+	color: var(--devbar-red);
+	border-color: rgba(242, 92, 92, 0.3);
+	background: rgba(242, 92, 92, 0.08);
+}
+
+/* ─── Keyboard shortcut sections ─── */
+.devbar-shortcut-section + .devbar-shortcut-section {
+	margin-top: 12px;
+}
+
+/* ─── Narrow viewports ───
+   The toolbar previously had no responsive rules at all: 32px targets (below the
+   44px touch minimum) and 360px panels that overflow a 390px phone. */
+@media (max-width: 640px) {
+	.devbar-bar {
+		left: 8px;
+		right: 8px;
+		bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+		transform: none;
+		justify-content: space-between;
+		border-radius: 14px;
+		padding: 4px;
+		/* 10 controls at touch size exceed a phone's width — scroll rather than
+		   letting anything become unreachable. */
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	.devbar-bar::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* An explicit vertical choice still needs to stay clear of the content column */
+	.devbar-bar.devbar-bar-vertical {
+		left: 8px;
+		right: auto;
+		bottom: auto;
+		overflow-x: visible;
+		justify-content: flex-start;
+	}
+
+	.devbar-bar-btn {
+		width: 40px;
+		height: 40px;
+		flex-shrink: 0;
+	}
+
+	.devbar-bar-btn svg {
+		width: 17px;
+		height: 17px;
+	}
+
+	/* Ten controls at 40px do not fit a 390px phone. The drag handle is a pointer
+	   affordance and the bar is edge-anchored here anyway, and the Export label
+	   costs more width than it earns — the filled treatment still marks it as the
+	   primary action. Together these buy back enough room to fit without clipping. */
+	.devbar-bar-drag,
+	.devbar-bar-drag + .devbar-bar-divider {
+		display: none;
+	}
+
+	.devbar-bar-btn-label {
+		display: none;
+	}
+
+	.devbar-bar-btn-primary {
+		width: 40px;
+		padding: 0;
+	}
+
+	/* Tooltips are hover affordances — they have no meaning on touch and would
+	   otherwise flash on tap. */
+	.devbar-bar .devbar-tooltip {
+		display: none;
+	}
+
+	.devbar-panel,
+	.devbar-thread-popover,
+	.devbar-note-input {
+		max-width: calc(100vw - 16px);
+	}
+
+	.devbar-panel {
+		bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+	}
+
+	.devbar-instruction {
+		max-width: calc(100vw - 16px);
+		white-space: normal;
+		text-align: center;
+	}
+
+	.devbar-minibar {
+		bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+	}
+
+	.devbar-dot {
+		bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+	}
+}
+
+/* ─── Panel tabs ───
+   Annotations, History, Settings and Shortcuts used to be separate floating
+   panels that could not be open at the same time; they are now one surface. */
+.devbar-panel-header-tabs {
+	gap: 6px;
+	padding: 6px 6px 6px 8px;
+}
+
+.devbar-panel-tabs {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	min-width: 0;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.devbar-panel-tabs::-webkit-scrollbar {
+	display: none;
+}
+
+.devbar-panel-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	flex-shrink: 0;
+	height: 26px;
+	padding: 0 9px;
+	border: none;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--devbar-text-secondary);
+	font-family: inherit;
+	font-size: 11.5px;
+	font-weight: 500;
+	letter-spacing: -0.01em;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: all 0.12s;
+}
+
+.devbar-panel-tab:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+}
+
+.devbar-panel-tab-active {
+	background: var(--devbar-accent-glow);
+	color: var(--devbar-text);
+	box-shadow: 0 0 0 1px var(--devbar-border-hover) inset;
+}
+
+.devbar-panel-tab-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 15px;
+	height: 15px;
+	padding: 0 4px;
+	border-radius: 5px;
+	background: var(--devbar-blue);
+	color: #fff;
+	font-size: 9.5px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.devbar-panel-tab:not(.devbar-panel-tab-active) .devbar-panel-tab-count {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-panel-close-x {
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	font-size: 15px;
+	line-height: 1;
+	border-color: transparent;
+}
+
+.devbar-panel-close-x:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+}
+
+/* ─── Task field ───
+   The exported prompt had annotations but no statement of intent. This is where
+   the user says what they actually want done. */
+.devbar-task {
+	padding: 6px 6px 8px;
+	border-bottom: 1px solid var(--devbar-border);
+	margin-bottom: 4px;
+}
+
+.devbar-task-input {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	resize: vertical;
+	min-height: 32px;
+	max-height: 120px;
+	padding: 7px 9px;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: var(--devbar-bg-surface);
+	color: var(--devbar-text);
+	font-family: inherit;
+	font-size: 12px;
+	line-height: 1.45;
+	letter-spacing: -0.01em;
+	outline: none;
+	transition:
+		border-color 0.15s,
+		box-shadow 0.15s;
+}
+
+.devbar-task-input::placeholder {
+	color: var(--devbar-text-muted);
+}
+
+.devbar-task-input:hover {
+	border-color: var(--devbar-border);
+}
+
+.devbar-task-input:focus {
+	border-color: var(--devbar-blue);
+	box-shadow: 0 0 0 2px var(--devbar-blue-muted);
+}
+
+/* Undo affordance on destructive toasts */
+.devbar-toast-action {
+	border: none;
+	border-radius: 6px;
+	padding: 4px 9px;
+	background: rgba(128, 128, 128, 0.22);
+	color: inherit;
+	font-family: inherit;
+	font-size: 11.5px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	cursor: pointer;
+	transition: background 0.12s;
+}
+
+.devbar-toast-action:hover {
+	background: rgba(128, 128, 128, 0.38);
+}

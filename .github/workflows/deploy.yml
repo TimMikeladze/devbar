@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+concurrency:
+  group: deploy-${{ github.event_name == 'release' && 'prod' || 'dev' }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-vercel:
+    name: Deploy to Vercel (${{ github.event_name == 'release' && 'production' || 'preview' }})
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_ENV: ${{ github.event_name == 'release' && 'production' || 'preview' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Vercel CLI
+        run: bun add -g vercel
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment "$VERCEL_ENV" --token "$VERCEL_TOKEN"
+
+      - name: Build
+        run: vercel build ${{ github.event_name == 'release' && '--prod' || '' }} --token "$VERCEL_TOKEN"
+
+      - name: Deploy
+        run: vercel deploy --prebuilt ${{ github.event_name == 'release' && '--prod' || '' }} --token "$VERCEL_TOKEN"
+
+  deploy-fly:
+    name: Deploy WS to Fly (${{ github.event_name == 'release' && 'prod' || 'dev' }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set deploy target
+        id: target
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            echo "app=devbar-ws-prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=devbar-ws-dev" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+
+      - name: Setup Fly
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly
+        run: flyctl deploy --app "$FLY_APP"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: ${{ steps.target.outputs.app }}

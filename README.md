@@ -1,0 +1,264 @@
+# devbar.sh
+
+Drop-in toolbar for any website. Annotate the UI and capture selectors, computed
+styles, React component trees, and screenshots as an agent-ready prompt.
+
+[![npm](https://img.shields.io/npm/v/devbar.svg)](https://www.npmjs.com/package/devbar)
+[![license](https://img.shields.io/npm/l/devbar.svg)](./LICENSE)
+
+## Installation
+
+```bash
+bun add devbar
+```
+
+## Usage
+
+Mount `<Devbar />` once, anywhere in your tree. It renders a fixed toolbar and
+owns its own overlays.
+
+```tsx
+import { Devbar } from "devbar";
+
+function App() {
+	return (
+		<>
+			<YourApp />
+			<Devbar />
+		</>
+	);
+}
+```
+
+The stylesheet ships as a separate file — import it once alongside the
+component:
+
+```tsx
+import "devbar/styles.css";
+```
+
+The CDN build (`devbar/cdn`) inlines its own styles, so it needs no separate
+import.
+
+### Package entrypoints
+
+| Import                 | What it is                                                           |
+| ---------------------- | -------------------------------------------------------------------- |
+| `devbar`               | `<Devbar />`, `init()`, and the payload/annotation types             |
+| `devbar/styles.css`    | Toolbar stylesheet (required for the component build)                |
+| `devbar/cdn`           | Self-contained IIFE bundle with styles inlined, for a `<script>` tag |
+| `devbar/server`        | Hono app + report/comment/auth/billing routes and the MCP endpoint   |
+| `devbar/server/vercel` | The same app wrapped in the `hono/vercel` adapter                    |
+| `devbar/local`         | `createLocalServer()` — the local dispatcher used by the CLI         |
+| `devbar/config`        | `defineConfig()` and the `devbar.config.ts` types                    |
+
+The package also installs a `devbar` binary that runs the local dispatch server
+against a project's `devbar.config.ts`:
+
+```bash
+bunx devbar --port 3101
+```
+
+### Using the toolbar
+
+Pick a tool, mark up the page, then export everything as a single prompt.
+
+| Tool        | What it captures                                                    |
+| ----------- | ------------------------------------------------------------------- |
+| **Select**  | An element plus its selector, React component path, and diagnostics |
+| **Marker**  | A numbered pin at a point on the page                               |
+| **Draw**    | Freehand annotation over a screenshot                               |
+| **Capture** | Full-page or region screenshot                                      |
+| **Record**  | A screen or tab recording                                           |
+
+While the **Select** tool is active, a badge follows the cursor showing the
+element's tag and pixel size. `↑` widens the selection to the parent element and
+`↓` narrows it to the first child, so you can land on the wrapper you actually
+mean instead of whichever node happens to be under the pointer.
+
+Everything you capture collects in the panel, which has four tabs —
+**Annotations**, **History** (past exports), **Settings** and **Shortcuts**. The
+toolbar's annotations and settings buttons both open it, on the matching tab.
+
+At the top of the Annotations tab is a **task field**: one line saying what you
+actually want changed. Annotations are evidence; the task is the intent. When
+set, it leads the exported prompt as a `## Task` section and the closing
+instruction changes from "analyse these issues" to "carry out this task, using
+the annotations as evidence". It is cleared along with the annotations on export.
+
+**Export** copies the report as a Markdown prompt (or submits it to your server
+when one is configured); the caret next to it holds the other formats. Removing
+an annotation offers an **Undo** for a few seconds. Each row also has a locate
+button that scrolls the annotated element back into view.
+
+### Keyboard shortcuts
+
+| Keys                            | Action                                                   |
+| ------------------------------- | -------------------------------------------------------- |
+| `Alt+S` / `M` / `D` / `C` / `R` | Select / Marker / Draw / Capture / Record                |
+| `↑` `↓`                         | Widen / narrow the selection (Select tool)               |
+| `↵`                             | Annotate the current element, or save the note           |
+| `Esc`                           | Discard the note, exit the tool, or close the open panel |
+| `Alt+A`                         | Toggle the annotations panel                             |
+| `Alt+/`                         | Keyboard shortcuts                                       |
+| `⌘Z`                            | Undo the last annotation                                 |
+| `⌘↵`                            | Copy the report to the clipboard                         |
+
+An `Alt+<tool>` shortcut works while another tool is active, switching directly
+between tools.
+
+## Architecture
+
+The application is split across two hosts:
+
+| Concern                            | Host                          | Why                                                 |
+| ---------------------------------- | ----------------------------- | --------------------------------------------------- |
+| Landing page & SaaS app (Vite SPA) | [Vercel](https://vercel.com/) | Static files on edge CDN                            |
+| API (Hono routes)                  | [Vercel](https://vercel.com/) | Serverless function via `hono/vercel` adapter       |
+| WebSocket collaboration            | [Fly.io](https://fly.io/)     | Persistent connections require a long-lived process |
+
+- **SPA** — Vite React app in `app/`. Deployed as Vercel's static output.
+- **API** — Hono routes under `/api` (Better Auth, reports, comments, Stripe billing, contact form) plus an MCP endpoint at `/mcp`. Served by a Vercel serverless function (`api/serverless.ts` → `src/server/vercel.ts`).
+- **WebSocket collaboration** — Mounted at `/ws/:roomKey` on the Fly.io server. Uses Bun's native WebSocket support with rate limiting and room-based broadcasting. On multi-machine deployments, connections are routed to a deterministic instance via `fly-replay` headers (set `DEVBAR_FLY_INSTANCES` env var).
+
+The SPA connects to the WebSocket server via the `VITE_DEVBAR_WS_SERVER` env var, which points to the Fly.io URL. Since session cookies are scoped to the Vercel domain and won't be sent cross-origin to Fly.io, authenticated users get a short-lived HMAC token from `POST /api/ws-token` (on Vercel) and pass it as a query param to the Fly.io WebSocket endpoint.
+
+### Docker Build (Fly.io — WebSocket only)
+
+Multi-stage Dockerfile:
+
+1. **build-lib** — installs deps, runs `bunup` to compile `src/` → `dist/`
+2. **deps** — production-only install for the root
+3. **production** — assembles `node_modules`, `dist/` and starts the WS CLI server
+
+## Deployment
+
+| Component | Host                                        | Dev Trigger              | Prod Trigger                |
+| --------- | ------------------------------------------- | ------------------------ | --------------------------- |
+| SPA + API | Vercel                                      | Push to `main` (preview) | GitHub Release (production) |
+| WebSocket | Fly.io (`devbar-ws-dev` / `devbar-ws-prod`) | Push to `main`           | GitHub Release              |
+
+### First-time setup
+
+**Fly.io:**
+
+```bash
+# Create the two Fly apps (no deploy yet)
+fly apps create devbar-ws-dev
+fly apps create devbar-ws-prod
+
+# Set secrets on each app
+fly secrets set DEVBAR_HMAC_SECRET="your-secret" -a devbar-ws-dev
+fly secrets set DEVBAR_HMAC_SECRET="your-secret" -a devbar-ws-prod
+fly secrets set DEVBAR_TRUSTED_ORIGINS="https://devbar.sh,https://devbar-dev.vercel.app" -a devbar-ws-prod
+```
+
+**Vercel:**
+
+```bash
+# Link the project (run from repo root)
+vercel link
+
+# Note the org ID and project ID from .vercel/project.json — add these as GitHub secrets
+```
+
+**GitHub:**
+
+Add these in the repo's Settings → Secrets and variables → Actions:
+
+- Secrets: `FLY_API_TOKEN`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+- Then set all Vercel environment variables in the Vercel dashboard (see tables below)
+
+### Deploy to prod
+
+1. Merge work to `main` (auto-deploys SPA + API to Vercel preview, WebSocket to `devbar-ws-dev`)
+2. Verify on dev/preview
+3. Run `bun run release` (bumps `package.json` and the extension manifest, commits, pushes, tags via `bumpp`)
+4. Create a GitHub Release from the tag — triggers both Vercel production deploy and Fly.io `devbar-ws-prod` deploy
+
+### Publish to npm
+
+The npm package is published by hand — there is no release workflow:
+
+```bash
+bun run build
+bun run test
+npm publish
+```
+
+### GitHub Actions
+
+| Workflow   | File                           | Purpose                                                                         |
+| ---------- | ------------------------------ | ------------------------------------------------------------------------------- |
+| **CI**     | `.github/workflows/ci.yml`     | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS, Windows) |
+| **Deploy** | `.github/workflows/deploy.yml` | Deploy SPA + API to Vercel and WebSocket to Fly.io                              |
+
+### Required GitHub Configuration
+
+**Secrets:**
+
+| Name                | Purpose                      |
+| ------------------- | ---------------------------- |
+| `FLY_API_TOKEN`     | Fly.io deploy authentication |
+| `VERCEL_TOKEN`      | Vercel deploy authentication |
+| `VERCEL_ORG_ID`     | Vercel organization ID       |
+| `VERCEL_PROJECT_ID` | Vercel project ID            |
+
+### Vercel Environment Variables
+
+Set in the Vercel dashboard (Project Settings → Environment Variables). Use Vercel's environment scoping to set different values per environment (Production vs Preview) — e.g., `VITE_DEVBAR_WS_SERVER` should point to `devbar-ws-prod.fly.dev` for Production and `devbar-ws-dev.fly.dev` for Preview:
+
+**Build-time (baked into SPA):**
+
+| Name                        | Purpose                                                      |
+| --------------------------- | ------------------------------------------------------------ |
+| `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                                    |
+| `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                                     |
+| `VITE_UMAMI_URL`            | Umami analytics URL                                          |
+| `VITE_UMAMI_WEBSITE_ID`     | Umami analytics website ID                                   |
+| `VITE_DEVBAR_WS_SERVER`     | Fly.io WebSocket URL (e.g. `https://devbar-ws-prod.fly.dev`) |
+| `VITE_DEVBAR_SERVER`        | API server URL (leave empty to use same origin)              |
+
+**Runtime (serverless function):**
+
+| Name                               | Purpose                                                            |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`                     | Postgres connection string                                         |
+| `BETTER_AUTH_SECRET`               | Better Auth session signing secret (required)                      |
+| `BETTER_AUTH_URL`                  | Better Auth base URL (e.g. `https://devbar.sh`)                    |
+| `BETTER_AUTH_GITHUB_CLIENT_ID`     | GitHub OAuth client ID (optional)                                  |
+| `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional)                              |
+| `BETTER_AUTH_GOOGLE_CLIENT_ID`     | Google OAuth client ID (optional)                                  |
+| `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional)                              |
+| `STRIPE_SECRET_KEY`                | Stripe API key                                                     |
+| `STRIPE_WEBHOOK_SECRET`            | Stripe webhook signing secret                                      |
+| `STRIPE_TEAM_PRICE_ID`             | Stripe Team plan price ID (runtime, for subscription creation)     |
+| `STRIPE_ORG_PRICE_ID`              | Stripe Org plan price ID (runtime)                                 |
+| `APP_URL`                          | App URL for Stripe redirect URLs (falls back to `BETTER_AUTH_URL`) |
+| `DEVBAR_HMAC_SECRET`               | HMAC signing for WebSocket auth tokens                             |
+| `DISCORD_WEBHOOK_URL`              | Contact form Discord webhook                                       |
+| `DEVBAR_TRUSTED_ORIGINS`           | Comma-separated allowed CORS origins                               |
+
+### Fly.io Runtime Secrets
+
+Set via `fly secrets set` on each app. The WS server is stateless (no database, no auth) — it only needs HMAC to verify tokens issued by the Vercel API:
+
+- `DEVBAR_HMAC_SECRET` — HMAC signing for WebSocket auth tokens (must match the Vercel value)
+- `DEVBAR_TRUSTED_ORIGINS` — Comma-separated allowed CORS origins
+- `DEVBAR_ALLOW_ANONYMOUS` — Set to `"false"` to reject unauthenticated (Mode A) WebSocket connections (default: allowed)
+- `DEVBAR_FLY_INSTANCES` — Comma-separated Fly machine IDs for WebSocket affinity (optional, single-machine deployments don't need this)
+
+### Fly.io VM Config
+
+- **Region:** `ord` (Chicago)
+- **VM:** `shared-cpu-1x`, 512MB RAM
+- **Always on:** `min_machines_running = 1`, `auto_stop_machines = false`
+- **Concurrency:** soft 800 / hard 1000 connections
+
+## Contributing
+
+Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
+
+## License
+
+MIT

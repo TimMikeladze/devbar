@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Devbar Script Tag Example</title>
+		<style>
+			body {
+				font-family: system-ui, sans-serif;
+				max-width: 800px;
+				margin: 40px auto;
+				padding: 0 20px;
+			}
+			h1 {
+				font-size: 24px;
+			}
+			p {
+				color: #6b7280;
+				line-height: 1.6;
+			}
+			.card {
+				padding: 20px;
+				background: #f9fafb;
+				border-radius: 8px;
+				border: 1px solid #e5e7eb;
+				margin: 16px 0;
+			}
+			button {
+				padding: 8px 16px;
+				background: #3b82f6;
+				color: #fff;
+				border: none;
+				border-radius: 6px;
+				cursor: pointer;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Devbar Script Tag Example</h1>
+		<p>
+			The Devbar toolbar is loaded via a single script tag. Open it and try annotating elements on
+			this page.
+		</p>
+
+		<div class="card">
+			<h3>Sample Card</h3>
+			<p>This is a sample element you can select, draw on, or capture.</p>
+			<button type="button">Click me</button>
+		</div>
+
+		<div class="card">
+			<h3>Another Section</h3>
+			<p>Try using the marker tool to pin a note here.</p>
+		</div>
+
+		<!-- Single script tag loads Devbar -->
+		<script src="https://devbar.sh/cdn.global.js"></script>
+		<script>
+			Devbar.init({ theme: "dark" });
+		</script>
+	</body>
+</html>

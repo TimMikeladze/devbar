@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+		<title>devbar.sh — Point at any UI. Ship the change with your agent.</title>
+		<meta
+			name="description"
+			content="Open-source drop-in inspector for any website. Point at an element, capture the exact context — selectors, styles, React tree, source file — and hand it to your AI agent, a GitHub issue, or your team. Iterate at agent speed."
+		/>
+
+		<link rel="canonical" href="https://devbar.sh" />
+		<meta name="theme-color" content="#0a0a0a" />
+
+		<!-- Prevent flash of wrong theme on load -->
+		<script>
+			(function () {
+				var t = "system";
+				try {
+					t = localStorage.getItem("devbar-theme") || "system";
+				} catch (e) {}
+				var dark =
+					t === "dark" ||
+					(t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+				if (dark) document.documentElement.classList.add("dark");
+				else document.documentElement.classList.remove("dark");
+				var meta = document.querySelector('meta[name="theme-color"]');
+				if (meta) meta.setAttribute("content", dark ? "#0a0a0a" : "#fafafa");
+			})();
+		</script>
+
+		<!-- Prevent flash of default border/outline before CSS settles -->
+		<style>
+			html,
+			body,
+			#root {
+				border: 0;
+				outline: 0;
+			}
+		</style>
+
+		<!-- Open Graph -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="https://devbar.sh" />
+		<meta property="og:locale" content="en_US" />
+		<meta
+			property="og:title"
+			content="devbar.sh — Point at any UI. Ship the change with your agent."
+		/>
+		<meta
+			property="og:description"
+			content="A drop-in inspector for any website. Point at a change, capture the exact context, and route it to your AI agent, a GitHub issue, or your team."
+		/>
+		<meta property="og:site_name" content="devbar.sh" />
+		<meta property="og:image" content="https://devbar.sh/og.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:type" content="image/png" />
+		<meta
+			property="og:image:alt"
+			content="devbar.sh — point at any UI, ship the change with your agent"
+		/>
+
+		<!-- Twitter -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@linesofcode" />
+		<meta name="twitter:creator" content="@linesofcode" />
+		<meta
+			name="twitter:title"
+			content="devbar.sh — Point at any UI. Ship the change with your agent."
+		/>
+		<meta
+			name="twitter:description"
+			content="A drop-in inspector for any website. Point at a change, capture the exact context, and route it to your AI agent, a GitHub issue, or your team."
+		/>
+		<meta name="twitter:image" content="https://devbar.sh/og.png" />
+		<meta
+			name="twitter:image:alt"
+			content="devbar.sh — point at any UI, ship the change with your agent"
+		/>
+
+		<!-- SEO -->
+		<meta
+			name="keywords"
+			content="website annotation tool, visual bug reporting, LLM prompt generator, AI bug fix, element inspector, XPath capture, CSS selector, React component context, screenshot annotation, visual feedback tool, QA tool, design review tool, code review feedback, Chrome extension annotation, drop-in toolbar, open source, iteration loop, feedback loop, developer tools, designer QA workflow, visual debugging, structured bug report, ChatGPT bug fix, Claude code fix, Cursor AI, bug tracker integration"
+		/>
+		<meta name="author" content="Tim Mikeladze" />
+		<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+			rel="stylesheet"
+		/>
+
+		<!-- JSON-LD: SoftwareApplication -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "SoftwareApplication",
+				"name": "devbar.sh",
+				"alternateName": [
+					"devbar",
+					"website annotation tool",
+					"LLM prompt generator",
+					"visual bug reporter"
+				],
+				"description": "Open-source drop-in inspector that turns any UI change into agent-ready context for your AI agent, a GitHub issue, or your team.",
+				"url": "https://devbar.sh",
+				"applicationCategory": "DeveloperApplication",
+				"applicationSubCategory": "Annotation & QA",
+				"operatingSystem": "Any",
+				"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+				"author": {
+					"@type": "Person",
+					"name": "Tim Mikeladze",
+					"url": "https://github.com/TimMikeladze"
+				},
+				"codeRepository": "https://github.com/TimMikeladze/devbar",
+				"license": "https://opensource.org/licenses/MIT",
+				"programmingLanguage": ["TypeScript", "JavaScript"],
+				"runtimePlatform": "Browser"
+			}
+		</script>
+
+		<!-- JSON-LD: FAQPage -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "FAQPage",
+				"mainEntity": [
+					{
+						"@type": "Question",
+						"name": "How does devbar speed up iteration cycles?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "devbar captures selectors, styles, component trees, and screenshots in one interaction — so the developer (or an LLM) can fix it immediately."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "How does React context extraction work?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "devbar reads the React fiber node and walks up the tree, capturing every component's name, props, and source file location — all locally in your browser."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Does it work without React?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Yes. XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any website."
+						}
+					}
+				]
+			}
+		</script>
+
+		<!-- JSON-LD: WebSite -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebSite",
+				"name": "devbar.sh",
+				"url": "https://devbar.sh"
+			}
+		</script>
+	</head>
+	<body class="antialiased">
+		<div id="root"></div>
+		<noscript>
+			<h1>devbar.sh — Point at any UI, ship the change with your agent</h1>
+			<p>
+				Stop describing UI changes in Slack. Point at any element and hand your AI agent the exact
+				context to make the change.
+			</p>
+			<p>
+				Open-source toolbar that turns visual website annotations into structured, AI-ready bug
+				reports. Captures XPaths, computed styles, React component trees, source file locations, and
+				screenshots — ready for any LLM, MCP agent, or webhook pipeline.
+			</p>
+			<h2>How it works</h2>
+			<ol>
+				<li>
+					<strong>Annotate</strong> — Select elements, draw freehand, drop numbered markers, or
+					capture screenshots.
+				</li>
+				<li>
+					<strong>Auto-capture</strong> — Every annotation extracts XPaths, CSS selectors, computed
+					styles, React component trees, and source file locations.
+				</li>
+				<li>
+					<strong>Export</strong> — One click turns everything into structured Markdown, JSON, or a
+					webhook POST. Pipe to any LLM or AI agent via MCP.
+				</li>
+			</ol>
+			<h2>Who it's for</h2>
+			<ul>
+				<li>
+					<strong>AI agents &amp; MCP</strong> — Connect via MCP server, webhooks, or callbacks for
+					agentic workflows.
+				</li>
+				<li>
+					<strong>Developers</strong> — Feed structured bug context directly into coding assistants.
+				</li>
+				<li>
+					<strong>Designers &amp; QA</strong> — File bug reports with exact CSS values, bounding
+					rects, and screenshots.
+				</li>
+				<li>
+					<strong>Product managers</strong> — Give feedback on staging without leaving the browser.
+				</li>
+			</ul>
+			<h2>Features</h2>
+			<ul>
+				<li>Element inspector with XPath &amp; CSS selector capture</li>
+				<li>React component tree extraction with source file locations</li>
+				<li>Freehand drawing with context screenshots</li>
+				<li>Screenshot capture (full page or region)</li>
+				<li>Numbered markers with nearest-element detection</li>
+				<li>LLM-ready Markdown and JSON export</li>
+				<li>MCP server, webhooks, and clipboard integration</li>
+				<li>Chrome extension for any website</li>
+				<li>Custom prompt templates</li>
+				<li>Plugin system</li>
+			</ul>
+			<h2>FAQ</h2>
+			<dl>
+				<dt>How does this work with AI agents?</dt>
+				<dd>
+					Connect via the built-in MCP server, an onSubmit callback, or a webhook URL. Structured
+					context flows directly into Claude, Cursor, or your own agentic pipeline.
+				</dd>
+				<dt>Does it work without React?</dt>
+				<dd>
+					Yes. XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any
+					website.
+				</dd>
+				<dt>How does React context extraction work?</dt>
+				<dd>
+					devbar reads the React fiber node and walks up the tree, capturing every component's name,
+					props, and source file location — all locally in your browser.
+				</dd>
+			</dl>
+			<h2>Pricing</h2>
+			<p><strong>Free</strong> — Self-hosted, open source, $0 forever. All features included.</p>
+			<p>
+				<strong>Team</strong> — $10/month, up to 5 members. Cloud dashboard, report history, org
+				settings.
+			</p>
+			<p><strong>Organization</strong> — $50/month, unlimited members.</p>
+			<p><a href="https://github.com/TimMikeladze/devbar">View on GitHub</a></p>
+		</noscript>
+		<script type="module" src="/src/main.tsx"></script>
+		<script
+			defer
+			src="%VITE_UMAMI_URL%/script.js"
+			data-website-id="%VITE_UMAMI_WEBSITE_ID%"
+			data-auto-track="false"
+		></script>
+		<script>
+			if (window.umami) {
+				window.umami.track(function () {
+					return { url: "/", title: "visit" };
+				});
+			} else {
+				document.addEventListener("DOMContentLoaded", function () {
+					if (window.umami) {
+						window.umami.track(function () {
+							return { url: "/", title: "visit" };
+						});
+					}
+				});
+			}
+		</script>
+	</body>
+</html>
