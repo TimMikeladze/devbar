@@ -6,6 +6,7 @@ import "devbar/styles.css";
 import { PricingCards } from "./components/PricingCards";
 import { LogoMark } from "./components/Logo";
 import { useTheme, type Theme } from "./hooks/useTheme";
+import { PAID_PLANS, CONTACT_FORM } from "./lib/flags";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -62,9 +63,9 @@ function App() {
 				<CapturedData />
 				<DropItIn />
 				<Features />
-				<Pricing />
+				{PAID_PLANS && <Pricing />}
 				<FAQ />
-				<Contact />
+				{CONTACT_FORM && <Contact />}
 				<Footer />
 			</main>
 		</div>
@@ -101,7 +102,8 @@ function Header() {
 
 	const links = [
 		{ href: "#how-it-works", label: "How it works" },
-		{ href: "#pricing", label: "Pricing" },
+		// Only linkable when the section it scrolls to is rendered.
+		...(PAID_PLANS ? [{ href: "#pricing", label: "Pricing" }] : []),
 		{ href: "#faq", label: "FAQ" },
 		{ href: "https://github.com/TimMikeladze/devbar", label: "GitHub", external: true },
 	];
@@ -978,7 +980,9 @@ function FAQ() {
 		},
 		{
 			q: "Is it really open source?",
-			a: "Yes. MIT licensed, self-hostable, and free forever. The paid dashboard is optional.",
+			a: PAID_PLANS
+				? "Yes. MIT licensed, self-hostable, and free forever. The paid dashboard is optional."
+				: "Yes. MIT licensed, self-hostable, and free forever.",
 		},
 	];
 

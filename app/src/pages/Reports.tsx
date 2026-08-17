@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link, useOutletContext, useNavigate } from "react-router";
 import { useFilteredReports, getTimeAgo, type Report, type DashboardContext } from "../lib/hooks";
+import { PAID_PLANS } from "../lib/flags";
 
 const TYPE_META: Record<string, { label: string; color: string; dotColor: string }> = {
 	element: { label: "Elements", color: "text-accent", dotColor: "bg-accent" },
@@ -107,8 +108,8 @@ export function ReportsPage() {
 				</p>
 			</div>
 
-			{/* Subscription expired */}
-			{error === "subscription_inactive" && (
+			{/* Subscription expired — only reachable when paid plans are on */}
+			{PAID_PLANS && error === "subscription_inactive" && (
 				<div className="bg-bg-card border border-amber/20 rounded-xl p-6 mb-6 text-center">
 					<p className="text-[16px] font-semibold mb-1">Your trial has ended</p>
 					<p className="text-[14px] text-muted mb-4">Subscribe to continue using the dashboard.</p>

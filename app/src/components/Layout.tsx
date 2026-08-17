@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { auth } from "../lib/auth";
 import { setActiveOrgId } from "../lib/api";
 import { useTheme } from "../hooks/useTheme";
+import { PAID_PLANS } from "../lib/flags";
 import { LogoMark } from "./Logo";
 
 export function DashboardLayout() {
@@ -89,7 +90,7 @@ export function DashboardLayout() {
 	const nav = [
 		{ to: "/dashboard", label: "Reports" },
 		{ to: "/dashboard/settings/org", label: "Organization" },
-		{ to: "/dashboard/settings/billing", label: "Billing" },
+		...(PAID_PLANS ? [{ to: "/dashboard/settings/billing", label: "Billing" }] : []),
 		{ to: "/dashboard/settings/account", label: "Account" },
 	];
 

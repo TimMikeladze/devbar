@@ -10,6 +10,7 @@ import { ReportDetailPage } from "./pages/ReportDetail.tsx";
 import { OrgSettingsPage } from "./pages/OrgSettings.tsx";
 import { AccountSettingsPage } from "./pages/AccountSettings.tsx";
 import { BillingPage } from "./pages/Billing.tsx";
+import { PAID_PLANS } from "./lib/flags";
 import { Link } from "react-router";
 
 function NotFound() {
@@ -54,7 +55,7 @@ createRoot(document.getElementById("root")!).render(
 					<Route path="reports/:id" element={<ReportDetailPage />} />
 					<Route path="settings/org" element={<OrgSettingsPage />} />
 					<Route path="settings/account" element={<AccountSettingsPage />} />
-					<Route path="settings/billing" element={<BillingPage />} />
+					{PAID_PLANS && <Route path="settings/billing" element={<BillingPage />} />}
 				</Route>
 				{/* 404 */}
 				<Route path="*" element={<NotFound />} />

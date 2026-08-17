@@ -107,6 +107,34 @@ button that scrolls the annotated element back into view.
 An `Alt+<tool>` shortcut works while another tool is active, switching directly
 between tools.
 
+## Feature flags
+
+Optional surfaces are behind flags, **off by default** — a plain build is the
+self-hosted open-source product with no paid plans and no contact form. Each
+flag has two halves that must be set together: a build-time `VITE_FLAG_*` for
+the SPA (`app/src/lib/flags.ts`) and a runtime `DEVBAR_FLAG_*` for the API
+(`src/server/flags.ts`). Only the literal values `true` and `1` enable a flag.
+
+| Flag          | SPA env                  | API env                    | On → what appears                                                       |
+| ------------- | ------------------------ | -------------------------- | ----------------------------------------------------------------------- |
+| `paidPlans`   | `VITE_FLAG_PAID_PLANS`   | `DEVBAR_FLAG_PAID_PLANS`   | Pricing section and nav link, Billing page, `/api/stripe/*` and webhook |
+| `contactForm` | `VITE_FLAG_CONTACT_FORM` | `DEVBAR_FLAG_CONTACT_FORM` | Landing contact section and `POST /api/contact`                         |
+
+Notes:
+
+- Vite inlines `import.meta.env`, so a flagged-off section is dead code and
+  never ships in the bundle — verified against the built assets. Flipping a
+  flag needs a rebuild, not just a restart.
+- The SPA flags are exported as plain constants (`PAID_PLANS`, `CONTACT_FORM`),
+  not as properties of a `flags` object. Rollup only folds the direct constant,
+  so reading through an object would keep the gated markup in the bundle.
+- With `paidPlans` off the subscription guard is not installed either. There is
+  nothing to subscribe to, so gating the dashboard behind a subscription would
+  lock out every self-hosted user.
+- The API mounts flagged routes conditionally, so they are absent from the
+  router rather than returning a "disabled" response. Note that anonymous calls
+  to a missing `/api/*` path answer `401` from the auth middleware, not `404`.
+
 ## Architecture
 
 The application is split across two hosts:
@@ -212,6 +240,8 @@ Set in the Vercel dashboard (Project Settings → Environment Variables). Use Ve
 
 | Name                        | Purpose                                                      |
 | --------------------------- | ------------------------------------------------------------ |
+| `VITE_FLAG_PAID_PLANS`      | Feature flag — paid plans UI (default off)                   |
+| `VITE_FLAG_CONTACT_FORM`    | Feature flag — contact form (default off)                    |
 | `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                                    |
 | `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                                     |
 | `VITE_UMAMI_URL`            | Umami analytics URL                                          |
@@ -223,6 +253,8 @@ Set in the Vercel dashboard (Project Settings → Environment Variables). Use Ve
 
 | Name                               | Purpose                                                            |
 | ---------------------------------- | ------------------------------------------------------------------ |
+| `DEVBAR_FLAG_PAID_PLANS`           | Feature flag — Stripe routes + subscription guard (default off)    |
+| `DEVBAR_FLAG_CONTACT_FORM`         | Feature flag — `POST /api/contact` (default off)                   |
 | `DATABASE_URL`                     | Postgres connection string                                         |
 | `BETTER_AUTH_SECRET`               | Better Auth session signing secret (required)                      |
 | `BETTER_AUTH_URL`                  | Better Auth base URL (e.g. `https://devbar.sh`)                    |
