@@ -40,72 +40,38 @@ Notes:
 
 ## Architecture
 
-The application is split across two hosts:
+Everything runs on [Vercel](https://vercel.com/):
 
-| Concern                            | Host                          | Why                                                 |
-| ---------------------------------- | ----------------------------- | --------------------------------------------------- |
-| Landing page & SaaS app (Vite SPA) | [Vercel](https://vercel.com/) | Static files on edge CDN                            |
-| API (Hono routes)                  | [Vercel](https://vercel.com/) | Serverless function via `hono/vercel` adapter       |
-| WebSocket collaboration            | [Fly.io](https://fly.io/)     | Persistent connections require a long-lived process |
+| Concern                            | How it is served                                  |
+| ---------------------------------- | ------------------------------------------------- |
+| Landing page & SaaS app (Vite SPA) | Static output on the edge CDN                     |
+| API (Hono routes)                  | Serverless function via the `hono/vercel` adapter |
 
-- **SPA** — Vite React app in `app/`. Deployed as Vercel's static output.
+- **SPA** — Vite React app in `app/`. Built to `app/dist`, which is Vercel's `outputDirectory`.
 - **API** — Hono routes under `/api` (Better Auth, reports, comments, Stripe billing, contact form) plus an MCP endpoint at `/mcp`. Served by a Vercel serverless function (`api/serverless.ts` → `src/server/vercel.ts`).
-- **WebSocket collaboration** — Mounted at `/ws/:roomKey` on the Fly.io server. Uses Bun's native WebSocket support with rate limiting and room-based broadcasting. On multi-machine deployments, connections are routed to a deterministic instance via `fly-replay` headers (set `DEVBAR_FLY_INSTANCES` env var).
-
-The SPA connects to the WebSocket server via the `VITE_DEVBAR_WS_SERVER` env var, which points to the Fly.io URL. Since session cookies are scoped to the Vercel domain and won't be sent cross-origin to Fly.io, authenticated users get a short-lived HMAC token from `POST /api/ws-token` (on Vercel) and pass it as a query param to the Fly.io WebSocket endpoint.
-
-### Docker Build (Fly.io — WebSocket only)
-
-Multi-stage Dockerfile:
-
-1. **build-lib** — installs deps, runs `bunup` to compile `src/` → `dist/`
-2. **deps** — production-only install for the root
-3. **production** — assembles `node_modules`, `dist/` and starts the WS CLI server
+- **WebSocket collaboration** — `src/server/ws-server.ts` exists and is wired to `/ws/:roomKey`, but **is not currently deployed**. It needs a long-lived process, which Vercel's serverless functions are not; the Fly.io setup that used to host it has been removed. With `VITE_DEVBAR_WS_SERVER` unset the toolbar falls back to the API origin, so nothing breaks — live collaboration simply has nothing to connect to.
 
 ## Deployment
 
-| Component | Host                                        | Dev Trigger              | Prod Trigger                |
-| --------- | ------------------------------------------- | ------------------------ | --------------------------- |
-| SPA + API | Vercel                                      | Push to `main` (preview) | GitHub Release (production) |
-| WebSocket | Fly.io (`devbar-ws-dev` / `devbar-ws-prod`) | Push to `main`           | GitHub Release              |
+Vercel's Git integration builds directly from GitHub — there is no deploy
+workflow in `.github/workflows`. Pushing to `main` triggers a build using the
+`buildCommand` in `vercel.json`; branches get preview deployments.
 
 ### First-time setup
 
-**Fly.io:**
-
 ```bash
-# Create the two Fly apps (no deploy yet)
-fly apps create devbar-ws-dev
-fly apps create devbar-ws-prod
-
-# Set secrets on each app
-fly secrets set DEVBAR_HMAC_SECRET="your-secret" -a devbar-ws-dev
-fly secrets set DEVBAR_HMAC_SECRET="your-secret" -a devbar-ws-prod
-fly secrets set DEVBAR_TRUSTED_ORIGINS="https://devbar.sh,https://devbar-dev.vercel.app" -a devbar-ws-prod
-```
-
-**Vercel:**
-
-```bash
-# Link the project (run from repo root)
+# Link the repo to the Vercel project (run from repo root)
 vercel link
-
-# Note the org ID and project ID from .vercel/project.json — add these as GitHub secrets
 ```
 
-**GitHub:**
-
-Add these in the repo's Settings → Secrets and variables → Actions:
-
-- Secrets: `FLY_API_TOKEN`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
-- Then set all Vercel environment variables in the Vercel dashboard (see tables below)
+Then connect the GitHub repository in the Vercel dashboard (Project Settings →
+Git) so pushes build automatically, and set the environment variables listed
+below.
 
 ### Deploy to prod
 
-1. Merge work to `main` (auto-deploys SPA + API to Vercel preview, WebSocket to `devbar-ws-dev`)
-2. Verify on dev/preview
-3. Run `bun run release` (bumps `package.json` and the extension manifest, commits, pushes, tags via `bumpp`)
-4. Create a GitHub Release from the tag — triggers both Vercel production deploy and Fly.io `devbar-ws-prod` deploy
+1. Merge work to `main` — Vercel builds and deploys it
+2. Run `bun run release` (bumps `package.json` and the extension manifest, commits, pushes, tags via `bumpp`)
 
 ### Publish to npm
 
@@ -119,38 +85,35 @@ npm publish
 
 ### GitHub Actions
 
-| Workflow   | File                           | Purpose                                                                         |
-| ---------- | ------------------------------ | ------------------------------------------------------------------------------- |
-| **CI**     | `.github/workflows/ci.yml`     | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS, Windows) |
-| **Deploy** | `.github/workflows/deploy.yml` | Deploy SPA + API to Vercel and WebSocket to Fly.io                              |
+| Workflow           | File                                 | Purpose                                                                         |
+| ------------------ | ------------------------------------ | ------------------------------------------------------------------------------- |
+| **CI**             | `.github/workflows/ci.yml`           | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS, Windows) |
+| **Close inactive** | `.github/workflows/close-issues.yml` | Marks issues stale after 30 days and closes them 14 days later                  |
+
+Deploys are not run from Actions — Vercel's Git integration handles them, so no
+deploy secrets are needed.
 
 ### Required GitHub Configuration
 
-**Secrets:**
-
-| Name                | Purpose                      |
-| ------------------- | ---------------------------- |
-| `FLY_API_TOKEN`     | Fly.io deploy authentication |
-| `VERCEL_TOKEN`      | Vercel deploy authentication |
-| `VERCEL_ORG_ID`     | Vercel organization ID       |
-| `VERCEL_PROJECT_ID` | Vercel project ID            |
+None. CI only builds and tests, and deploys come from Vercel's Git integration,
+so the repo needs no Actions secrets.
 
 ### Vercel Environment Variables
 
-Set in the Vercel dashboard (Project Settings → Environment Variables). Use Vercel's environment scoping to set different values per environment (Production vs Preview) — e.g., `VITE_DEVBAR_WS_SERVER` should point to `devbar-ws-prod.fly.dev` for Production and `devbar-ws-dev.fly.dev` for Preview:
+Set in the Vercel dashboard (Project Settings → Environment Variables). Use Vercel's environment scoping to give Production and Preview different values where they need them:
 
 **Build-time (baked into SPA):**
 
-| Name                        | Purpose                                                      |
-| --------------------------- | ------------------------------------------------------------ |
-| `VITE_FLAG_PAID_PLANS`      | Feature flag — paid plans UI (default off)                   |
-| `VITE_FLAG_CONTACT_FORM`    | Feature flag — contact form (default off)                    |
-| `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                                    |
-| `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                                     |
-| `VITE_UMAMI_URL`            | Umami analytics URL                                          |
-| `VITE_UMAMI_WEBSITE_ID`     | Umami analytics website ID                                   |
-| `VITE_DEVBAR_WS_SERVER`     | Fly.io WebSocket URL (e.g. `https://devbar-ws-prod.fly.dev`) |
-| `VITE_DEVBAR_SERVER`        | API server URL (leave empty to use same origin)              |
+| Name                        | Purpose                                               |
+| --------------------------- | ----------------------------------------------------- |
+| `VITE_FLAG_PAID_PLANS`      | Feature flag — paid plans UI (default off)            |
+| `VITE_FLAG_CONTACT_FORM`    | Feature flag — contact form (default off)             |
+| `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                             |
+| `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                              |
+| `VITE_UMAMI_URL`            | Umami analytics URL                                   |
+| `VITE_UMAMI_WEBSITE_ID`     | Umami analytics website ID                            |
+| `VITE_DEVBAR_WS_SERVER`     | WebSocket server URL (leave unset — none is deployed) |
+| `VITE_DEVBAR_SERVER`        | API server URL (leave empty to use same origin)       |
 
 **Runtime (serverless function):**
 
@@ -170,22 +133,6 @@ Set in the Vercel dashboard (Project Settings → Environment Variables). Use Ve
 | `STRIPE_TEAM_PRICE_ID`             | Stripe Team plan price ID (runtime, for subscription creation)     |
 | `STRIPE_ORG_PRICE_ID`              | Stripe Org plan price ID (runtime)                                 |
 | `APP_URL`                          | App URL for Stripe redirect URLs (falls back to `BETTER_AUTH_URL`) |
-| `DEVBAR_HMAC_SECRET`               | HMAC signing for WebSocket auth tokens                             |
+| `DEVBAR_HMAC_SECRET`               | HMAC signing for WebSocket auth tokens (unused while WS is down)   |
 | `DISCORD_WEBHOOK_URL`              | Contact form Discord webhook                                       |
 | `DEVBAR_TRUSTED_ORIGINS`           | Comma-separated allowed CORS origins                               |
-
-### Fly.io Runtime Secrets
-
-Set via `fly secrets set` on each app. The WS server is stateless (no database, no auth) — it only needs HMAC to verify tokens issued by the Vercel API:
-
-- `DEVBAR_HMAC_SECRET` — HMAC signing for WebSocket auth tokens (must match the Vercel value)
-- `DEVBAR_TRUSTED_ORIGINS` — Comma-separated allowed CORS origins
-- `DEVBAR_ALLOW_ANONYMOUS` — Set to `"false"` to reject unauthenticated (Mode A) WebSocket connections (default: allowed)
-- `DEVBAR_FLY_INSTANCES` — Comma-separated Fly machine IDs for WebSocket affinity (optional, single-machine deployments don't need this)
-
-### Fly.io VM Config
-
-- **Region:** `ord` (Chicago)
-- **VM:** `shared-cpu-1x`, 512MB RAM
-- **Always on:** `min_machines_running = 1`, `auto_stop_machines = false`
-- **Concurrency:** soft 800 / hard 1000 connections
