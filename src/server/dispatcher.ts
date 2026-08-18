@@ -128,14 +128,26 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 					];
 
 		return new Promise<void>((resolve) => {
-			// Use /usr/bin/env to resolve the command so shell builtins like
-			// "echo" work portably without requiring shell: true.
 			// Only set cwd if the directory exists to avoid ENOENT spawn errors.
 			const cwd = existsSync(project.dir) ? project.dir : undefined;
-			const child = spawn("/usr/bin/env", [command, ...args], {
-				cwd,
-				stdio: ["ignore", "pipe", "pipe"],
-			});
+			// POSIX: /usr/bin/env resolves the command against PATH, so shell
+			// builtins like "echo" work without handing the args to a shell.
+			// Windows has no /usr/bin/env — and agent CLIs install there as .cmd
+			// shims, which Node refuses to spawn without a shell — so go through
+			// the shell there. Args are still passed as an array, so Node quotes
+			// them rather than us interpolating the prompt into a command line.
+			const child =
+				process.platform === "win32"
+					? spawn(command, args, {
+							cwd,
+							stdio: ["ignore", "pipe", "pipe"],
+							shell: true,
+							windowsHide: true,
+						})
+					: spawn("/usr/bin/env", [command, ...args], {
+							cwd,
+							stdio: ["ignore", "pipe", "pipe"],
+						});
 
 			const chunks: string[] = [];
 			child.stdout?.on("data", (data: Buffer) => chunks.push(data.toString()));
