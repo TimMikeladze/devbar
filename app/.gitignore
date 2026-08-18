@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated: copy of dist/cdn/cdn.global.js, served as a static asset.
+# Listed here as well as in the root .gitignore because tools that scan this
+# directory (oxfmt) resolve ignore files relative to it.
+public/cdn.global.js
