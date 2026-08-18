@@ -85,10 +85,10 @@ npm publish
 
 ### GitHub Actions
 
-| Workflow           | File                                 | Purpose                                                                         |
-| ------------------ | ------------------------------------ | ------------------------------------------------------------------------------- |
-| **CI**             | `.github/workflows/ci.yml`           | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS, Windows) |
-| **Close inactive** | `.github/workflows/close-issues.yml` | Marks issues stale after 30 days and closes them 14 days later                  |
+| Workflow           | File                                 | Purpose                                                                |
+| ------------------ | ------------------------------------ | ---------------------------------------------------------------------- |
+| **CI**             | `.github/workflows/ci.yml`           | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS) |
+| **Close inactive** | `.github/workflows/close-issues.yml` | Marks issues stale after 30 days and closes them 14 days later         |
 
 Deploys are not run from Actions — Vercel's Git integration handles them, so no
 deploy secrets are needed.
