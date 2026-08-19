@@ -92,6 +92,7 @@
 	"scripts": {
 		"build": "bunup && bun run build:extension",
 		"build:extension": "bun run scripts/build-extension.ts",
+		"package:extension": "bun run scripts/package-extension.ts",
 		"dev": "bun run dev:lib & bun run dev:ui & bun run dev:app & bun run dev:server & wait",
 		"dev:lib": "bunup --watch",
 		"dev:ui": "bun run --cwd test/ui dev",

@@ -1,0 +1,117 @@
+name: Chrome extension
+
+# Publishing is deliberate, never automatic: a tag builds the archive and
+# attaches it to the run, and a maintainer decides separately whether that
+# archive goes to the store. Uploading is reversible, but a published version
+# reaches every installed browser within hours.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Upload to the Chrome Web Store and publish"
+        type: boolean
+        default: false
+      target:
+        description: "Who the published version reaches"
+        type: choice
+        options: [default, trustedTesters]
+        default: default
+
+jobs:
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # extension/devbar.cdn.js is generated and gitignored — without this the
+      # archive would be missing the toolbar bundle.
+      - name: Build
+        run: bun run build
+
+      - name: Package extension
+        id: package
+        run: |
+          bun run package:extension
+          echo "path=$(ls dist/devbar-extension-*.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: ${{ steps.package.outputs.path }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish to the Chrome Web Store
+    needs: package
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: ubuntu-latest
+    # The store is a single shared target; two concurrent uploads to the same
+    # item race and one of them is rejected.
+    concurrency: chrome-web-store
+    environment: chrome-web-store
+    steps:
+      - name: Download archive
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-extension
+
+      - name: Upload and publish
+        env:
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          zip=$(ls devbar-extension-*.zip)
+          echo "Publishing $zip to item $EXTENSION_ID (target: $TARGET)"
+
+          # The refresh token is long-lived; access tokens last an hour.
+          token=$(curl -sS -X POST https://oauth2.googleapis.com/token \
+            -d "client_id=$CLIENT_ID" \
+            -d "client_secret=$CLIENT_SECRET" \
+            -d "refresh_token=$REFRESH_TOKEN" \
+            -d "grant_type=refresh_token" | jq -re .access_token)
+
+          upload=$(curl -sS -X PUT \
+            -H "Authorization: Bearer $token" \
+            -H "x-goog-api-version: 2" \
+            -T "$zip" \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$EXTENSION_ID?uploadType=media")
+          echo "$upload" | jq .
+
+          # A rejected upload still answers 200 — the state is in the body, so
+          # anything other than SUCCESS has to fail the step explicitly.
+          state=$(echo "$upload" | jq -r .uploadState)
+          if [ "$state" != "SUCCESS" ]; then
+            echo "::error::upload failed with state $state"
+            exit 1
+          fi
+
+          publish=$(curl -sS -X POST \
+            -H "Authorization: Bearer $token" \
+            -H "x-goog-api-version: 2" \
+            -H "Content-Length: 0" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/$EXTENSION_ID/publish?publishTarget=$TARGET")
+          echo "$publish" | jq .
+
+          if [ "$(echo "$publish" | jq -r '.status[0]')" != "OK" ]; then
+            echo "::error::publish was not accepted"
+            exit 1
+          fi
+
+          echo "Submitted for review. The version goes live once Google approves it."

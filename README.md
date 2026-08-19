@@ -129,6 +129,18 @@ be injected and show an **ERR** badge.
 `extension/example.html` is a plain page wired to the same bundle, useful for
 checking the script-tag path on its own.
 
+To build the archive the Chrome Web Store accepts:
+
+```bash
+bun run build              # writes extension/devbar.cdn.js
+bun run package:extension  # writes dist/devbar-extension-<version>.zip
+```
+
+The archive holds only the six files the extension loads — the icon SVG
+sources, the icon generator, and `example.html` stay out of it. See
+[docs/CHROME-EXTENSION.md](./docs/CHROME-EXTENSION.md) for store submission,
+the listing assets, and how updates reach installed browsers.
+
 ### Using the toolbar
 
 Pick a tool, mark up the page, then export everything as a single prompt.
