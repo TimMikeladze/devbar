@@ -134,10 +134,7 @@ function Header() {
 					<ThemeToggle theme={theme} onCycle={cycle} />
 					{CLOUD && (
 						<>
-							<Link
-								to="/login"
-								className="text-fg hover:text-fg/80 transition-colors font-medium"
-							>
+							<Link to="/login" className="text-fg hover:text-fg/80 transition-colors font-medium">
 								Sign in
 							</Link>
 							<Link to="/login?signup=1" className="btn-signal text-[13px] !py-1.5 !px-3.5">

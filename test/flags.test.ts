@@ -13,13 +13,13 @@ const { createDevbarServer } = await import("../src/server/index");
 /** Build a server with an explicit flag environment. */
 async function serverWith(env: Record<string, string | undefined>) {
 	const previous = {
+		DEVBAR_FLAG_CLOUD: process.env.DEVBAR_FLAG_CLOUD,
 		DEVBAR_FLAG_PAID_PLANS: process.env.DEVBAR_FLAG_PAID_PLANS,
 		DEVBAR_FLAG_CONTACT_FORM: process.env.DEVBAR_FLAG_CONTACT_FORM,
 	};
 	Object.assign(process.env, env);
 	try {
-		const { app } = await createDevbarServer();
-		return app;
+		return await createDevbarServer();
 	} finally {
 		Object.assign(process.env, previous);
 	}
@@ -27,15 +27,24 @@ async function serverWith(env: Record<string, string | undefined>) {
 
 describe("getServerFlags", () => {
 	test("everything is off by default", () => {
-		expect(getServerFlags({})).toEqual({ paidPlans: false, contactForm: false });
+		expect(getServerFlags({})).toEqual({ cloud: false, paidPlans: false, contactForm: false });
 	});
 
 	test('accepts "true" and "1" only', () => {
-		expect(getServerFlags({ DEVBAR_FLAG_PAID_PLANS: "true" }).paidPlans).toBe(true);
-		expect(getServerFlags({ DEVBAR_FLAG_PAID_PLANS: "1" }).paidPlans).toBe(true);
+		expect(getServerFlags({ DEVBAR_FLAG_CLOUD: "true" }).cloud).toBe(true);
+		expect(getServerFlags({ DEVBAR_FLAG_CLOUD: "1" }).cloud).toBe(true);
 		for (const value of ["false", "0", "yes", "", "TRUE"]) {
-			expect(getServerFlags({ DEVBAR_FLAG_PAID_PLANS: value }).paidPlans).toBe(false);
+			expect(getServerFlags({ DEVBAR_FLAG_CLOUD: value }).cloud).toBe(false);
 		}
+	});
+
+	test("paidPlans implies cloud", () => {
+		// A subscription hangs off an account, so plans without the SaaS is not
+		// a state the server can be in.
+		expect(getServerFlags({ DEVBAR_FLAG_PAID_PLANS: "true" }).paidPlans).toBe(false);
+		expect(
+			getServerFlags({ DEVBAR_FLAG_CLOUD: "true", DEVBAR_FLAG_PAID_PLANS: "true" }).paidPlans,
+		).toBe(true);
 	});
 });
 
@@ -53,35 +62,62 @@ describe("route gating", () => {
 
 	beforeAll(async () => {
 		off = await serverWith({
+			DEVBAR_FLAG_CLOUD: undefined,
 			DEVBAR_FLAG_PAID_PLANS: undefined,
 			DEVBAR_FLAG_CONTACT_FORM: undefined,
 		});
 	});
 
 	test("paid and contact routes are absent by default", () => {
-		expect(paths(off).filter((p) => p.includes("stripe"))).toEqual([]);
-		expect(paths(off).filter((p) => p.includes("contact"))).toEqual([]);
+		expect(paths(off.app).filter((p) => p.includes("stripe"))).toEqual([]);
+		expect(paths(off.app).filter((p) => p.includes("contact"))).toEqual([]);
+	});
+
+	test("the SaaS is absent by default — no auth, no dashboard API, no MCP", () => {
+		const offPaths = paths(off.app);
+		expect(offPaths.filter((p) => p.includes("auth"))).toEqual([]);
+		expect(offPaths.filter((p) => p.includes("reports"))).toEqual([]);
+		expect(offPaths.filter((p) => p.includes("ws-token"))).toEqual([]);
+		expect(offPaths).not.toContain("/mcp");
+	});
+
+	test("no database or auth instance is created by default", () => {
+		expect(off.auth).toBeNull();
+		expect(off.db).toBeNull();
+	});
+
+	test("sign in / sign up mount when the cloud flag is on", async () => {
+		const on = await serverWith({ DEVBAR_FLAG_CLOUD: "true" });
+		expect(paths(on.app)).toContain("/api/auth/*");
+		expect(paths(on.app).some((p) => p.includes("reports"))).toBe(true);
+		// Better Auth answers the sign-up route rather than the router 404ing.
+		const res = await on.app.request("/api/auth/sign-up/email", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({}),
+		});
+		expect(res.status).not.toBe(404);
 	});
 
 	test("unflagged routes stay reachable", async () => {
-		const res = await off.request("/health");
+		const res = await off.app.request("/health");
 		expect(res.status).toBe(200);
 	});
 
 	test("paid routes mount when the flag is on", async () => {
-		const on = await serverWith({ DEVBAR_FLAG_PAID_PLANS: "true" });
-		const stripe = paths(on).filter((p) => p.includes("stripe"));
+		const on = await serverWith({ DEVBAR_FLAG_CLOUD: "true", DEVBAR_FLAG_PAID_PLANS: "true" });
+		const stripe = paths(on.app).filter((p) => p.includes("stripe"));
 		expect(stripe).toContain("/api/stripe/checkout");
 		expect(stripe).toContain("/api/stripe/webhook");
 		// Mounted behind auth, so an anonymous call is rejected rather than served.
-		const res = await on.request("/api/stripe/checkout", { method: "POST" });
+		const res = await on.app.request("/api/stripe/checkout", { method: "POST" });
 		expect(res.status).toBe(401);
 	});
 
 	test("contact route mounts when the flag is on", async () => {
 		const on = await serverWith({ DEVBAR_FLAG_CONTACT_FORM: "true" });
-		expect(paths(on)).toContain("/api/contact");
-		const res = await on.request("/api/contact", {
+		expect(paths(on.app)).toContain("/api/contact");
+		const res = await on.app.request("/api/contact", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ email: "a@b.c", message: "hi" }),

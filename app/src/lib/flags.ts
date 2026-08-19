@@ -28,8 +28,7 @@ export const CLOUD =
  */
 export const PAID_PLANS =
 	CLOUD &&
-	(import.meta.env.VITE_FLAG_PAID_PLANS === "true" ||
-		import.meta.env.VITE_FLAG_PAID_PLANS === "1");
+	(import.meta.env.VITE_FLAG_PAID_PLANS === "true" || import.meta.env.VITE_FLAG_PAID_PLANS === "1");
 
 /** Contact form section on the landing page. */
 export const CONTACT_FORM =

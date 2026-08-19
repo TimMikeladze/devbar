@@ -13,30 +13,43 @@ postgres, stripe, the MCP SDK) are devDependencies for the same reason.
 ## Feature flags
 
 Optional surfaces are behind flags, **off by default** — a plain build is the
-self-hosted open-source product with no paid plans and no contact form. Each
-flag has two halves that must be set together: a build-time `VITE_FLAG_*` for
-the SPA (`app/src/lib/flags.ts`) and a runtime `DEVBAR_FLAG_*` for the API
+self-hosted open-source product: the landing page and the toolbar, with no
+accounts, no dashboard, no paid plans and no contact form. Each flag has two
+halves that must be set together: a build-time `VITE_FLAG_*` for the SPA
+(`app/src/lib/flags.ts`) and a runtime `DEVBAR_FLAG_*` for the API
 (`src/server/flags.ts`). Only the literal values `true` and `1` enable a flag.
 
-| Flag          | SPA env                  | API env                    | On → what appears                                                       |
-| ------------- | ------------------------ | -------------------------- | ----------------------------------------------------------------------- |
-| `paidPlans`   | `VITE_FLAG_PAID_PLANS`   | `DEVBAR_FLAG_PAID_PLANS`   | Pricing section and nav link, Billing page, `/api/stripe/*` and webhook |
-| `contactForm` | `VITE_FLAG_CONTACT_FORM` | `DEVBAR_FLAG_CONTACT_FORM` | Landing contact section and `POST /api/contact`                         |
+| Flag          | SPA env                  | API env                    | On → what appears                                                                                                      |
+| ------------- | ------------------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `cloud`       | `VITE_FLAG_CLOUD`        | `DEVBAR_FLAG_CLOUD`        | Sign in / sign up links and `/login`, the `/dashboard/*` pages, `/api/auth/*`, `/api/reports`, `/api/ws-token`, `/mcp` |
+| `paidPlans`   | `VITE_FLAG_PAID_PLANS`   | `DEVBAR_FLAG_PAID_PLANS`   | Pricing section and nav link, Billing page, `/api/stripe/*` and webhook                                                |
+| `contactForm` | `VITE_FLAG_CONTACT_FORM` | `DEVBAR_FLAG_CONTACT_FORM` | Landing contact section and `POST /api/contact`                                                                        |
 
 Notes:
 
 - Vite inlines `import.meta.env`, so a flagged-off section is dead code and
   never ships in the bundle — verified against the built assets. Flipping a
   flag needs a rebuild, not just a restart.
-- The SPA flags are exported as plain constants (`PAID_PLANS`, `CONTACT_FORM`),
+- The SPA flags are exported as plain constants (`CLOUD`, `PAID_PLANS`,
+  `CONTACT_FORM`),
   not as properties of a `flags` object. Rollup only folds the direct constant,
   so reading through an object would keep the gated markup in the bundle.
+- `paidPlans` implies `cloud` on both halves: a subscription hangs off an
+  account, so setting `PAID_PLANS` without `CLOUD` resolves to off rather than
+  shipping a checkout with nothing to attach it to.
+- With `cloud` off the API never opens a database connection and never builds a
+  Better Auth instance — `createDevbarServer()` returns `db: null, auth: null`.
+  A self-hosted server needs no `DATABASE_URL` and no `BETTER_AUTH_SECRET`.
+- WebSocket collaboration is _not_ behind `cloud`. It works with anonymous
+  peers or an HMAC token minted by the host app, so it needs no accounts.
 - With `paidPlans` off the subscription guard is not installed either. There is
   nothing to subscribe to, so gating the dashboard behind a subscription would
   lock out every self-hosted user.
 - The API mounts flagged routes conditionally, so they are absent from the
-  router rather than returning a "disabled" response. Note that anonymous calls
-  to a missing `/api/*` path answer `401` from the auth middleware, not `404`.
+  router rather than returning a "disabled" response. Note that with `cloud` on,
+  anonymous calls to a missing `/api/*` path answer `401` from the auth
+  middleware, not `404`; with `cloud` off there is no auth middleware and they
+  answer `404`.
 
 ## Architecture
 
@@ -104,35 +117,37 @@ Set in the Vercel dashboard (Project Settings → Environment Variables). Use Ve
 
 **Build-time (baked into SPA):**
 
-| Name                        | Purpose                                               |
-| --------------------------- | ----------------------------------------------------- |
-| `VITE_FLAG_PAID_PLANS`      | Feature flag — paid plans UI (default off)            |
-| `VITE_FLAG_CONTACT_FORM`    | Feature flag — contact form (default off)             |
-| `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                             |
-| `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                              |
-| `VITE_UMAMI_URL`            | Umami analytics URL                                   |
-| `VITE_UMAMI_WEBSITE_ID`     | Umami analytics website ID                            |
-| `VITE_DEVBAR_WS_SERVER`     | WebSocket server URL (leave unset — none is deployed) |
-| `VITE_DEVBAR_SERVER`        | API server URL (leave empty to use same origin)       |
+| Name                        | Purpose                                                      |
+| --------------------------- | ------------------------------------------------------------ |
+| `VITE_FLAG_CLOUD`           | Feature flag — sign in / sign up and dashboard (default off) |
+| `VITE_FLAG_PAID_PLANS`      | Feature flag — paid plans UI, implies cloud (default off)    |
+| `VITE_FLAG_CONTACT_FORM`    | Feature flag — contact form (default off)                    |
+| `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                                    |
+| `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                                     |
+| `VITE_UMAMI_URL`            | Umami analytics URL                                          |
+| `VITE_UMAMI_WEBSITE_ID`     | Umami analytics website ID                                   |
+| `VITE_DEVBAR_WS_SERVER`     | WebSocket server URL (leave unset — none is deployed)        |
+| `VITE_DEVBAR_SERVER`        | API server URL (leave empty to use same origin)              |
 
 **Runtime (serverless function):**
 
-| Name                               | Purpose                                                            |
-| ---------------------------------- | ------------------------------------------------------------------ |
-| `DEVBAR_FLAG_PAID_PLANS`           | Feature flag — Stripe routes + subscription guard (default off)    |
-| `DEVBAR_FLAG_CONTACT_FORM`         | Feature flag — `POST /api/contact` (default off)                   |
-| `DATABASE_URL`                     | Postgres connection string                                         |
-| `BETTER_AUTH_SECRET`               | Better Auth session signing secret (required)                      |
-| `BETTER_AUTH_URL`                  | Better Auth base URL (e.g. `https://devbar.sh`)                    |
-| `BETTER_AUTH_GITHUB_CLIENT_ID`     | GitHub OAuth client ID (optional)                                  |
-| `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional)                              |
-| `BETTER_AUTH_GOOGLE_CLIENT_ID`     | Google OAuth client ID (optional)                                  |
-| `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional)                              |
-| `STRIPE_SECRET_KEY`                | Stripe API key                                                     |
-| `STRIPE_WEBHOOK_SECRET`            | Stripe webhook signing secret                                      |
-| `STRIPE_TEAM_PRICE_ID`             | Stripe Team plan price ID (runtime, for subscription creation)     |
-| `STRIPE_ORG_PRICE_ID`              | Stripe Org plan price ID (runtime)                                 |
-| `APP_URL`                          | App URL for Stripe redirect URLs (falls back to `BETTER_AUTH_URL`) |
-| `DEVBAR_HMAC_SECRET`               | HMAC signing for WebSocket auth tokens (unused while WS is down)   |
-| `DISCORD_WEBHOOK_URL`              | Contact form Discord webhook                                       |
-| `DEVBAR_TRUSTED_ORIGINS`           | Comma-separated allowed CORS origins                               |
+| Name                               | Purpose                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| `DEVBAR_FLAG_CLOUD`                | Feature flag — auth, dashboard API, MCP endpoint (default off)                 |
+| `DEVBAR_FLAG_PAID_PLANS`           | Feature flag — Stripe routes + subscription guard, implies cloud (default off) |
+| `DEVBAR_FLAG_CONTACT_FORM`         | Feature flag — `POST /api/contact` (default off)                               |
+| `DATABASE_URL`                     | Postgres connection string (only read when `cloud` is on)                      |
+| `BETTER_AUTH_SECRET`               | Better Auth session signing secret (required when `cloud` is on)               |
+| `BETTER_AUTH_URL`                  | Better Auth base URL (e.g. `https://devbar.sh`)                                |
+| `BETTER_AUTH_GITHUB_CLIENT_ID`     | GitHub OAuth client ID (optional)                                              |
+| `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional)                                          |
+| `BETTER_AUTH_GOOGLE_CLIENT_ID`     | Google OAuth client ID (optional)                                              |
+| `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional)                                          |
+| `STRIPE_SECRET_KEY`                | Stripe API key                                                                 |
+| `STRIPE_WEBHOOK_SECRET`            | Stripe webhook signing secret                                                  |
+| `STRIPE_TEAM_PRICE_ID`             | Stripe Team plan price ID (runtime, for subscription creation)                 |
+| `STRIPE_ORG_PRICE_ID`              | Stripe Org plan price ID (runtime)                                             |
+| `APP_URL`                          | App URL for Stripe redirect URLs (falls back to `BETTER_AUTH_URL`)             |
+| `DEVBAR_HMAC_SECRET`               | HMAC signing for WebSocket auth tokens (unused while WS is down)               |
+| `DISCORD_WEBHOOK_URL`              | Contact form Discord webhook                                                   |
+| `DEVBAR_TRUSTED_ORIGINS`           | Comma-separated allowed CORS origins                                           |
