@@ -6,7 +6,7 @@ import "devbar.sh/styles.css";
 import { PricingCards } from "./components/PricingCards";
 import { LogoMark } from "./components/Logo";
 import { useTheme, type Theme } from "./hooks/useTheme";
-import { PAID_PLANS, CONTACT_FORM } from "./lib/flags";
+import { CLOUD, PAID_PLANS, CONTACT_FORM } from "./lib/flags";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -132,12 +132,19 @@ function Header() {
 						</a>
 					))}
 					<ThemeToggle theme={theme} onCycle={cycle} />
-					<Link to="/login" className="text-fg hover:text-fg/80 transition-colors font-medium">
-						Sign in
-					</Link>
-					<Link to="/login?signup=1" className="btn-signal text-[13px] !py-1.5 !px-3.5">
-						Get started
-					</Link>
+					{CLOUD && (
+						<>
+							<Link
+								to="/login"
+								className="text-fg hover:text-fg/80 transition-colors font-medium"
+							>
+								Sign in
+							</Link>
+							<Link to="/login?signup=1" className="btn-signal text-[13px] !py-1.5 !px-3.5">
+								Get started
+							</Link>
+						</>
+					)}
 				</nav>
 
 				<button
@@ -172,12 +179,16 @@ function Header() {
 					))}
 					<div className="border-t border-border/60 pt-3 mt-3 flex items-center gap-3">
 						<ThemeToggle theme={theme} onCycle={cycle} />
-						<Link to="/login" className="text-[14px] text-fg font-medium">
-							Sign in
-						</Link>
-						<Link to="/login?signup=1" className="btn-signal text-[13px] !py-1.5 !px-3.5">
-							Get started
-						</Link>
+						{CLOUD && (
+							<>
+								<Link to="/login" className="text-[14px] text-fg font-medium">
+									Sign in
+								</Link>
+								<Link to="/login?signup=1" className="btn-signal text-[13px] !py-1.5 !px-3.5">
+									Get started
+								</Link>
+							</>
+						)}
 					</div>
 				</nav>
 			)}
@@ -669,7 +680,9 @@ import "devbar.sh/styles.css";
 		},
 		{
 			label: "JSON",
-			desc: "The full machine-readable payload — pipe to an agent or store it on the dashboard.",
+			desc: CLOUD
+				? "The full machine-readable payload — pipe to an agent or store it on the dashboard."
+				: "The full machine-readable payload — pipe it straight to an agent.",
 			lang: "json",
 			code: `{
   "url": "https://app.example.com/dashboard",
@@ -1198,7 +1211,9 @@ function FAQ() {
 		},
 		{
 			q: "How does team collaboration work?",
-			a: "Everyone uses the same toolbar. Change requests and bug reports flow to the dashboard, a GitHub issue, Slack, or your agent with identical context.",
+			a: CLOUD
+				? "Everyone uses the same toolbar. Change requests and bug reports flow to the dashboard, a GitHub issue, Slack, or your agent with identical context."
+				: "Everyone uses the same toolbar. Change requests and bug reports flow to a GitHub issue, Slack, or your agent with identical context.",
 		},
 		{
 			q: "Will it slow down my app?",

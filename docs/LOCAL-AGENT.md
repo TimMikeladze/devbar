@@ -42,6 +42,11 @@ codex mcp add devbar -- devbar mcp
 
 ## devbar.config.ts
 
+The CLI loads the config with its own resolver and points `devbar.sh/config` at
+the copy it ships, so the import works under `bunx devbar.sh` in a project that
+never installed devbar. Your editor still needs the package on disk for the
+types — `bun add -d devbar.sh` if you want autocomplete on the config.
+
 ```ts
 import { defineConfig } from "devbar.sh/config";
 
