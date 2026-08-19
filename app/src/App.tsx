@@ -62,6 +62,7 @@ function App() {
 				<HowItWorks />
 				<CapturedData />
 				<DropItIn />
+				<LocalAgent />
 				<Features />
 				{PAID_PLANS && <Pricing />}
 				<FAQ />
@@ -102,6 +103,7 @@ function Header() {
 
 	const links = [
 		{ href: "#how-it-works", label: "How it works" },
+		{ href: "#local-agent", label: "Local agent" },
 		// Only linkable when the section it scrolls to is rendered.
 		...(PAID_PLANS ? [{ href: "#pricing", label: "Pricing" }] : []),
 		{ href: "#faq", label: "FAQ" },
@@ -483,8 +485,8 @@ function HowItWorks() {
 		{
 			n: "03",
 			title: "Route",
-			desc: "Send it where you work — your AI agent, a GitHub issue, the dashboard, or any endpoint.",
-			items: ["Agents via MCP & webhooks", "GitHub, Slack, Jira, Linear", "JSON & Markdown export"],
+			desc: "Send it where you work — an agent CLI in your repo, an MCP session, a GitHub issue, or any endpoint.",
+			items: ["Dispatch to claude / codex", "Pull over MCP", "Webhooks, JSON & Markdown"],
 		},
 	];
 
@@ -720,6 +722,226 @@ import "devbar.sh/styles.css";
 }
 
 /* ═══════════════════════════════════════════
+   Local agent + MCP
+   ═══════════════════════════════════════════ */
+
+const mcpQueueTools = [
+	["list_reports", "The queue, filterable by project and status"],
+	["get_report", "The prompt plus the on-disk paths of its screenshots"],
+	["claim_report", "Marks a report yours, so the dispatcher won't double-work it"],
+	["resolve_report", "Closes it, recording what changed"],
+	["dispatch_report", "Hands it to the agent CLI instead"],
+	["list_tasks", "Dispatch tasks, including other sessions' runs"],
+];
+
+const mcpLiveTools = [
+	["list_pages", "Browser tabs currently running the toolbar"],
+	["inspect_element", "Selector, React path with file:line, a11y, box, styles"],
+	["screenshot_page", "The page or one element, as an image the model can see"],
+	["get_console_errors", "Console and failed-request buffers from the live page"],
+	["highlight_element", "Flashes an outline in your browser — the channel back to you"],
+	["wait_for_reload", "Blocks until HMR or a navigation reloads the page"],
+];
+
+function LocalAgent() {
+	const ref = useReveal();
+
+	return (
+		<section ref={ref} id="local-agent" className="mb-24 sm:mb-32 scroll-mt-20 reveal">
+			<div className="text-center mb-10 sm:mb-14">
+				<Eyebrow center>Local agent · MCP</Eyebrow>
+				<h2 className="section-title">Your agent, wired into the page you're looking at.</h2>
+				<p className="section-sub">
+					Run <code className="font-mono text-[13px] text-fg">devbar</code> in your project and the
+					toolbar finds it — no server, token, or project props. From there a report goes two ways:
+					pushed to an agent CLI, or pulled by an agent session you already have open, over MCP.
+				</p>
+			</div>
+
+			{/* Push vs pull */}
+			<div className="grid sm:grid-cols-2 gap-4 mb-4">
+				<div className="step">
+					<div className="step-top">
+						<span className="step-idx">PUSH</span>
+						<span className="step-rule" />
+						<span className="bento-glyph !w-7 !h-7 !mb-0">
+							<BoltGlyph />
+						</span>
+					</div>
+					<h3 className="text-[15px] font-semibold text-fg mb-1.5">Dispatch to an agent CLI</h3>
+					<p className="text-[13px] text-muted leading-relaxed mb-4">
+						The report is handed to <code className="font-mono">claude</code>,{" "}
+						<code className="font-mono">codex</code>, or <code className="font-mono">opencode</code>{" "}
+						running in your project directory. Screenshots are written next to the prompt as real
+						files, so the agent can actually read them instead of choking on base64.
+					</p>
+					<ul className="space-y-1.5">
+						{[
+							"Prompt on stdin, run in the repo",
+							"Per-CLI model & permission flags",
+							"Budget, timeout, concurrency caps",
+						].map((item) => (
+							<li key={item} className="flex items-center gap-2 text-[12px] text-dim font-mono">
+								<span className="step-tick" />
+								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+
+				<div className="step">
+					<div className="step-top">
+						<span className="step-idx">PULL</span>
+						<span className="step-rule" />
+						<span className="bento-glyph !w-7 !h-7 !mb-0">
+							<PlugGlyph />
+						</span>
+					</div>
+					<h3 className="text-[15px] font-semibold text-fg mb-1.5">Serve it over MCP</h3>
+					<p className="text-[13px] text-muted leading-relaxed mb-4">
+						<code className="font-mono">devbar mcp</code> is a stdio MCP server over the same queue
+						and the same connected pages. It holds no state, so several agent sessions share one
+						queue and restarting an agent loses nothing.
+					</p>
+					<ul className="space-y-1.5">
+						{[
+							"Read & claim reports from the queue",
+							"Inspect, screenshot, highlight the live page",
+							"No MCP SDK dependency to install",
+						].map((item) => (
+							<li key={item} className="flex items-center gap-2 text-[12px] text-dim font-mono">
+								<span className="step-tick" />
+								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+			</div>
+
+			{/* Setup + how it reaches the browser */}
+			<div className="code-panel grid lg:grid-cols-[1fr_0.85fr] gap-6 mb-4">
+				<div className="min-w-0">
+					<p className="text-[13px] font-semibold text-fg mb-1">Two commands</p>
+					<p className="text-[13px] text-muted leading-relaxed mb-3">
+						The first starts the local server and registers the project; the second points your
+						agent at it.
+					</p>
+					<CodeBlock
+						lang="bash"
+						code={`cd my-app
+bunx devbar.sh init   # writes devbar.config.ts
+bunx devbar.sh        # serves on 127.0.0.1:3100
+
+claude mcp add devbar -- devbar mcp
+codex  mcp add devbar -- devbar mcp`}
+					/>
+					<p className="text-[12px] text-dim leading-relaxed mt-3">
+						The toolbar probes <code className="font-mono">127.0.0.1:3100</code> and{" "}
+						<code className="font-mono">:3101</code> on localhost pages, asks which project claims
+						the origin, and wires itself up. <code className="font-mono">devbar doctor</code> says
+						what's missing when it doesn't.
+					</p>
+				</div>
+
+				<div className="min-w-0">
+					<p className="text-[13px] font-semibold text-fg mb-1">How it reaches the browser</p>
+					<p className="text-[13px] text-muted leading-relaxed mb-3">
+						A browser can't listen on a socket and each agent session spawns its own MCP process, so
+						the devbar server sits in the middle.
+					</p>
+					<div className="wire">
+						<div className="wire-node">
+							claude / codex
+							<span>your agent session</span>
+						</div>
+						<div className="wire-link">spawns</div>
+						<div className="wire-node">
+							devbar mcp
+							<span>stdio · stateless</span>
+						</div>
+						<div className="wire-link">HTTP + SSE over loopback</div>
+						<div className="wire-node accent">
+							devbar server :3100
+							<span>queue · projects · page bus</span>
+						</div>
+						<div className="wire-link">SSE down · POST up</div>
+						<div className="wire-node">
+							toolbar in the page
+							<span>answers RPCs from the tab you're on</span>
+						</div>
+					</div>
+					<p className="text-[12px] text-dim leading-relaxed mt-3">
+						The page holds an SSE stream open and answers over POST; the agent's request waits until
+						the page replies, or gets a 504 with a reason after 10s. No WebSocket, no dependencies.
+					</p>
+				</div>
+			</div>
+
+			{/* Tools */}
+			<div className="grid sm:grid-cols-2 gap-4 mb-4">
+				{[
+					{ title: "Queue tools", sub: "the reports you captured", tools: mcpQueueTools },
+					{ title: "Live page tools", sub: "the tab you're looking at", tools: mcpLiveTools },
+				].map((group) => (
+					<div key={group.title} className="bento-card !p-5">
+						<p className="text-[14px] font-semibold text-fg mb-0.5">{group.title}</p>
+						<p className="text-[12px] text-muted mb-3">{group.sub}</p>
+						<div>
+							{group.tools.map(([name, desc]) => (
+								<div key={name} className="toolrow">
+									<code>{name}</code>
+									<span className="text-[12px] text-muted leading-snug">{desc}</span>
+								</div>
+							))}
+						</div>
+					</div>
+				))}
+			</div>
+
+			{/* The loop + guardrails */}
+			<div className="bento-card !p-5">
+				<div className="flex flex-wrap items-center gap-x-2 gap-y-2 mb-4 font-mono text-[11.5px]">
+					<span className="text-[12px] text-fg font-sans font-semibold mr-1">The loop</span>
+					{[
+						"get_report",
+						"edit code",
+						"wait_for_reload",
+						"screenshot_page",
+						"highlight_element",
+						"resolve_report",
+					].map((step, i) => (
+						<span key={step} className="flex items-center gap-2">
+							{i > 0 && <span className="text-muted/50">·</span>}
+							<span className="tagpill">{step}</span>
+						</span>
+					))}
+				</div>
+				<p className="text-[13px] text-muted leading-relaxed mb-3">
+					Dispatch means a web page can start an agent in your repository, so the defaults are
+					deliberately timid. Live tools stay dark until you switch on <strong>Agent live</strong>{" "}
+					in the toolbar, per origin — navigation needs a second switch, and every call shows up in
+					the toolbar.
+				</p>
+				<div className="flex flex-wrap gap-2">
+					{[
+						"loopback only",
+						'permission: "plan"',
+						"autoDispatch: false",
+						"origin-authorized, no wildcard CORS",
+						"bearer token beyond localhost",
+						"no eval tool",
+					].map((chip) => (
+						<span key={chip} className="tagpill">
+							{chip}
+						</span>
+					))}
+				</div>
+			</div>
+		</section>
+	);
+}
+
+/* ═══════════════════════════════════════════
    Features (bento)
    ═══════════════════════════════════════════ */
 
@@ -749,7 +971,7 @@ function Features() {
 		},
 		{
 			label: "MCP & webhooks",
-			desc: "Route to agents over MCP, POST to any URL, or copy to the clipboard.",
+			desc: "A stdio MCP server your agent spawns: it pulls reports off the queue, and inspects, screenshots, and highlights the live page. Or POST to any URL.",
 			span: "bento-lg",
 			glyph: <PlugGlyph />,
 		},
@@ -961,6 +1183,14 @@ function FAQ() {
 		{
 			q: "How does this work with AI agents?",
 			a: "Paste the context into Cursor, Claude, or ChatGPT — or connect over MCP, onSubmit, or a webhook so your agent picks up changes automatically.",
+		},
+		{
+			q: "What does the MCP server actually do?",
+			a: "devbar mcp is a stdio MCP server your agent spawns. It reads the report queue you captured in the browser, and — once you switch on Agent live — inspects, screenshots, and highlights the page you have open, through the local devbar server. It is stateless, so several sessions can share one queue.",
+		},
+		{
+			q: "Does the agent run on my machine?",
+			a: 'Yes, and only there. The server binds 127.0.0.1, authorizes requests by origin, and defaults to permission "plan" with auto-dispatch off — so nothing runs in your repo until you ask for it.',
 		},
 		{
 			q: "Does it work without React?",
