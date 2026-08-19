@@ -62,6 +62,8 @@ export type Dispatcher = {
 	subscribe(listener: (event: TaskEvent) => void): () => void;
 	/** Waits for every in-flight run to settle. Tests and shutdown use it. */
 	drain(): Promise<void>;
+	/** Resolves once the tasks left by a previous process have been reloaded. */
+	ready: Promise<void>;
 };
 
 const MAX_EVENTS_PER_TASK = 1000;
@@ -124,6 +126,41 @@ export function buildPrompt(
 	}
 
 	return `${promptText}\n\n---\n${location}\n`;
+}
+
+/**
+ * Merges a task record found on disk into the live map at startup.
+ *
+ * The reload races the dispatcher it belongs to: a task enqueued moments after
+ * construction has already written a "queued" snapshot, and adopting that
+ * snapshot would resurrect a task that is live (or already finished) in memory.
+ * So a known id always wins over the file. Returns true when the record was
+ * rewritten as interrupted and needs persisting again.
+ */
+export function adoptPersistedTask(
+	tasks: Map<string, Task>,
+	persisted: Task,
+	timestamp: number,
+): boolean {
+	if (tasks.has(persisted.id)) return false;
+
+	let rewritten = false;
+	if (persisted.status === "running" || persisted.status === "queued") {
+		// Nothing is running any more — the process that owned it is gone.
+		persisted.status = "failed";
+		persisted.completedAt = persisted.completedAt ?? timestamp;
+		persisted.result = {
+			taskId: persisted.id,
+			exitCode: 1,
+			output: "interrupted by server restart",
+			durationMs: 0,
+			model: "",
+			interrupted: true,
+		};
+		rewritten = true;
+	}
+	tasks.set(persisted.id, persisted);
+	return rewritten;
 }
 
 export function createDispatcher(options: DispatcherOptions): Dispatcher {
@@ -354,7 +391,26 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 		inFlight.add(promise);
 	}
 
+	// Reload tasks left behind by a previous process.
+	const ready = (async () => {
+		try {
+			const files = await readdir(options.tasksDir);
+			for (const file of files) {
+				if (!file.endsWith(".json")) continue;
+				try {
+					const raw = await readFile(join(options.tasksDir, file), "utf-8");
+					const persisted = JSON.parse(raw) as Task;
+					if (adoptPersistedTask(tasks, persisted, now())) {
+						void persist(persisted);
+					}
+				} catch {}
+			}
+		} catch {}
+	})();
+
 	const dispatcher: Dispatcher = {
+		ready,
+
 		enqueue(reportId, projectSlug) {
 			const project = options.getProject(projectSlug);
 			if (!project) return "";
@@ -451,41 +507,13 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 		},
 
 		async drain() {
+			await ready;
 			while (inFlight.size > 0) {
 				// Snapshot: the set shrinks as promises settle.
 				await Promise.all([...inFlight]);
 			}
 		},
 	};
-
-	// Reload tasks left behind by a previous process.
-	void (async () => {
-		try {
-			const files = await readdir(options.tasksDir);
-			for (const file of files) {
-				if (!file.endsWith(".json")) continue;
-				try {
-					const raw = await readFile(join(options.tasksDir, file), "utf-8");
-					const task = JSON.parse(raw) as Task;
-					if (task.status === "running" || task.status === "queued") {
-						// Nothing is running any more — the process that owned it is gone.
-						task.status = "failed";
-						task.completedAt = task.completedAt ?? now();
-						task.result = {
-							taskId: task.id,
-							exitCode: 1,
-							output: "interrupted by server restart",
-							durationMs: 0,
-							model: "",
-							interrupted: true,
-						};
-						void persist(task);
-					}
-					tasks.set(task.id, task);
-				} catch {}
-			}
-		} catch {}
-	})();
 
 	return dispatcher;
 }

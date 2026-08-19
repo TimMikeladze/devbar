@@ -1,5 +1,11 @@
 import { expect, test, describe, beforeEach, afterEach } from "bun:test";
-import { createDispatcher, buildPrompt, type Dispatcher } from "../src/server/dispatcher";
+import {
+	createDispatcher,
+	buildPrompt,
+	adoptPersistedTask,
+	type Dispatcher,
+	type Task,
+} from "../src/server/dispatcher";
 import { createReportStore, type ReportStore } from "../src/server/report-store";
 import type { ProjectConfig } from "../src/server/registry";
 import { rm, mkdir, readFile } from "node:fs/promises";
@@ -119,7 +125,7 @@ describe("dispatcher", () => {
 			getProject: () => PROJECT,
 			command: "echo",
 		});
-		await new Promise((r) => setTimeout(r, 50));
+		await reloaded.ready;
 
 		const recovered = reloaded.getTask(taskId);
 		expect(recovered?.status).toBe("failed");
@@ -214,5 +220,46 @@ describe("buildPrompt", () => {
 		const prompt = buildPrompt(report, "# Report\nthe button is misaligned", "arg");
 		expect(prompt.length).toBeLessThan(400);
 		expect(prompt).toContain("/reports/r1/prompt.md");
+	});
+});
+
+describe("adoptPersistedTask", () => {
+	function record(status: Task["status"]): Task {
+		return {
+			id: "task-1",
+			reportId: "report-1",
+			reportPath: "/tmp/report-1",
+			projectSlug: "test-app",
+			status,
+			createdAt: 1,
+		};
+	}
+
+	test("marks a record its process left behind as interrupted", () => {
+		const tasks = new Map<string, Task>();
+		expect(adoptPersistedTask(tasks, record("running"), 42)).toBe(true);
+
+		const adopted = tasks.get("task-1");
+		expect(adopted?.status).toBe("failed");
+		expect(adopted?.result?.interrupted).toBe(true);
+		expect(adopted?.completedAt).toBe(42);
+	});
+
+	test("adopts a finished record as-is", () => {
+		const tasks = new Map<string, Task>();
+		expect(adoptPersistedTask(tasks, record("completed"), 42)).toBe(false);
+		expect(tasks.get("task-1")?.status).toBe("completed");
+	});
+
+	test("never overwrites a task the dispatcher already holds", () => {
+		// The startup reload races the dispatcher: a task enqueued right after
+		// construction has a stale "queued" snapshot on disk while it is already
+		// running or done in memory. The live task must win.
+		const live = record("completed");
+		const tasks = new Map<string, Task>([[live.id, live]]);
+
+		expect(adoptPersistedTask(tasks, record("queued"), 42)).toBe(false);
+		expect(tasks.get("task-1")).toBe(live);
+		expect(tasks.get("task-1")?.status).toBe("completed");
 	});
 });
