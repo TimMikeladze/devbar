@@ -3,6 +3,7 @@
 	"buildCommand": "bun install --frozen-lockfile && bun run build && cd app && bun install --frozen-lockfile && bunx vite build",
 	"outputDirectory": "app/dist",
 	"framework": null,
+	"redirects": [{ "source": "/og.png", "destination": "/og-v2.png", "permanent": true }],
 	"rewrites": [
 		{ "source": "/api/(.*)", "destination": "/api/serverless" },
 		{ "source": "/mcp", "destination": "/api/serverless" },

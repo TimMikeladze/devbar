@@ -33,7 +33,9 @@ Run `bun run dev` - This starts a Bun + React preview app at http://localhost:38
 
 ### Social preview image
 
-The Open Graph image at `app/public/og.png` is generated from the HTML template in `scripts/og-image.html`. After editing the template, regenerate the PNG with `bun run og` (renders at 2x via Playwright, downscaled to 1200x630) and commit both files.
+The Open Graph image at `app/public/og-v2.png` is generated from the HTML template in `scripts/og-image.html`. After editing the template, regenerate the PNG with `bun run og` (renders at 2x via Playwright, downscaled to 1200x630) and commit both files.
+
+Social crawlers cache the image by URL and rarely re-fetch it, so a redesign that keeps the same filename will keep showing the old preview. When the artwork changes meaningfully, bump the version suffix (`og-v2.png` → `og-v3.png`) in `scripts/generate-og.ts` and in the `og:image`, `twitter:image`, and JSON-LD `image` tags in `app/index.html`.
 
 ## Commit Message Conventions
 

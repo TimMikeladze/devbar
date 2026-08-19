@@ -1,5 +1,5 @@
 /**
- * Renders scripts/og-image.html to app/public/og.png (1200x630).
+ * Renders scripts/og-image.html to app/public/og-v2.png (1200x630).
  *
  * Shot at 2x and downscaled back to 1200x630 so text and hairlines stay crisp
  * in social previews. The downscale runs in the browser (canvas) to avoid
@@ -14,7 +14,7 @@ import { pathToFileURL } from "node:url";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const TEMPLATE = resolve(ROOT, "scripts/og-image.html");
-const OUT = resolve(ROOT, "app/public/og.png");
+const OUT = resolve(ROOT, "app/public/og-v2.png");
 
 const WIDTH = 1200;
 const HEIGHT = 630;
