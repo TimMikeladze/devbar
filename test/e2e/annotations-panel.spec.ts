@@ -153,28 +153,34 @@ test.describe("Annotations Panel", () => {
 	});
 });
 
-test.describe("Panel tabs", () => {
+test.describe("Panel surfaces", () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto("/");
 		await page.waitForSelector(".devbar-bar");
 	});
 
-	test("one panel exposes annotations, history, settings and shortcuts", async ({ page }) => {
+	test("annotations are separate from settings and shortcuts", async ({ page }) => {
 		await page.getByRole("button", { name: /Annotations/ }).click();
 		const panel = page.locator(".devbar-panel");
 		await expect(panel).toHaveCount(1);
+		await expect(panel.getByRole("tab", { name: /Annotations/ })).toBeVisible();
+		await expect(panel.getByRole("tab", { name: /History/ })).toBeVisible();
+		await expect(panel.getByRole("tab", { name: /Settings/ })).toHaveCount(0);
+		await expect(panel.getByRole("tab", { name: /Shortcuts/ })).toHaveCount(0);
 
-		await panel.getByRole("tab", { name: /Settings/ }).click();
+		await page.locator(".devbar-bar").getByRole("button", { name: "Settings" }).click();
 		await expect(panel.getByText("Toolbar orientation")).toBeVisible();
+		await expect(panel.getByRole("tab", { name: /Settings/ })).toBeVisible();
+		await expect(panel.getByRole("tab", { name: /Shortcuts/ })).toBeVisible();
+		await expect(panel.getByRole("tab", { name: /Annotations/ })).toHaveCount(0);
+		await expect(panel.getByRole("tab", { name: /History/ })).toHaveCount(0);
 
 		await panel.getByRole("tab", { name: /Shortcuts/ }).click();
 		await expect(panel.getByText("Select element")).toBeVisible();
 
+		await page.getByRole("button", { name: /Annotations/ }).click();
 		await panel.getByRole("tab", { name: /History/ }).click();
 		await expect(panel.getByText("No exports yet")).toBeVisible();
-
-		// Still exactly one panel — these used to be separate floating surfaces
-		await expect(page.locator(".devbar-panel")).toHaveCount(1);
 	});
 
 	test("the settings bar button opens the panel on the settings tab", async ({ page }) => {

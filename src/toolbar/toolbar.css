@@ -3148,8 +3148,8 @@
 }
 
 /* ─── Panel tabs ───
-   Annotations, History, Settings and Shortcuts used to be separate floating
-   panels that could not be open at the same time; they are now one surface. */
+   Annotations/History and Settings/Shortcuts are two distinct surfaces that
+   reuse the same floating-panel shell. */
 .devbar-panel-header-tabs {
 	gap: 6px;
 	padding: 6px 6px 6px 8px;

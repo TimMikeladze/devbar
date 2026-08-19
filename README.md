@@ -102,9 +102,9 @@ element's tag and pixel size. `↑` widens the selection to the parent element a
 `↓` narrows it to the first child, so you can land on the wrapper you actually
 mean instead of whichever node happens to be under the pointer.
 
-Everything you capture collects in the panel, which has four tabs —
-**Annotations**, **History** (past exports), **Settings** and **Shortcuts**. The
-toolbar's annotations and settings buttons both open it, on the matching tab.
+Everything you capture collects in the dedicated **Annotations** panel, alongside
+**History** for past exports. **Settings** and **Shortcuts** live in a separate
+preferences panel opened from the toolbar's gear button.
 
 At the top of the Annotations tab is a **task field**: one line saying what you
 actually want changed. Annotations are evidence; the task is the intent. When

@@ -100,9 +100,12 @@ export type DevbarProps = {
 
 type PanelTab = "annotations" | "history" | "settings" | "shortcuts";
 
-const PANEL_TABS: { key: PanelTab; label: string }[] = [
+const ANNOTATION_TABS: { key: PanelTab; label: string }[] = [
 	{ key: "annotations", label: "Annotations" },
 	{ key: "history", label: "History" },
+];
+
+const PREFERENCE_TABS: { key: PanelTab; label: string }[] = [
 	{ key: "settings", label: "Settings" },
 	{ key: "shortcuts", label: "Shortcuts" },
 ];
@@ -1073,10 +1076,12 @@ export function Devbar({
 	const panelRef = useRef<HTMLDivElement>(null);
 	const drag = useBarDrag();
 
-	// One panel, four tabs. Settings/Shortcuts/History used to be separate floating
-	// surfaces that each had to be closed before another could open.
-	const showSettings = panelOpen && panelTab === "settings";
-	const showHelp = panelOpen && panelTab === "shortcuts";
+	// Annotations and preferences are separate surfaces, even though they share the
+	// same positioning shell. This keeps the work being collected distinct from
+	// configuration UI.
+	const annotationPanelOpen = panelOpen && (panelTab === "annotations" || panelTab === "history");
+	const preferencePanelOpen = panelOpen && (panelTab === "settings" || panelTab === "shortcuts");
+	const visiblePanelTabs = annotationPanelOpen ? ANNOTATION_TABS : PREFERENCE_TABS;
 
 	const closePanel = useCallback(() => {
 		setPanelOpen(false);
@@ -1755,7 +1760,7 @@ export function Devbar({
 	) => (
 		<button
 			type="button"
-			className={`${btnClass} ${showSettings ? activeClass : ""}`}
+			className={`${btnClass} ${preferencePanelOpen ? activeClass : ""}`}
 			onClick={() => togglePanelTab("settings")}
 			title="Settings"
 		>
@@ -2843,7 +2848,7 @@ export function Devbar({
 				>
 					<div className="devbar-panel-header devbar-panel-header-tabs">
 						<div className="devbar-panel-tabs" role="tablist">
-							{PANEL_TABS.map((t) => {
+							{visiblePanelTabs.map((t) => {
 								const count =
 									t.key === "annotations"
 										? state.annotations.length
@@ -2955,7 +2960,7 @@ export function Devbar({
 			{/* Bottom bar — only in toolbar mode */}
 			{uiMode === "toolbar" && !state.activeMode && !collapsed && (
 				<div
-					className={`devbar-bar devbar-theme-${resolvedTheme}${showSettings || showHelp ? " devbar-bar-panel-open" : ""}${settings.toolbarOrientation === "vertical" ? " devbar-bar-vertical" : ""}`}
+					className={`devbar-bar devbar-theme-${resolvedTheme}${preferencePanelOpen ? " devbar-bar-panel-open" : ""}${settings.toolbarOrientation === "vertical" ? " devbar-bar-vertical" : ""}`}
 					style={
 						drag.offset
 							? {
@@ -3000,7 +3005,7 @@ export function Devbar({
 					<div className="devbar-bar-divider" />
 					<button
 						type="button"
-						className={`devbar-bar-btn ${panelOpen ? "devbar-bar-btn-active" : ""}`}
+						className={`devbar-bar-btn ${annotationPanelOpen ? "devbar-bar-btn-active" : ""}`}
 						onClick={togglePanel}
 					>
 						<AnnotationsIcon />
