@@ -3,13 +3,13 @@
 Drop-in toolbar for any website. Annotate the UI and capture selectors, computed
 styles, React component trees, and screenshots as an agent-ready prompt.
 
-[![npm](https://img.shields.io/npm/v/devbar.svg)](https://www.npmjs.com/package/devbar)
-[![license](https://img.shields.io/npm/l/devbar.svg)](./LICENSE)
+[![npm](https://img.shields.io/npm/v/devbar.sh.svg)](https://www.npmjs.com/package/devbar.sh)
+[![license](https://img.shields.io/npm/l/devbar.sh.svg)](./LICENSE)
 
 ## Installation
 
 ```bash
-bun add devbar
+bun add devbar.sh
 ```
 
 ## Usage
@@ -18,7 +18,7 @@ Mount `<Devbar />` once, anywhere in your tree. It renders a fixed toolbar and
 owns its own overlays.
 
 ```tsx
-import { Devbar } from "devbar";
+import { Devbar } from "devbar.sh";
 
 function App() {
 	return (
@@ -34,21 +34,21 @@ The stylesheet ships as a separate file — import it once alongside the
 component:
 
 ```tsx
-import "devbar/styles.css";
+import "devbar.sh/styles.css";
 ```
 
-The CDN build (`devbar/cdn`) inlines its own styles, so it needs no separate
+The CDN build (`devbar.sh/cdn`) inlines its own styles, so it needs no separate
 import.
 
 ### Package entrypoints
 
-| Import              | What it is                                                           |
-| ------------------- | -------------------------------------------------------------------- |
-| `devbar`            | `<Devbar />`, `init()`, the payload types, and the local-agent hooks |
-| `devbar/styles.css` | Toolbar stylesheet (required for the component build)                |
-| `devbar/cdn`        | Self-contained IIFE bundle with styles inlined, for a `<script>` tag |
-| `devbar/local`      | `createLocalServer()` — the local dispatcher used by the CLI         |
-| `devbar/config`     | `defineConfig()` and the `devbar.config.ts` types                    |
+| Import                 | What it is                                                           |
+| ---------------------- | -------------------------------------------------------------------- |
+| `devbar.sh`            | `<Devbar />`, `init()`, the payload types, and the local-agent hooks |
+| `devbar.sh/styles.css` | Toolbar stylesheet (required for the component build)                |
+| `devbar.sh/cdn`        | Self-contained IIFE bundle with styles inlined, for a `<script>` tag |
+| `devbar.sh/local`      | `createLocalServer()` — the local dispatcher used by the CLI         |
+| `devbar.sh/config`     | `defineConfig()` and the `devbar.config.ts` types                    |
 
 Only `react`, `react-dom` (peers) and two small runtime dependencies —
 `html-to-image` and `jiti` — are installed with the package. The MCP server the
@@ -64,8 +64,8 @@ finds it — no `server`, `token`, or `project` props:
 
 ```bash
 cd my-app
-bunx devbar init     # writes devbar.config.ts
-bunx devbar          # serves on 127.0.0.1:3100 and registers this project
+bunx devbar.sh init  # writes devbar.config.ts
+bunx devbar.sh       # serves on 127.0.0.1:3100 and registers this project
 ```
 
 ```tsx

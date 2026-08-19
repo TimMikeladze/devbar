@@ -5,7 +5,7 @@
  * a package whose whole pitch is two runtime dependencies — and its zod v4
  * namespace imports break when the CLI is bundled. A tools-only server is a
  * small, stable slice of JSON-RPC, so devbar implements that slice and keeps
- * `bunx devbar mcp` working with nothing else installed.
+ * `bunx devbar.sh mcp` working with nothing else installed.
  *
  * The hosted server (src/server/mcp/index.ts) still uses the SDK; it is never
  * published and has a much larger surface.

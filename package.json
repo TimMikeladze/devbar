@@ -1,5 +1,5 @@
 {
-	"name": "devbar",
+	"name": "devbar.sh",
 	"version": "0.1.0",
 	"description": "Drop-in toolbar for any website. Annotate the UI and capture selectors, computed styles, React component trees, and screenshots as an agent-ready prompt.",
 	"keywords": [
@@ -10,6 +10,7 @@
 		"css selector",
 		"design review",
 		"devbar",
+		"devbar.sh",
 		"developer tools",
 		"devtools",
 		"element inspector",
@@ -38,7 +39,7 @@
 		"url": "git+https://github.com/TimMikeladze/devbar.git"
 	},
 	"bin": {
-		"devbar": "./dist/bin/local-cli.js"
+		"devbar": "dist/bin/local-cli.js"
 	},
 	"workspaces": [
 		"app",

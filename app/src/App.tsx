@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { createHighlighter, type Highlighter } from "shiki";
-import { Devbar } from "devbar";
-import "devbar/styles.css";
+import { Devbar } from "devbar.sh";
+import "devbar.sh/styles.css";
 import { PricingCards } from "./components/PricingCards";
 import { LogoMark } from "./components/Logo";
 import { useTheme, type Theme } from "./hooks/useTheme";
@@ -630,8 +630,8 @@ function DropItIn() {
 			label: "React",
 			desc: "One component. Every annotation becomes a change your agent or teammates can act on.",
 			lang: "tsx",
-			code: `import { Devbar } from "devbar";
-import "devbar/styles.css";
+			code: `import { Devbar } from "devbar.sh";
+import "devbar.sh/styles.css";
 
 <Devbar onSubmit={(payload) => agent.send(payload)} />`,
 		},
@@ -822,9 +822,9 @@ function Pricing() {
    ═══════════════════════════════════════════ */
 
 const pkgManagers = [
-	{ label: "npm", command: "npm install devbar" },
-	{ label: "pnpm", command: "pnpm add devbar" },
-	{ label: "bun", command: "bun add devbar" },
+	{ label: "npm", command: "npm install devbar.sh" },
+	{ label: "pnpm", command: "pnpm add devbar.sh" },
+	{ label: "bun", command: "bun add devbar.sh" },
 ] as const;
 
 function InstallTabs() {

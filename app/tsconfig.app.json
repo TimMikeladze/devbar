@@ -17,8 +17,8 @@
 		"jsx": "react-jsx",
 		"paths": {
 			"@/*": ["./src/*"],
-			"devbar": ["../dist/index.d.ts"],
-			"devbar/styles.css": ["../dist/styles.css"]
+			"devbar.sh": ["../dist/index.d.ts"],
+			"devbar.sh/styles.css": ["../dist/styles.css"]
 		},
 
 		/* Linting */

@@ -24,8 +24,8 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "src"),
-			"devbar/styles.css": path.join(devbarRoot, "dist/index.css"),
-			devbar: path.join(devbarRoot, "dist/index.js"),
+			"devbar.sh/styles.css": path.join(devbarRoot, "dist/index.css"),
+			"devbar.sh": path.join(devbarRoot, "dist/index.js"),
 		},
 	},
 	server: {

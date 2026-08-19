@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "devbar",
+      "name": "devbar.sh",
       "dependencies": {
         "html-to-image": "^1.11.13",
         "jiti": "^2.6.1",

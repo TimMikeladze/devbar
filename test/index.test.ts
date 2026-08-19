@@ -19,7 +19,7 @@ const targets = [...distPaths(pkg.exports), ...distPaths(pkg.bin)];
 
 describe("package metadata", () => {
 	test("publishable fields are filled in", () => {
-		expect(pkg.name).toBe("devbar");
+		expect(pkg.name).toBe("devbar.sh");
 		expect(pkg.license).toBe("MIT");
 		expect(pkg.description.length).toBeGreaterThan(20);
 		expect(pkg.keywords.length).toBeGreaterThan(0);
@@ -55,7 +55,7 @@ describe("package metadata", () => {
 	});
 
 	// Guards a build regression: two bunup configs sharing an outDir made the
-	// second one wipe the first's output, so `devbar/local` resolved to nothing.
+	// second one wipe the first's output, so `devbar.sh/local` resolved to nothing.
 	test("built output satisfies the export map", () => {
 		if (!existsSync(join(ROOT, "dist"))) return; // not built yet — CI builds first
 		const missing = targets.filter((target) => !existsSync(join(ROOT, target)));

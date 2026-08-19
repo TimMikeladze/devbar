@@ -260,7 +260,7 @@ Options
   -v, --version             Show the version
 `;
 
-const CONFIG_TEMPLATE = `import { defineConfig } from "devbar/config";
+const CONFIG_TEMPLATE = `import { defineConfig } from "devbar.sh/config";
 
 export default defineConfig({
 	// Pages on these origins are matched to this project automatically,
@@ -442,7 +442,7 @@ async function commandLink(args: CliArgs): Promise<void> {
 	console.log(`Mount the toolbar — no props needed when the page runs on one of:`);
 	console.log(`  ${project.origins?.join(", ") ?? "(no origins configured — run `devbar init`)"}`);
 	console.log("");
-	console.log('  import { Devbar } from "devbar";');
+	console.log('  import { Devbar } from "devbar.sh";');
 	console.log("  <Devbar />");
 	console.log("");
 	console.log("For a page on another origin, wire it explicitly:");

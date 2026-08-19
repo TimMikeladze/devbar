@@ -19,12 +19,12 @@ There are two directions, and you can use either or both:
 
 ```bash
 cd my-app
-bunx devbar init     # writes devbar.config.ts
-bunx devbar          # starts the server and registers this project
+bunx devbar.sh init  # writes devbar.config.ts
+bunx devbar.sh       # starts the server and registers this project
 ```
 
 ```tsx
-import { Devbar } from "devbar";
+import { Devbar } from "devbar.sh";
 
 <Devbar />; // no server, token, or project props
 ```
@@ -43,7 +43,7 @@ codex mcp add devbar -- devbar mcp
 ## devbar.config.ts
 
 ```ts
-import { defineConfig } from "devbar/config";
+import { defineConfig } from "devbar.sh/config";
 
 export default defineConfig({
 	project: "my-app", // defaults to the directory name

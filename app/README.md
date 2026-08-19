@@ -18,7 +18,7 @@ Or just the SPA:
 bun run dev:app
 ```
 
-`vite.config.ts` aliases `devbar` and `devbar/styles.css` to the repo's `dist/`
+`vite.config.ts` aliases `devbar.sh` and `devbar.sh/styles.css` to the repo's `dist/`
 output, so the app always renders the local build of the toolbar.
 
 ## Routes

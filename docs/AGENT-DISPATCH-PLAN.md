@@ -31,7 +31,7 @@ Two decisions changed during implementation:
 - **The MCP SDK is not used.** It pulls express, hono, ajv and jose into a
   package whose pitch is two runtime dependencies, and its zod v4 namespace
   imports break under bundling. `src/server/mcp/stdio.ts` implements the
-  tools-only slice of the protocol directly (~200 lines), so `bunx devbar mcp`
+  tools-only slice of the protocol directly (~200 lines), so `bunx devbar.sh mcp`
   works with nothing else installed. The optional-peer plan therefore applies
   only to the unbuilt Agent SDK runner.
 - **Live captures do not use `toCanvas`.** It resolves inside
@@ -374,7 +374,7 @@ Resources: `devbar://report/<id>`, `devbar://report/<id>/asset/<name>` (image
 content, so a vision-capable agent sees the screenshot).
 
 Bin: `devbar mcp` (needs P5). Registration one-liner for the README:
-`claude mcp add devbar -- bunx devbar mcp`.
+`claude mcp add devbar -- bunx devbar.sh mcp`.
 
 **Push-feel add-on:** `devbar pending --format=hook` prints pending reports for a
 `SessionStart` / `UserPromptSubmit` hook. Ship the snippet in docs; do not edit
@@ -544,7 +544,7 @@ local repository.** Rules, in order of importance:
 
 ```ts
 // devbar.config.ts
-import { defineConfig } from "devbar/config";
+import { defineConfig } from "devbar.sh/config";
 
 export default defineConfig({
 	project: "my-app",
