@@ -60,6 +60,10 @@ export default defineConfig([
 		outDir: "dist/bin",
 		format: "esm",
 		packages: "bundle",
+		// One file, no shared chunks: zod v4's `import * as util` namespace loses
+		// its binding when the bundler splits it across chunks, and the CLI dies
+		// with "util is not defined" the moment the MCP server starts.
+		splitting: false,
 		define: {
 			DEVBAR_VERSION: JSON.stringify(pkg.version),
 		},

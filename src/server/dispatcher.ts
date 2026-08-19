@@ -1,18 +1,22 @@
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { readFile, readdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { resolveRunner, type AgentEvent, type AgentPermission } from "./agents";
 import type { ProjectConfig } from "./registry";
+import type { ReportStore, StoredReport } from "./report-store";
+
+export type TaskStatus = "queued" | "running" | "completed" | "failed" | "cancelled" | "timeout";
 
 export type Task = {
 	id: string;
+	reportId: string;
 	reportPath: string;
 	projectSlug: string;
-	status: "queued" | "running" | "completed" | "failed";
+	status: TaskStatus;
 	createdAt: number;
 	startedAt?: number;
 	completedAt?: number;
+	sessionId?: string;
 	result?: DispatchResult;
 };
 
@@ -22,295 +26,466 @@ export type DispatchResult = {
 	output: string;
 	durationMs: number;
 	model: string;
+	costUsd?: number;
+	sessionId?: string;
+	/** Files the agent changed, when the project directory is a git repo. */
+	changedFiles?: string[];
+	interrupted?: boolean;
 };
 
+/** What subscribers (the SSE bus, the CLI) see as a run unfolds. */
+export type TaskEvent =
+	| { kind: "task"; task: Task }
+	| { kind: "agent"; taskId: string; event: AgentEvent };
+
 export type DispatcherOptions = {
+	store: ReportStore;
 	resultsDir: string;
-	reportsDir: string;
+	/** Where task records are persisted so a restart does not lose the queue. */
+	tasksDir: string;
 	getProject: (slug: string) => ProjectConfig | undefined;
+	/** Overrides every project's agent command. Tests pass "echo". */
 	command?: string;
+	/** Captures git state around a run. Injectable for tests. */
+	gitSnapshot?: (dir: string) => Promise<string[] | undefined>;
+	now?: () => number;
 };
 
 export type Dispatcher = {
-	enqueue(reportPath: string, projectSlug: string): string;
+	enqueue(reportId: string, projectSlug: string): string;
 	dispatchAll(projectSlug?: string): Promise<string[]>;
 	process(): Promise<void>;
 	getTasks(filter?: { status?: string; project?: string }): Task[];
 	getTask(taskId: string): Task | undefined;
+	getEvents(taskId: string): AgentEvent[];
+	cancel(taskId: string): boolean;
+	subscribe(listener: (event: TaskEvent) => void): () => void;
+	/** Waits for every in-flight run to settle. Tests and shutdown use it. */
+	drain(): Promise<void>;
 };
+
+const MAX_EVENTS_PER_TASK = 1000;
+const MAX_OUTPUT_CHARS = 200_000;
+
+function formatDuration(ms: number): string {
+	if (ms < 1000) return `${ms}ms`;
+	const s = Math.floor(ms / 1000);
+	if (s < 60) return `${s}s`;
+	return `${Math.floor(s / 60)}m${s % 60}s`;
+}
+
+function normalizePermission(project: ProjectConfig): AgentPermission {
+	const raw = project.permission ?? project.permissionMode;
+	switch (raw) {
+		case "auto":
+		case "acceptEdits":
+			return "auto";
+		case "full":
+		case "bypassPermissions":
+			return "full";
+		default:
+			return "plan";
+	}
+}
+
+/**
+ * Builds what the agent actually reads.
+ *
+ * Runners that take the prompt on stdin get the whole report; the images it
+ * references are files on disk beside it, so the text stays small either way.
+ * Argv-only runners get a pointer instead — short by construction.
+ */
+export function buildPrompt(
+	report: StoredReport,
+	promptText: string,
+	mode: "stdin" | "arg" | "file",
+): string {
+	const location = [
+		`Report directory: ${report.dir}`,
+		report.assets.length > 0
+			? `Screenshots (${report.assets.length}): ${join(report.dir, "assets")} — read them, they are the evidence.`
+			: "",
+	]
+		.filter(Boolean)
+		.join("\n");
+
+	if (mode === "arg") {
+		const firstLine = promptText
+			.split("\n")
+			.find((l) => l.trim() && !l.startsWith("#"))
+			?.trim();
+		return [
+			`Work the devbar report at ${report.promptPath || report.reportPath}.`,
+			location,
+			firstLine ? `Summary: ${firstLine.slice(0, 200)}` : "",
+		]
+			.filter(Boolean)
+			.join("\n");
+	}
+
+	return `${promptText}\n\n---\n${location}\n`;
+}
 
 export function createDispatcher(options: DispatcherOptions): Dispatcher {
 	const tasks = new Map<string, Task>();
+	const events = new Map<string, AgentEvent[]>();
+	const controllers = new Map<string, AbortController>();
+	const inFlight = new Set<Promise<void>>();
 	const activeByProject = new Map<string, number>();
-	const dispatchedReports = new Set<string>();
-	const command = options.command ?? "claude";
+	const sessions = new Map<string, string>();
+	const listeners = new Set<(event: TaskEvent) => void>();
+	const now = options.now ?? (() => Date.now());
+
+	function emit(event: TaskEvent): void {
+		for (const listener of listeners) {
+			try {
+				listener(event);
+			} catch {}
+		}
+	}
+
+	function recordEvent(taskId: string, event: AgentEvent): void {
+		const list = events.get(taskId) ?? [];
+		list.push(event);
+		if (list.length > MAX_EVENTS_PER_TASK) list.splice(0, list.length - MAX_EVENTS_PER_TASK);
+		events.set(taskId, list);
+		emit({ kind: "agent", taskId, event });
+	}
+
+	async function persist(task: Task): Promise<void> {
+		try {
+			await mkdir(options.tasksDir, { recursive: true });
+			await writeFile(
+				join(options.tasksDir, `${task.id}.json`),
+				JSON.stringify(task, null, 2),
+				"utf-8",
+			);
+		} catch {}
+	}
+
+	function update(task: Task, patch: Partial<Task>): void {
+		Object.assign(task, patch);
+		emit({ kind: "task", task: { ...task } });
+		void persist(task);
+	}
 
 	function getActiveCount(slug: string): number {
 		return activeByProject.get(slug) ?? 0;
 	}
 
-	function incrementActive(slug: string): void {
-		activeByProject.set(slug, getActiveCount(slug) + 1);
-	}
-
-	function decrementActive(slug: string): void {
+	function release(slug: string): void {
 		activeByProject.set(slug, Math.max(0, getActiveCount(slug) - 1));
 	}
 
-	function formatDuration(ms: number): string {
-		if (ms < 1000) return `${ms}ms`;
-		const s = Math.floor(ms / 1000);
-		if (s < 60) return `${s}s`;
-		const m = Math.floor(s / 60);
-		return `${m}m${s % 60}s`;
-	}
-
-	async function runTask(task: Task): Promise<void> {
-		const project = options.getProject(task.projectSlug);
-		if (!project) {
-			console.log(
-				`[dispatch] task ${task.id.slice(0, 8)} failed — project "${task.projectSlug}" not found`,
-			);
-			task.status = "failed";
-			task.completedAt = Date.now();
-			task.result = {
-				taskId: task.id,
-				exitCode: 1,
-				output: `Project "${task.projectSlug}" not found`,
-				durationMs: 0,
-				model: "",
-			};
-			return;
-		}
-
-		task.status = "running";
-		task.startedAt = Date.now();
-		incrementActive(task.projectSlug);
-		const projectModel = project.model;
-
-		let prompt = "";
-		try {
-			const raw = await readFile(task.reportPath, "utf-8");
-			const payload = JSON.parse(raw);
-			prompt = payload.prompt ?? JSON.stringify(payload);
-		} catch {
-			prompt = `Process report at ${task.reportPath}`;
-		}
-
-		const promptPreview = prompt.length > 120 ? `${prompt.slice(0, 120)}...` : prompt;
-		const cmdDisplay =
-			command === "echo" ? "echo" : `claude --model ${project.model} --effort ${project.effort}`;
-
-		console.log(
-			`[dispatch] starting task ${task.id.slice(0, 8)} for project "${task.projectSlug}"`,
-		);
-		console.log(`[dispatch]   command: ${cmdDisplay}`);
-		console.log(`[dispatch]   cwd: ${project.dir}`);
-		console.log(`[dispatch]   prompt: ${promptPreview.replace(/\n/g, " ")}`);
-		console.log(`[dispatch]   active: ${getActiveCount(task.projectSlug)}/${project.concurrency}`);
-
-		const args =
-			command === "echo"
-				? [prompt]
-				: [
-						"--print",
-						"--model",
-						project.model,
-						"--effort",
-						project.effort,
-						...(project.maxBudgetUsd ? ["--max-budget-usd", String(project.maxBudgetUsd)] : []),
-						"--permission-mode",
-						project.permissionMode,
-						"--output-format",
-						"text",
-						"-p",
-						prompt,
-					];
-
-		return new Promise<void>((resolve) => {
-			// Only set cwd if the directory exists to avoid ENOENT spawn errors.
-			const cwd = existsSync(project.dir) ? project.dir : undefined;
-			// POSIX: /usr/bin/env resolves the command against PATH, so shell
-			// builtins like "echo" work without handing the args to a shell.
-			// Windows has no /usr/bin/env — and agent CLIs install there as .cmd
-			// shims, which Node refuses to spawn without a shell — so go through
-			// the shell there. Args are still passed as an array, so Node quotes
-			// them rather than us interpolating the prompt into a command line.
-			const child =
-				process.platform === "win32"
-					? spawn(command, args, {
-							cwd,
-							stdio: ["ignore", "pipe", "pipe"],
-							shell: true,
-							windowsHide: true,
-						})
-					: spawn("/usr/bin/env", [command, ...args], {
-							cwd,
-							stdio: ["ignore", "pipe", "pipe"],
-						});
-
-			const chunks: string[] = [];
-			child.stdout?.on("data", (data: Buffer) => chunks.push(data.toString()));
-			child.stderr?.on("data", (data: Buffer) => chunks.push(data.toString()));
-
-			let settled = false;
-
-			async function finalize(exitCode: number, extraOutput = ""): Promise<void> {
-				if (settled) return;
-				settled = true;
-
-				const now = Date.now();
-				decrementActive(task.projectSlug);
-
-				if (extraOutput) chunks.push(extraOutput);
-
-				task.status = exitCode === 0 ? "completed" : "failed";
-				task.completedAt = now;
-				task.result = {
-					taskId: task.id,
-					exitCode,
-					output: chunks.join(""),
-					durationMs: now - (task.startedAt ?? now),
-					model: projectModel,
-				};
-
-				const duration = formatDuration(task.result.durationMs);
-				const outputPreview =
-					task.result.output.length > 200
-						? `${task.result.output.slice(0, 200)}...`
-						: task.result.output;
-
-				if (task.status === "completed") {
-					console.log(`[dispatch] task ${task.id.slice(0, 8)} completed in ${duration}`);
-					console.log(`[dispatch]   output: ${outputPreview.replace(/\n/g, " ")}`);
-				} else {
-					console.log(
-						`[dispatch] task ${task.id.slice(0, 8)} failed (exit ${exitCode}) in ${duration}`,
-					);
-					console.log(`[dispatch]   output: ${outputPreview.replace(/\n/g, " ")}`);
-				}
-
-				try {
-					const resultPath = join(options.resultsDir, `${task.id}.json`);
-					await writeFile(resultPath, JSON.stringify(task.result, null, 2), "utf-8");
-					console.log(`[dispatch]   result: ${resultPath}`);
-				} catch {}
-
-				resolve();
-
-				// Process next task in queue
-				dispatcher.process();
-			}
-
-			child.on("error", (err) => {
-				console.log(`[dispatch] task ${task.id.slice(0, 8)} spawn error: ${err}`);
-				finalize(1, String(err));
-			});
-
-			child.on("close", (code) => {
-				finalize(code ?? 1);
-			});
+	function fail(task: Task, output: string): void {
+		update(task, {
+			status: "failed",
+			completedAt: now(),
+			result: { taskId: task.id, exitCode: 1, output, durationMs: 0, model: "" },
 		});
 	}
 
+	/** The caller (process()) has already reserved a concurrency slot for this task. */
+	async function runTask(task: Task): Promise<void> {
+		const project = options.getProject(task.projectSlug);
+		if (!project) {
+			release(task.projectSlug);
+			fail(task, `Project "${task.projectSlug}" not found`);
+			return;
+		}
+
+		const report = await options.store.get(task.reportId);
+		if (!report) {
+			release(task.projectSlug);
+			fail(task, `Report "${task.reportId}" not found`);
+			return;
+		}
+
+		update(task, { status: "running", startedAt: now() });
+		await options.store.setStatus(report.id, "dispatched").catch(() => undefined);
+
+		const { preset, runner, warnings } = resolveRunner({
+			command: options.command ?? project.command,
+			args: project.args,
+			runner: project.runner,
+		});
+
+		let promptText = "";
+		try {
+			promptText = await options.store.readPrompt(report.id);
+		} catch {
+			promptText = `Process the report at ${report.reportPath}`;
+		}
+
+		const prompt =
+			options.command === "echo"
+				? promptText.slice(0, 200)
+				: buildPrompt(report, promptText, preset.prompt);
+
+		const controller = new AbortController();
+		controllers.set(task.id, controller);
+
+		const timeoutMs = project.timeoutMs ?? 600_000;
+		const timer = setTimeout(() => {
+			update(task, { status: "timeout" });
+			controller.abort();
+		}, timeoutMs);
+
+		const beforeGit = options.gitSnapshot ? await options.gitSnapshot(project.dir) : undefined;
+		const resumeId = project.resumeSession ? sessions.get(task.projectSlug) : undefined;
+		const newSessionId = preset.assignsSession && project.resumeSession ? randomUUID() : undefined;
+
+		console.log(`[dispatch] starting task ${task.id.slice(0, 8)} for "${task.projectSlug}"`);
+		console.log(`[dispatch]   agent: ${preset.command} (${preset.name})`);
+		console.log(`[dispatch]   cwd: ${project.dir}`);
+		console.log(`[dispatch]   report: ${report.dir}`);
+
+		for (const warning of warnings) {
+			console.log(`[dispatch]   warning: ${warning}`);
+			recordEvent(task.id, { type: "stdout", text: `[devbar] ${warning}\n` });
+		}
+
+		const chunks: string[] = [];
+		let exitCode = 1;
+		let costUsd: number | undefined;
+		let sessionId = resumeId ?? newSessionId;
+		let errorMessage: string | undefined;
+
+		try {
+			for await (const event of runner({
+				prompt,
+				promptFile: report.promptPath || undefined,
+				cwd: project.dir,
+				model: preset.capabilities.model ? project.model : undefined,
+				effort: preset.capabilities.effort ? project.effort : undefined,
+				permission: normalizePermission(project),
+				permissionMode: project.permissionMode,
+				maxBudgetUsd: preset.capabilities.budget ? project.maxBudgetUsd : undefined,
+				sessionId: resumeId,
+				newSessionId,
+				signal: controller.signal,
+			})) {
+				recordEvent(task.id, event);
+				if (event.type === "stdout") {
+					chunks.push(event.text);
+				} else if (event.type === "tool") {
+					chunks.push(`[tool] ${event.name}${event.detail ? ` ${event.detail}` : ""}\n`);
+				} else if (event.type === "session") {
+					sessionId = event.sessionId;
+				} else if (event.type === "error") {
+					errorMessage = event.message;
+					chunks.push(`${event.message}\n`);
+				} else if (event.type === "done") {
+					exitCode = event.exitCode;
+					if (event.costUsd !== undefined) costUsd = event.costUsd;
+				}
+			}
+		} catch (err) {
+			errorMessage = String(err);
+			chunks.push(`${errorMessage}\n`);
+		}
+
+		clearTimeout(timer);
+		controllers.delete(task.id);
+		release(task.projectSlug);
+
+		if (sessionId && project.resumeSession) sessions.set(task.projectSlug, sessionId);
+
+		const afterGit = options.gitSnapshot ? await options.gitSnapshot(project.dir) : undefined;
+		const changedFiles =
+			beforeGit && afterGit ? afterGit.filter((f) => !beforeGit.includes(f)) : afterGit;
+
+		const completedAt = now();
+		let output = chunks.join("");
+		if (output.length > MAX_OUTPUT_CHARS) {
+			output = `${output.slice(0, MAX_OUTPUT_CHARS)}\n…[truncated]`;
+		}
+
+		const status: TaskStatus =
+			task.status === "timeout"
+				? "timeout"
+				: task.status === "cancelled"
+					? "cancelled"
+					: exitCode === 0
+						? "completed"
+						: "failed";
+
+		const result: DispatchResult = {
+			taskId: task.id,
+			exitCode,
+			output,
+			durationMs: completedAt - (task.startedAt ?? completedAt),
+			model: project.model,
+			...(costUsd !== undefined ? { costUsd } : {}),
+			...(sessionId ? { sessionId } : {}),
+			...(changedFiles && changedFiles.length > 0 ? { changedFiles } : {}),
+		};
+
+		update(task, { status, completedAt, result, ...(sessionId ? { sessionId } : {}) });
+
+		console.log(
+			`[dispatch] task ${task.id.slice(0, 8)} ${status} in ${formatDuration(result.durationMs)}` +
+				(errorMessage ? ` — ${errorMessage}` : ""),
+		);
+
+		try {
+			await mkdir(options.resultsDir, { recursive: true });
+			await writeFile(
+				join(options.resultsDir, `${task.id}.json`),
+				JSON.stringify(result, null, 2),
+				"utf-8",
+			);
+		} catch {}
+
+		void dispatcher.process();
+	}
+
+	function start(task: Task): void {
+		const promise = runTask(task)
+			.catch((err) => {
+				// A runner that throws must still free its slot, or the project
+				// silently stops dispatching forever.
+				release(task.projectSlug);
+				fail(task, String(err));
+			})
+			.finally(() => {
+				inFlight.delete(promise);
+			});
+		inFlight.add(promise);
+	}
+
 	const dispatcher: Dispatcher = {
-		enqueue(reportPath, projectSlug) {
+		enqueue(reportId, projectSlug) {
 			const project = options.getProject(projectSlug);
 			if (!project) return "";
 
 			const id = randomUUID();
+			const task: Task = {
+				id,
+				reportId,
+				reportPath: join(options.store.root, reportId),
+				projectSlug,
+				status: "queued",
+				createdAt: now(),
+			};
+			tasks.set(id, task);
+			void persist(task);
+			emit({ kind: "task", task: { ...task } });
 			console.log(
 				`[dispatch] enqueued task ${id.slice(0, 8)} for "${projectSlug}" (auto=${project.autoDispatch})`,
 			);
-			const task: Task = {
-				id,
-				reportPath,
-				projectSlug,
-				status: "queued",
-				createdAt: Date.now(),
-			};
-			tasks.set(id, task);
-			dispatchedReports.add(reportPath);
 
 			if (project.autoDispatch) {
-				// Defer so the caller can observe "queued" status synchronously
-				setImmediate(() => dispatcher.process());
+				// Deferred so the caller can observe "queued" synchronously.
+				setImmediate(() => void dispatcher.process());
 			}
-
 			return id;
 		},
 
-		async dispatchAll(projectSlug?) {
-			console.log(
-				`[dispatch] batch dispatch${projectSlug ? ` for "${projectSlug}"` : " (all projects)"}`,
+		async dispatchAll(projectSlug) {
+			const reports = await options.store.list(projectSlug ? { project: projectSlug } : undefined);
+			const queued = new Set(
+				[...tasks.values()].filter((t) => t.status !== "failed").map((t) => t.reportId),
 			);
-			const files = await readdir(options.reportsDir);
-			const jsonFiles = files.filter((f) => f.endsWith(".json")).sort();
-			const newTaskIds: string[] = [];
 
-			for (const file of jsonFiles) {
-				const filePath = join(options.reportsDir, file);
-				if (dispatchedReports.has(filePath)) continue;
-
-				if (projectSlug) {
-					try {
-						const raw = await readFile(filePath, "utf-8");
-						const data = JSON.parse(raw);
-						if (data.project !== projectSlug) continue;
-					} catch {
-						continue;
-					}
-				}
-
-				const slug = projectSlug ?? (await readProjectSlug(filePath));
-				if (!slug) continue;
-
-				const id = dispatcher.enqueue(filePath, slug);
-				if (id) newTaskIds.push(id);
+			const created: string[] = [];
+			for (const report of reports) {
+				if (!report.project) continue;
+				if (report.status === "dispatched" || report.status === "resolved") continue;
+				if (report.status === "claimed") continue;
+				if (queued.has(report.id)) continue;
+				const id = dispatcher.enqueue(report.id, report.project);
+				if (id) created.push(id);
 			}
 
 			await dispatcher.process();
-			return newTaskIds;
+			return created;
 		},
 
 		async process() {
 			for (const task of tasks.values()) {
 				if (task.status !== "queued") continue;
-
 				const project = options.getProject(task.projectSlug);
 				if (!project) continue;
-
 				if (getActiveCount(task.projectSlug) >= project.concurrency) continue;
-
-				runTask(task);
+				// Reserve the slot and claim the task synchronously — runTask's first
+				// await would otherwise let the next loop iteration pick it up again.
+				activeByProject.set(task.projectSlug, getActiveCount(task.projectSlug) + 1);
+				task.status = "running";
+				start(task);
 			}
 		},
 
-		getTasks(filter?) {
+		getTasks(filter) {
 			let result = [...tasks.values()];
-			if (filter?.status) {
-				result = result.filter((t) => t.status === filter.status);
-			}
-			if (filter?.project) {
-				result = result.filter((t) => t.projectSlug === filter.project);
-			}
+			if (filter?.status) result = result.filter((t) => t.status === filter.status);
+			if (filter?.project) result = result.filter((t) => t.projectSlug === filter.project);
 			return result;
 		},
 
 		getTask(taskId) {
 			return tasks.get(taskId);
 		},
+
+		getEvents(taskId) {
+			return events.get(taskId) ?? [];
+		},
+
+		cancel(taskId) {
+			const task = tasks.get(taskId);
+			if (!task) return false;
+			if (task.status === "queued") {
+				update(task, { status: "cancelled", completedAt: now() });
+				return true;
+			}
+			const controller = controllers.get(taskId);
+			if (!controller) return false;
+			update(task, { status: "cancelled" });
+			controller.abort();
+			return true;
+		},
+
+		subscribe(listener) {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		},
+
+		async drain() {
+			while (inFlight.size > 0) {
+				// Snapshot: the set shrinks as promises settle.
+				await Promise.all([...inFlight]);
+			}
+		},
 	};
 
-	return dispatcher;
-}
+	// Reload tasks left behind by a previous process.
+	void (async () => {
+		try {
+			const files = await readdir(options.tasksDir);
+			for (const file of files) {
+				if (!file.endsWith(".json")) continue;
+				try {
+					const raw = await readFile(join(options.tasksDir, file), "utf-8");
+					const task = JSON.parse(raw) as Task;
+					if (task.status === "running" || task.status === "queued") {
+						// Nothing is running any more — the process that owned it is gone.
+						task.status = "failed";
+						task.completedAt = task.completedAt ?? now();
+						task.result = {
+							taskId: task.id,
+							exitCode: 1,
+							output: "interrupted by server restart",
+							durationMs: 0,
+							model: "",
+							interrupted: true,
+						};
+						void persist(task);
+					}
+					tasks.set(task.id, task);
+				} catch {}
+			}
+		} catch {}
+	})();
 
-async function readProjectSlug(filePath: string): Promise<string | undefined> {
-	try {
-		const raw = await readFile(filePath, "utf-8");
-		const data = JSON.parse(raw);
-		return data.project;
-	} catch {
-		return undefined;
-	}
+	return dispatcher;
 }

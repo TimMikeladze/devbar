@@ -9,6 +9,7 @@ export function ServerUserAndAuthProxyPage() {
 				description="Both user prop and authProxy set. Injected user takes precedence. No sign-in button (already have user). No sign-out (user is injected). Auth proxy used for token on submit."
 			/>
 			<Devbar
+				local={false}
 				server="http://localhost:3100"
 				user={{
 					name: "Jane Doe",

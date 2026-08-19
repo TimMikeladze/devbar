@@ -44,23 +44,67 @@ import.
 
 | Import              | What it is                                                           |
 | ------------------- | -------------------------------------------------------------------- |
-| `devbar`            | `<Devbar />`, `init()`, and the payload/annotation types             |
+| `devbar`            | `<Devbar />`, `init()`, the payload types, and the local-agent hooks |
 | `devbar/styles.css` | Toolbar stylesheet (required for the component build)                |
 | `devbar/cdn`        | Self-contained IIFE bundle with styles inlined, for a `<script>` tag |
 | `devbar/local`      | `createLocalServer()` — the local dispatcher used by the CLI         |
 | `devbar/config`     | `defineConfig()` and the `devbar.config.ts` types                    |
 
 Only `react`, `react-dom` (peers) and two small runtime dependencies —
-`html-to-image` and `jiti` — are installed with the package. The hosted
+`html-to-image` and `jiti` — are installed with the package. The MCP server the
+CLI runs is implemented directly rather than pulling in the MCP SDK, so
+`devbar mcp` works with nothing else installed. The hosted
 dashboard's server (Better Auth, Stripe, reports, MCP) lives in this repo under
 `src/server` but is **not** published; see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md).
 
-The package also installs a `devbar` binary that runs the local dispatch server
-against a project's `devbar.config.ts`:
+### Connect your local agent
+
+The package installs a `devbar` binary. Run it in a project and the toolbar
+finds it — no `server`, `token`, or `project` props:
 
 ```bash
-bunx devbar --port 3101
+cd my-app
+bunx devbar init     # writes devbar.config.ts
+bunx devbar          # serves on 127.0.0.1:3100 and registers this project
 ```
+
+```tsx
+<Devbar />
+```
+
+From there, reports go two ways:
+
+- **Push** — the report is handed to an agent CLI (`claude`, `codex`, or
+  `opencode`) running in the project directory. Screenshots are written next to
+  the prompt as files, so the agent can actually read them.
+- **Pull** — an agent session you already have open picks reports off the queue
+  over MCP, and can inspect, screenshot, and highlight the page you are looking
+  at right now.
+
+```bash
+claude mcp add devbar -- devbar mcp
+```
+
+| Command                  | Does                                                |
+| ------------------------ | --------------------------------------------------- |
+| `devbar`                 | start the server, or register this project with one |
+| `devbar mcp`             | MCP server on stdio                                 |
+| `devbar doctor`          | check everything needed to dispatch                 |
+| `devbar tasks [--watch]` | dispatch tasks and their status                     |
+| `devbar reports`         | captured reports                                    |
+| `devbar dispatch [id]`   | dispatch one report, or every pending one           |
+| `devbar init`            | write a starter `devbar.config.ts`                  |
+| `devbar link`            | print the wiring snippet for this project           |
+
+Discovery only runs on `localhost` pages and only probes `127.0.0.1:3100` and
+`:3101`. Pass `local={false}` to switch it off, `local={{ ports: [4000] }}` to
+point it elsewhere, or `live={false}` to hide the live page tools entirely.
+
+Live page tools stay off until you switch on **Agent live** in the toolbar's
+settings, per origin. Dispatch runs an agent in your repository, so the defaults
+are conservative: loopback only, `permission: "plan"`, no auto-dispatch. See
+[docs/LOCAL-AGENT.md](./docs/LOCAL-AGENT.md) for the config reference, the
+supported agent CLIs, the MCP tool list, and the security model.
 
 ### Chrome extension
 

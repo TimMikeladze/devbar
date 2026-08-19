@@ -9,6 +9,7 @@ export function ServerNoAuthPage() {
 				description="Server URL set but no auth configured. Submit button should be visible without sign-in. No sign-in button should appear."
 			/>
 			<Devbar
+				local={false}
 				server="http://localhost:3100"
 				onSubmit={(payload) => console.log("Devbar payload:", payload)}
 			/>

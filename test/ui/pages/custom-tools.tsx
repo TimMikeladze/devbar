@@ -9,6 +9,7 @@ export function CustomToolsPage() {
 				description="Only select and marker tools enabled. Draw and capture should not appear in the toolbar."
 			/>
 			<Devbar
+				local={false}
 				tools={["select", "marker"]}
 				onSubmit={(payload) => console.log("Devbar payload:", payload)}
 			/>

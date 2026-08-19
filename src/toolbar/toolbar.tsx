@@ -29,6 +29,7 @@ import { CaptureOverlay } from "@/tools/capture/capture-overlay";
 import { RecordOverlay } from "@/tools/record/record-overlay";
 import { MarkerOverlay } from "@/tools/marker/marker-overlay";
 import { AuthModal } from "@/server/auth-modal";
+import { useLocalAgent } from "@/live/use-local-agent";
 import { useCollaboration, type CollaborationCallbacks } from "@/collaboration/use-collaboration";
 import {
 	PeerCursors,
@@ -87,6 +88,13 @@ export type DevbarProps = {
 	tools?: ToolMode[];
 	plugins?: DevbarPlugin[];
 	server?: string;
+	/**
+	 * Auto-discover the local devbar server (default: on for localhost pages).
+	 * false disables probing; an object narrows the ports it tries.
+	 */
+	local?: boolean | { ports?: number[]; force?: boolean };
+	/** Allow an agent to inspect and screenshot this page once the user opts in. Default true. */
+	live?: boolean;
 	/** Separate WebSocket server URL for collaboration (defaults to server) */
 	wsServer?: string;
 	/** Bearer token sent as Authorization header with server submissions */
@@ -818,6 +826,8 @@ export function Devbar({
 	theme: initialTheme = "auto",
 	plugins = [],
 	server,
+	local,
+	live,
 	wsServer,
 	token,
 	project,
@@ -1058,6 +1068,24 @@ export function Devbar({
 		} catch {}
 		return defaults;
 	});
+	// Local agent: discovery of the on-machine devbar server, plus the live page
+	// bridge an agent uses to inspect what the user is looking at.
+	const annotationsRef = useRef(state.annotations);
+	annotationsRef.current = state.annotations;
+	const settingsRef = useRef(settings);
+	settingsRef.current = settings;
+	const localAgent = useLocalAgent({
+		server,
+		token: effectiveToken,
+		project,
+		local,
+		live,
+		getAnnotations: () => annotationsRef.current,
+		getCaptureConfig: () => settingsRef.current.capture ?? DEFAULT_CAPTURE_CONFIG,
+	});
+	const effectiveServer = server ?? localAgent.url;
+	const effectiveProject = project ?? localAgent.project;
+
 	const [expandedExportId, setExpandedExportId] = useState<string | null>(null);
 	const [showExportMenu, setShowExportMenu] = useState(false);
 	const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -1410,7 +1438,7 @@ export function Devbar({
 	);
 
 	const handleServerSubmit = useCallback(async () => {
-		if (!server) return;
+		if (!effectiveServer) return;
 		const payload = buildPayload(state.annotations, promptTemplate, settings, task);
 		const headers: Record<string, string> = { "Content-Type": "application/json" };
 
@@ -1435,14 +1463,17 @@ export function Devbar({
 		// Mode B: session cookie sent automatically via credentials: "include"
 
 		try {
-			const url = `${server}/api/reports`;
+			const url = `${effectiveServer}/api/reports`;
 			const body = JSON.stringify({
 				payload,
 				url: payload.url,
 				title: payload.title,
-				project,
+				project: effectiveProject,
 			});
-			console.log("[devbar] submitting to", url, { hasToken: !!effectiveToken, project });
+			console.log("[devbar] submitting to", url, {
+				hasToken: !!effectiveToken,
+				project: effectiveProject,
+			});
 			const res = await fetch(url, {
 				method: "POST",
 				headers,
@@ -1468,9 +1499,9 @@ export function Devbar({
 			showToast("Submit failed (network error)");
 		}
 	}, [
-		server,
+		effectiveServer,
 		effectiveToken,
-		project,
+		effectiveProject,
 		state.annotations,
 		promptTemplate,
 		settings,
@@ -1822,7 +1853,7 @@ export function Devbar({
 			>
 				<SaveFileIcon /> .json
 			</button>
-			{server && !omit?.has("submit") && (
+			{effectiveServer && !omit?.has("submit") && (
 				<button
 					type="button"
 					className="devbar-export-menu-item"
@@ -2119,6 +2150,86 @@ export function Devbar({
 	// Settings content renderer
 	const renderSettingsContent = () => (
 		<div className="devbar-panel-body" style={{ padding: 12 }}>
+			<div className="devbar-settings-row">
+				<div className="devbar-settings-label">
+					<div className="devbar-settings-title">Local agent</div>
+					<div className="devbar-settings-desc">
+						{localAgent.status === "connected"
+							? `${localAgent.url}${localAgent.project ? ` · ${localAgent.project}` : " · no project matched"}`
+							: localAgent.status === "searching"
+								? "Looking for a local devbar server…"
+								: localAgent.status === "unavailable"
+									? "No server found — run `devbar` in your project"
+									: "Discovery off"}
+					</div>
+				</div>
+				<div
+					className={`devbar-live-dot ${localAgent.status === "connected" ? "devbar-live-dot-on" : ""}`}
+					title={localAgent.status}
+				/>
+			</div>
+			{localAgent.status === "connected" && localAgent.projects.length > 1 && (
+				<div className="devbar-settings-row">
+					<div className="devbar-settings-label">
+						<div className="devbar-settings-title">Project</div>
+						<div className="devbar-settings-desc">Which project reports are dispatched to</div>
+					</div>
+					<select
+						className="devbar-settings-select"
+						value={localAgent.project ?? ""}
+						onChange={(e) => localAgent.setProject(e.target.value)}
+					>
+						<option value="">Choose…</option>
+						{localAgent.projects.map((p) => (
+							<option key={p.slug} value={p.slug}>
+								{p.slug}
+							</option>
+						))}
+					</select>
+				</div>
+			)}
+			{localAgent.status === "connected" && (
+				<div className="devbar-settings-row">
+					<div className="devbar-settings-label">
+						<div className="devbar-settings-title">Agent live</div>
+						<div className="devbar-settings-desc">
+							{localAgent.liveEnabled
+								? localAgent.liveState.status === "connected"
+									? localAgent.lastCall
+										? `Connected · last call: ${localAgent.lastCall.method}`
+										: "Connected — the agent can inspect and screenshot this page"
+									: localAgent.liveState.status === "error"
+										? `Not connected: ${localAgent.liveState.message}`
+										: "Connecting…"
+								: "Let an agent inspect and screenshot this page"}
+						</div>
+					</div>
+					<button
+						type="button"
+						className={`devbar-toggle ${localAgent.liveEnabled ? "devbar-toggle-on" : ""}`}
+						onClick={() => localAgent.setLiveEnabled(!localAgent.liveEnabled)}
+						title={localAgent.liveEnabled ? "Disconnect the agent" : "Allow agent access"}
+					>
+						<div className="devbar-toggle-thumb" />
+					</button>
+				</div>
+			)}
+			{localAgent.status === "connected" && localAgent.liveEnabled && (
+				<div className="devbar-settings-row">
+					<div className="devbar-settings-label">
+						<div className="devbar-settings-title">Allow navigation</div>
+						<div className="devbar-settings-desc">Let the agent navigate or reload this tab</div>
+					</div>
+					<button
+						type="button"
+						className={`devbar-toggle ${localAgent.allowMutating ? "devbar-toggle-on" : ""}`}
+						onClick={() => localAgent.setAllowMutating(!localAgent.allowMutating)}
+						title={localAgent.allowMutating ? "Disallow navigation" : "Allow navigation"}
+					>
+						<div className="devbar-toggle-thumb" />
+					</button>
+				</div>
+			)}
 			<div className="devbar-settings-row">
 				<div className="devbar-settings-label">
 					<div className="devbar-settings-title">Theme</div>
@@ -2737,7 +2848,7 @@ export function Devbar({
 				</button>
 				<div className="devbar-panel-footer-spacer" />
 				<div className="devbar-panel-footer-split" ref={footerMenuRef}>
-					{server ? (
+					{effectiveServer ? (
 						<button
 							type="button"
 							className="devbar-submit-btn"
@@ -2898,7 +3009,7 @@ export function Devbar({
 				>
 					{renderExportMenuItems(
 						() => setShowFooterMenu(false),
-						new Set([server ? "submit" : "copy"]),
+						new Set([effectiveServer ? "submit" : "copy"]),
 					)}
 				</div>
 			)}

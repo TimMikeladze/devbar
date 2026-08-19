@@ -8,7 +8,7 @@ export function ClipboardOnlyPage() {
 				title="Clipboard Only"
 				description="No server, no onSubmit callback. Pure clipboard/export workflow — annotations are cleared after copy."
 			/>
-			<Devbar clipboard />
+			<Devbar local={false} clipboard />
 		</main>
 	);
 }

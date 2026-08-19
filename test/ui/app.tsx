@@ -12,6 +12,7 @@ import { DarkThemePage } from "./pages/dark-theme";
 import { AutoThemePage } from "./pages/auto-theme";
 import { ClipboardOnlyPage } from "./pages/clipboard-only";
 import { HostileHostCssPage } from "./pages/hostile-host-css";
+import { LocalAgentPage } from "./pages/local-agent";
 
 const routes: Record<string, { label: string; group: string; component: () => React.ReactNode }> = {
 	"/": { label: "Default (no server, no auth)", group: "Auth Variations", component: DefaultPage },
@@ -34,6 +35,11 @@ const routes: Record<string, { label: string; group: string; component: () => Re
 		label: "Server + User + Auth Proxy",
 		group: "Auth Variations",
 		component: ServerUserAndAuthProxyPage,
+	},
+	"/local-agent": {
+		label: "Local agent (auto-discovery)",
+		group: "Auth Variations",
+		component: LocalAgentPage,
 	},
 	"/clipboard-only": {
 		label: "Clipboard Only",

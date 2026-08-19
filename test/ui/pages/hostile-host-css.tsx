@@ -37,7 +37,7 @@ export function HostileHostCssPage() {
 				description="Every bare element selector on this page tries to leak into the toolbar."
 			/>
 			<button type="button">A host button</button>
-			<Devbar onSubmit={(payload) => console.log("Devbar payload:", payload)} />
+			<Devbar local={false} onSubmit={(payload) => console.log("Devbar payload:", payload)} />
 		</main>
 	);
 }

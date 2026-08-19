@@ -5,7 +5,11 @@ export function LightThemePage() {
 	return (
 		<main>
 			<PageContent title="Light Theme" description="Toolbar initialized with light theme." />
-			<Devbar theme="light" onSubmit={(payload) => console.log("Devbar payload:", payload)} />
+			<Devbar
+				local={false}
+				theme="light"
+				onSubmit={(payload) => console.log("Devbar payload:", payload)}
+			/>
 		</main>
 	);
 }

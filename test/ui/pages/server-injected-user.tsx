@@ -9,6 +9,7 @@ export function ServerInjectedUserPage() {
 				description="Server URL with user prop injected. User avatar shown in toolbar. No sign-in button, no sign-out possible. Submit sends identity headers."
 			/>
 			<Devbar
+				local={false}
 				server="http://localhost:3100"
 				user={{
 					name: "Jane Doe",

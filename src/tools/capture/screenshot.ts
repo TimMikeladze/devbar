@@ -1,4 +1,4 @@
-import { toCanvas } from "html-to-image";
+import { toCanvas, toSvg } from "html-to-image";
 
 const CAPTURE_TIMEOUT = 15_000;
 
@@ -28,6 +28,66 @@ async function captureBody(): Promise<HTMLCanvasElement> {
 		}),
 		CAPTURE_TIMEOUT,
 	);
+}
+
+/**
+ * Renders a node to a PNG data URI without waiting for an animation frame.
+ *
+ * `toCanvas` resolves its image inside `requestAnimationFrame`, which Chrome
+ * never fires while a tab is hidden — so an agent asking for a screenshot while
+ * the user is on another tab would wait forever. Doing the SVG-to-canvas step
+ * by hand keeps the live tools working on a backgrounded tab, which is exactly
+ * when an agent tends to use them.
+ */
+export async function captureNode(
+	node: HTMLElement,
+	timeoutMs: number = CAPTURE_TIMEOUT,
+): Promise<string> {
+	const svgUrl = await withTimeout(
+		toSvg(node, {
+			filter: shouldInclude,
+			// No cache-busting: re-fetching every asset is what makes the full-page
+			// path slow, and a live capture wants to be quick.
+			skipFonts: true,
+			// The clone keeps the node's own margins, which then push it out of a
+			// viewport sized to the node itself — you get whitespace and a cropped
+			// element. Zeroing the margin on the root only affects the copy.
+			style: { margin: "0" },
+		}),
+		timeoutMs,
+	);
+
+	const image = await withTimeout(
+		new Promise<HTMLImageElement>((resolve, reject) => {
+			const img = new Image();
+			img.onload = () => resolve(img);
+			img.onerror = () => reject(new Error("Screenshot image failed to load"));
+			img.src = svgUrl;
+		}),
+		timeoutMs,
+	);
+
+	// `onload` only means the SVG parsed. Chrome rasterizes a foreignObject
+	// lazily, so drawing now yields a half-painted, text-less image; decode()
+	// waits for the real pixels and — unlike requestAnimationFrame — still
+	// resolves on a hidden tab.
+	try {
+		await withTimeout(image.decode(), timeoutMs);
+	} catch {}
+
+	const dpr = Math.min(window.devicePixelRatio, 2);
+	const rect = node.getBoundingClientRect();
+	const width = image.width || rect.width;
+	const height = image.height || rect.height;
+
+	const canvas = document.createElement("canvas");
+	canvas.width = Math.max(1, Math.round(width * dpr));
+	canvas.height = Math.max(1, Math.round(height * dpr));
+	const ctx = canvas.getContext("2d");
+	if (!ctx) throw new Error("Failed to get canvas context");
+	ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+	return canvas.toDataURL("image/png");
 }
 
 export async function captureFullPage(): Promise<string> {

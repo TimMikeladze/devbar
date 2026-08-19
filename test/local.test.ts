@@ -124,9 +124,40 @@ describe("local server API", () => {
 		expect(Array.isArray(data.tasks)).toBe(true);
 	});
 
-	test("projects endpoint requires auth", async () => {
+	test("a local process with no Origin is trusted by default", async () => {
+		// The CLI and the MCP server reach the API this way. A browser always sends
+		// Origin, so this path cannot be exercised from a page.
 		const res = await fetch(`${baseUrl}/api/projects`);
+		expect(res.status).toBe(200);
+	});
+
+	test("an unknown web origin is rejected without the token", async () => {
+		const res = await fetch(`${baseUrl}/api/projects`, {
+			headers: { Origin: "https://evil.example" },
+		});
 		expect(res.status).toBe(401);
+	});
+
+	test("a localhost page is authorized without a token", async () => {
+		const res = await fetch(`${baseUrl}/api/hello`, {
+			headers: { Origin: "http://localhost:3000" },
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.ok).toBe(true);
+		expect(Array.isArray(data.projects)).toBe(true);
+	});
+
+	test("CORS never answers with a wildcard origin", async () => {
+		const res = await fetch(`${baseUrl}/api/hello`, {
+			headers: { Origin: "http://localhost:3000" },
+		});
+		expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:3000");
+	});
+
+	test("health leaks nothing about the machine", async () => {
+		const res = await fetch(`${baseUrl}/health`);
+		expect(await res.json()).toEqual({ ok: true });
 	});
 });
 

@@ -151,7 +151,7 @@ type WindowWithFrameworkGlobals = Window & {
 	__REACT_DEVTOOLS_GLOBAL_HOOK__?: unknown;
 };
 
-function detectFrameworks(): string[] {
+export function detectFrameworks(): string[] {
 	const found = new Set<string>();
 	try {
 		const w = window as WindowWithFrameworkGlobals;
@@ -214,6 +214,16 @@ function detectFrameworks(): string[] {
 		}
 	} catch {}
 	return Array.from(found);
+}
+
+/** Recent console errors, newest last. Shared with the live page tools. */
+export function getConsoleErrors(): string[] {
+	return [...consoleErrors];
+}
+
+/** Recent failed requests, newest last. Shared with the live page tools. */
+export function getNetworkErrors(): string[] {
+	return [...networkErrors];
 }
 
 // ─── Page meta extraction ───────────────────────────────────────────────────

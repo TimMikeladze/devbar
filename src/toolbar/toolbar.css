@@ -1962,6 +1962,34 @@
 	background: var(--devbar-accent-glow);
 }
 
+/* ─── Local agent ─── */
+.devbar-live-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--devbar-text-secondary);
+	opacity: 0.4;
+	flex-shrink: 0;
+}
+
+.devbar-live-dot-on {
+	background: #22c55e;
+	opacity: 1;
+	box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+.devbar-settings-select {
+	padding: 4px 8px;
+	font-size: 11px;
+	font-family: inherit;
+	color: var(--devbar-text);
+	background: var(--devbar-bg-elevated);
+	border: 1px solid var(--devbar-border);
+	border-radius: 6px;
+	cursor: pointer;
+	max-width: 140px;
+}
+
 /* ─── Overlay shared styles ─── */
 .devbar-overlay {
 	position: fixed;
