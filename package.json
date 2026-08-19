@@ -100,6 +100,7 @@
 		"dev:server": "bun --watch src/server/cli.ts start",
 		"format": "oxfmt . app",
 		"lint": "oxlint . app",
+		"og": "bun run scripts/generate-og.ts",
 		"prepare": "bun simple-git-hooks",
 		"release": "bumpp --commit --push --tag",
 		"test": "bun test test/*.test.ts",

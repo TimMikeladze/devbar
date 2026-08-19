@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>devbar.sh — OG image</title>
+		<style>
+			@font-face {
+				font-family: "Geist Variable";
+				font-style: normal;
+				font-display: block;
+				font-weight: 100 900;
+				src: url("../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2")
+					format("woff2");
+			}
+
+			:root {
+				--bg: #0a0a0a;
+				--bg-card: #111111;
+				--bg-code: #0c0c0c;
+				--fg: #ededed;
+				--muted: #888888;
+				--dim: #a1a1a1;
+				--border: #222222;
+				--accent: #3b82f6;
+				--font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+				--font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+			}
+
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			body {
+				width: 1200px;
+				height: 630px;
+				overflow: hidden;
+				background: var(--bg);
+				color: var(--fg);
+				font-family: var(--font-sans);
+				-webkit-font-smoothing: antialiased;
+			}
+
+			/* ── Canvas: page-grid backdrop, same recipe as the landing page ── */
+			.canvas {
+				position: relative;
+				width: 1200px;
+				height: 630px;
+				background: var(--bg);
+				overflow: hidden;
+			}
+			.canvas::before {
+				content: "";
+				position: absolute;
+				inset: 0;
+				background-image:
+					radial-gradient(ellipse 70% 65% at 32% -18%, rgba(59, 130, 246, 0.16), transparent 70%),
+					linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+					linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+				background-size:
+					100% 100%,
+					46px 46px,
+					46px 46px;
+				-webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 96%);
+			}
+			/* Accent hairline along the top edge */
+			.canvas::after {
+				content: "";
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				height: 3px;
+				background: linear-gradient(
+					90deg,
+					transparent,
+					var(--accent) 22%,
+					#60a5fa 50%,
+					var(--accent) 78%,
+					transparent
+				);
+			}
+
+			.stage {
+				position: relative;
+				z-index: 1;
+				display: grid;
+				grid-template-columns: 596px 1fr;
+				align-items: center;
+				gap: 44px;
+				height: 100%;
+				padding: 0 60px;
+			}
+
+			/* ── Wordmark ── */
+			.wordmark {
+				display: flex;
+				align-items: center;
+				gap: 11px;
+				font-size: 25px;
+				font-weight: 600;
+				letter-spacing: -0.03em;
+				margin-bottom: 26px;
+			}
+			.wordmark .sh {
+				color: var(--muted);
+				font-weight: 500;
+			}
+			.dl-logo {
+				position: relative;
+				display: inline-block;
+				width: 23px;
+				height: 23px;
+				border: 2px solid var(--accent);
+				border-radius: 4px;
+			}
+			.dl-logo-tick {
+				position: absolute;
+				width: 6px;
+				height: 6px;
+				background: var(--bg);
+				border: 2px solid var(--accent);
+				border-radius: 1px;
+			}
+			.dl-logo-tl {
+				top: -4px;
+				left: -4px;
+			}
+			.dl-logo-tr {
+				top: -4px;
+				right: -4px;
+			}
+			.dl-logo-bl {
+				bottom: -4px;
+				left: -4px;
+			}
+			.dl-logo-br {
+				bottom: -4px;
+				right: -4px;
+			}
+
+			/* ── Eyebrow ── */
+			.eyebrow {
+				display: inline-flex;
+				align-items: center;
+				gap: 9px;
+				font-family: var(--font-mono);
+				font-size: 12px;
+				font-weight: 500;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--muted);
+				margin-bottom: 18px;
+			}
+			.dot {
+				width: 7px;
+				height: 7px;
+				border-radius: 50%;
+				background: var(--accent);
+				box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16);
+			}
+
+			/* ── Headline ── */
+			h1 {
+				font-size: 50px;
+				font-weight: 700;
+				letter-spacing: -0.037em;
+				line-height: 1.05;
+				margin-bottom: 20px;
+			}
+			h1 .signal {
+				color: var(--accent);
+			}
+			.sub {
+				font-size: 18px;
+				line-height: 1.6;
+				color: var(--dim);
+				max-width: 540px;
+				margin-bottom: 26px;
+			}
+
+			/* ── Install chip ── */
+			.install {
+				display: inline-flex;
+				align-items: center;
+				gap: 10px;
+				padding: 11px 16px;
+				border: 1px solid var(--border);
+				border-radius: 10px;
+				background: var(--bg-card);
+				font-family: var(--font-mono);
+				font-size: 15px;
+				color: var(--fg);
+			}
+			.install .prompt {
+				color: var(--accent);
+			}
+
+			/* ── Trust strip ── */
+			.trust {
+				display: flex;
+				align-items: center;
+				gap: 18px;
+				margin-top: 24px;
+				font-size: 13px;
+				color: var(--muted);
+			}
+			.trust span {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+			}
+			.trust i {
+				width: 5px;
+				height: 5px;
+				border-radius: 50%;
+				background: var(--accent);
+				opacity: 0.75;
+			}
+
+			/* ── Inspector demo ── */
+			.demo {
+				position: relative;
+			}
+			.browser-mock {
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				overflow: hidden;
+				background: var(--bg-card);
+				box-shadow: 0 30px 70px -26px rgba(0, 0, 0, 0.75);
+			}
+			.browser-bar {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				padding: 10px 14px;
+				border-bottom: 1px solid var(--border);
+				background: var(--bg-code);
+			}
+			.browser-dot {
+				width: 10px;
+				height: 10px;
+				border-radius: 50%;
+				background: var(--border);
+			}
+			.browser-url {
+				margin-left: 10px;
+				font-family: var(--font-mono);
+				font-size: 11px;
+				color: var(--muted);
+			}
+			.mock-app {
+				position: relative;
+				padding: 22px 22px 34px;
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+				min-height: 236px;
+			}
+			.mock-line {
+				height: 10px;
+				border-radius: 5px;
+				background: var(--border);
+			}
+			.mock-field {
+				height: 34px;
+				border-radius: 8px;
+				border: 1px solid var(--border);
+				background: var(--bg-code);
+			}
+			.mock-target {
+				position: relative;
+				align-self: flex-start;
+				margin-top: 14px;
+			}
+			.mock-btn {
+				padding: 9px 18px;
+				border-radius: 8px;
+				background: var(--accent);
+				color: #fff;
+				font-size: 13px;
+				font-weight: 600;
+				border: none;
+			}
+			.sel-box {
+				position: absolute;
+				inset: -7px;
+				border: 1.5px dashed var(--accent);
+				border-radius: 5px;
+				box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+			}
+			.sel-corner {
+				position: absolute;
+				width: 7px;
+				height: 7px;
+				background: var(--bg-card);
+				border: 1.5px solid var(--accent);
+			}
+			.sel-tl {
+				top: -4px;
+				left: -4px;
+			}
+			.sel-tr {
+				top: -4px;
+				right: -4px;
+			}
+			.sel-bl {
+				bottom: -4px;
+				left: -4px;
+			}
+			.sel-br {
+				bottom: -4px;
+				right: -4px;
+			}
+			.sel-tag {
+				position: absolute;
+				top: -2px;
+				left: -1.5px;
+				transform: translateY(-100%);
+				font-family: var(--font-mono);
+				font-size: 10px;
+				font-weight: 500;
+				padding: 3px 7px;
+				border-radius: 5px 5px 5px 0;
+				background: var(--accent);
+				color: #fff;
+				white-space: nowrap;
+			}
+			.sel-dim {
+				position: absolute;
+				bottom: -6px;
+				left: 6px;
+				transform: translateY(100%);
+				font-family: var(--font-mono);
+				font-size: 10px;
+				padding: 2px 6px;
+				border-radius: 4px;
+				background: var(--fg);
+				color: var(--bg);
+				white-space: nowrap;
+			}
+			.cursor {
+				position: absolute;
+				top: 26px;
+				left: 74px;
+				color: var(--fg);
+				filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+			}
+			.cursor svg path {
+				fill: #fff;
+				stroke: #0a0a0a;
+				stroke-width: 1.2;
+			}
+
+			/* ── Captured-context readout ── */
+			.readout {
+				position: relative;
+				z-index: 2;
+				width: 322px;
+				margin: -16px 0 0 auto;
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				overflow: hidden;
+				background: var(--bg-card);
+				font-family: var(--font-mono);
+				font-size: 12px;
+				line-height: 1.75;
+				box-shadow: 0 26px 50px -18px rgba(0, 0, 0, 0.8);
+			}
+			.readout-head {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 9px 14px;
+				border-bottom: 1px solid var(--border);
+				font-family: var(--font-sans);
+				font-size: 10px;
+				font-weight: 600;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--dim);
+				background: var(--bg-code);
+			}
+			.readout-head .dot {
+				width: 6px;
+				height: 6px;
+				box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+			}
+			.readout-body {
+				padding: 13px 14px;
+			}
+			.row {
+				display: flex;
+				gap: 12px;
+				color: var(--dim);
+			}
+			.rk {
+				color: var(--muted);
+				min-width: 58px;
+				flex-shrink: 0;
+			}
+			.rv {
+				color: var(--fg);
+			}
+			.rv-accent {
+				color: var(--accent);
+			}
+			.swatch {
+				display: inline-block;
+				width: 10px;
+				height: 10px;
+				border-radius: 2px;
+				vertical-align: middle;
+				margin-right: 5px;
+				background: #3b82f6;
+				border: 1px solid rgba(255, 255, 255, 0.16);
+			}
+		</style>
+	</head>
+	<body>
+		<div class="canvas">
+			<div class="stage">
+				<!-- Left: copy -->
+				<div>
+					<div class="wordmark">
+						<span class="dl-logo">
+							<span class="dl-logo-tick dl-logo-tl"></span>
+							<span class="dl-logo-tick dl-logo-tr"></span>
+							<span class="dl-logo-tick dl-logo-bl"></span>
+							<span class="dl-logo-tick dl-logo-br"></span>
+						</span>
+						<span>devbar<span class="sh">.sh</span></span>
+					</div>
+
+					<p class="eyebrow"><span class="dot"></span>Open source · MIT licensed</p>
+
+					<h1>
+						Point at what to change.<br />
+						<span class="signal">Your agent ships it.</span>
+					</h1>
+
+					<p class="sub">
+						A drop-in inspector for any website. Capture selectors, computed styles, the React tree,
+						and the source file — then hand it to your agent.
+					</p>
+
+					<div class="install"><span class="prompt">$</span>npm install devbar.sh</div>
+
+					<div class="trust">
+						<span><i></i>Works on any site</span>
+						<span><i></i>React-aware</span>
+						<span><i></i>MCP-ready</span>
+						<span><i></i>Zero build step</span>
+					</div>
+				</div>
+
+				<!-- Right: inspector demo -->
+				<div class="demo">
+					<div class="browser-mock">
+						<div class="browser-bar">
+							<span class="browser-dot"></span>
+							<span class="browser-dot"></span>
+							<span class="browser-dot"></span>
+							<span class="browser-url">app.example.com/orders</span>
+						</div>
+						<div class="mock-app">
+							<div class="mock-line" style="width: 40%"></div>
+							<div class="mock-line" style="width: 60%; opacity: 0.7"></div>
+							<div class="mock-field"></div>
+							<div class="mock-field" style="width: 80%"></div>
+							<div class="mock-target">
+								<button type="button" class="mock-btn">Submit order</button>
+								<span class="sel-box">
+									<span class="sel-corner sel-tl"></span>
+									<span class="sel-corner sel-tr"></span>
+									<span class="sel-corner sel-bl"></span>
+									<span class="sel-corner sel-br"></span>
+									<span class="sel-tag">button#submit-btn</span>
+									<span class="sel-dim">120 × 40</span>
+								</span>
+								<span class="cursor">
+									<svg width="20" height="20" viewBox="0 0 24 24">
+										<path d="M4 2.5L4 18.5L8 14.5L10.6 20L12.8 19L10.2 13.6L16 13.6Z" />
+									</svg>
+								</span>
+							</div>
+						</div>
+					</div>
+
+					<div class="readout">
+						<div class="readout-head"><span class="dot"></span>captured context</div>
+						<div class="readout-body">
+							<div class="row"><span class="rk">css</span><span class="rv">#submit-btn</span></div>
+							<div class="row">
+								<span class="rk">bg</span
+								><span class="rv"><span class="swatch"></span>rgb(59, 130, 246)</span>
+							</div>
+							<div class="row">
+								<span class="rk">react</span
+								><span class="rv rv-accent">App › OrderForm › Button</span>
+							</div>
+							<div class="row">
+								<span class="rk">source</span><span class="rv rv-accent">src/ui/Button.tsx:6</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -31,6 +31,10 @@ Run `bun run dev` - This starts a Bun + React preview app at http://localhost:38
 7. Push your branch to your fork
 8. Open a pull request
 
+### Social preview image
+
+The Open Graph image at `app/public/og.png` is generated from the HTML template in `scripts/og-image.html`. After editing the template, regenerate the PNG with `bun run og` (renders at 2x via Playwright, downscaled to 1200x630) and commit both files.
+
 ## Commit Message Conventions
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/) for clear and structured commit messages:
