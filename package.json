@@ -1,6 +1,6 @@
 {
 	"name": "devbar.sh",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Drop-in toolbar for any website. Annotate the UI and capture selectors, computed styles, React component trees, and screenshots as an agent-ready prompt.",
 	"keywords": [
 		"ai agent",

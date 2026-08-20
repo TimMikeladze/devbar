@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Devbar",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Annotate any website and capture selectors, styles, and screenshots as an agent-ready prompt.",
 	"homepage_url": "https://devbar.sh",
 	"minimum_chrome_version": "111",
