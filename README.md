@@ -40,6 +40,36 @@ import "devbar.sh/styles.css";
 The CDN build (`devbar.sh/cdn`) inlines its own styles, so it needs no separate
 import.
 
+### Server-rendered apps
+
+The toolbar is safe to import from a server-rendered tree — a Next.js root
+layout, a Remix root, an Astro island. It renders nothing on the server and
+nothing on the first client render, then appears once mounted, because what it
+draws depends on the host page's theme, a stored bar position and stored
+settings; producing markup without them would only fail to hydrate.
+
+In Next.js, mount it in the root layout from a `'use client'` module:
+
+```tsx
+'use client';
+
+import { Devbar } from 'devbar.sh';
+
+import 'devbar.sh/styles.css';
+
+export function DevToolbar() {
+	if (process.env.NODE_ENV !== 'development') return null;
+
+	return <Devbar />;
+}
+```
+
+That still ships the toolbar's stylesheet to production, where the guard means
+it is never used. To keep it out, put the two imports in a module of their own
+and pull that module in with `next/dynamic` — Turbopack will not resolve a CSS
+import from inside a `dynamic()` factory, so the imports have to sit at the top
+of the module being imported, not in the factory.
+
 ### Package entrypoints
 
 | Import                 | What it is                                                           |

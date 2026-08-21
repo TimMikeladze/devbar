@@ -610,6 +610,11 @@ const THEME_LABELS: Record<DevbarTheme, string> = {
 };
 
 function detectHostDark(): boolean {
+	// Read during render, which on a server-rendered host happens where there is
+	// no page to sample. Light is the answer that costs least when wrong: the
+	// effect below re-reads the real document as soon as the toolbar mounts.
+	if (typeof document === "undefined") return false;
+
 	const root = document.documentElement;
 	if (
 		root.classList.contains("dark") ||
@@ -1017,6 +1022,16 @@ export function Devbar({
 	const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null);
 	const [theme, setTheme] = useState<DevbarTheme>(initialTheme);
 	const resolvedTheme = useResolvedTheme(theme);
+	// Nothing is rendered until the toolbar is on a real page. Almost everything
+	// it draws is read out of the document or localStorage — the theme it picked
+	// up from the host, a dragged bar position, saved settings — none of which a
+	// server can know, so server markup and the first client render would not
+	// agree and React would report a hydration mismatch. Rendering null on both passes and
+	// filling in after mount sidesteps that, and costs one frame in a dev tool.
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 	const [collapsed, setCollapsed] = useState(false);
 	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 	const [expandedDetailId, setExpandedDetailId] = useState<string | null>(null);
@@ -1030,7 +1045,13 @@ export function Devbar({
 	const setCommentText = useCallback((id: string, text: string) => {
 		setCommentTexts((prev) => ({ ...prev, [id]: text }));
 	}, []);
-	const [authorName, setAuthorName] = useState(() => localStorage.getItem("devbar-author") ?? "");
+	const [authorName, setAuthorName] = useState(() => {
+		try {
+			return localStorage.getItem("devbar-author") ?? "";
+		} catch {
+			return "";
+		}
+	});
 	const [badgePulse, setBadgePulse] = useState(false);
 	const [hoveredAnnotation, setHoveredAnnotation] = useState<string | null>(null);
 	const [focusedAnnotation, setFocusedAnnotation] = useState<string | null>(null);
@@ -2892,6 +2913,8 @@ export function Devbar({
 				</div>
 			</div>
 		) : null;
+
+	if (!mounted) return null;
 
 	return (
 		<div data-devbar="toolbar" className={`devbar-toolbar devbar-theme-${resolvedTheme}`}>
