@@ -7,6 +7,7 @@ import { PricingCards } from "./components/PricingCards";
 import { LogoMark } from "./components/Logo";
 import { useTheme, type Theme } from "./hooks/useTheme";
 import { CLOUD, PAID_PLANS, CONTACT_FORM } from "./lib/flags";
+import { initAnalytics } from "./lib/analytics";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -52,6 +53,12 @@ function useReveal() {
 }
 
 function App() {
+	// Landing page only — the tracker is deliberately not in index.html,
+	// which is the shell for every route.
+	useEffect(() => {
+		initAnalytics();
+	}, []);
+
 	return (
 		<div className="min-h-screen page-grid">
 			<Header />

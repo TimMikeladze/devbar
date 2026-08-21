@@ -124,10 +124,18 @@ Set in the Vercel dashboard (Project Settings → Environment Variables). Use Ve
 | `VITE_FLAG_CONTACT_FORM`    | Feature flag — contact form (default off)                    |
 | `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                                    |
 | `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                                     |
-| `VITE_UMAMI_URL`            | Umami analytics URL                                          |
-| `VITE_UMAMI_WEBSITE_ID`     | Umami analytics website ID                                   |
+| `VITE_UMAMI_URL`            | Umami instance URL, e.g. `https://umami.example.com`         |
+| `VITE_UMAMI_WEBSITE_ID`     | Umami website ID (UUID)                                      |
 | `VITE_DEVBAR_WS_SERVER`     | WebSocket server URL (leave unset — none is deployed)        |
 | `VITE_DEVBAR_SERVER`        | API server URL (leave empty to use same origin)              |
+
+Analytics is opt-in: unless **both** `VITE_UMAMI_URL` and
+`VITE_UMAMI_WEBSITE_ID` are set at build time, the Umami tracker is never
+injected and no request leaves the visitor's browser. When they are set, the
+tracker loads on the landing page only — not the login page, the dashboard or
+the 404 — and records a single pageview per load (`data-auto-track` is off, so
+client-side navigation into the app is not reported). See
+`app/src/lib/analytics.ts`.
 
 **Runtime (serverless function):**
 

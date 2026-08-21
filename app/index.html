@@ -249,26 +249,5 @@
 			<p><a href="https://github.com/TimMikeladze/devbar">View on GitHub</a></p>
 		</noscript>
 		<script type="module" src="/src/main.tsx"></script>
-		<script
-			defer
-			src="%VITE_UMAMI_URL%/script.js"
-			data-website-id="%VITE_UMAMI_WEBSITE_ID%"
-			data-auto-track="false"
-		></script>
-		<script>
-			if (window.umami) {
-				window.umami.track(function () {
-					return { url: "/", title: "visit" };
-				});
-			} else {
-				document.addEventListener("DOMContentLoaded", function () {
-					if (window.umami) {
-						window.umami.track(function () {
-							return { url: "/", title: "visit" };
-						});
-					}
-				});
-			}
-		</script>
 	</body>
 </html>
