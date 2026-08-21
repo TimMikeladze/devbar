@@ -917,6 +917,8 @@
 /* ─── Mini bar (visible during tool mode) ─── */
 .devbar-minibar {
 	position: fixed;
+	/* Above the annotation layer — this is the only way back into the toolbar. */
+	z-index: 2147483647;
 	bottom: 24px;
 	left: 50%;
 	transform: translateX(-50%);
@@ -989,6 +991,8 @@
 /* ─── Minimize dot ─── */
 .devbar-dot {
 	position: fixed;
+	/* Above the annotation layer — this is the only way back into the toolbar. */
+	z-index: 2147483647;
 	bottom: 24px;
 	left: 50%;
 	transform: translateX(-50%);

@@ -51,14 +51,14 @@ settings; producing markup without them would only fail to hydrate.
 In Next.js, mount it in the root layout from a `'use client'` module:
 
 ```tsx
-'use client';
+"use client";
 
-import { Devbar } from 'devbar.sh';
+import { Devbar } from "devbar.sh";
 
-import 'devbar.sh/styles.css';
+import "devbar.sh/styles.css";
 
 export function DevToolbar() {
-	if (process.env.NODE_ENV !== 'development') return null;
+	if (process.env.NODE_ENV !== "development") return null;
 
 	return <Devbar />;
 }
