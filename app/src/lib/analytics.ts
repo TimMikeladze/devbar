@@ -52,3 +52,16 @@ export function initAnalytics(): void {
 	});
 	document.head.appendChild(script);
 }
+
+/**
+ * Record a named event.
+ *
+ * The tracker runs with `data-auto-track="false"`, which switches off Umami's
+ * `data-umami-event` click handler along with automatic pageviews, so events
+ * have to be sent by hand. No-ops when analytics is off or the script has not
+ * loaded yet.
+ */
+export function trackEvent(name: string): void {
+	if (!ANALYTICS_ENABLED) return;
+	window.umami?.track(name);
+}

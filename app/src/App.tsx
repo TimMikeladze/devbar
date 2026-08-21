@@ -7,7 +7,9 @@ import { PricingCards } from "./components/PricingCards";
 import { LogoMark } from "./components/Logo";
 import { useTheme, type Theme } from "./hooks/useTheme";
 import { CLOUD, PAID_PLANS, CONTACT_FORM } from "./lib/flags";
-import { initAnalytics } from "./lib/analytics";
+import { initAnalytics, trackEvent } from "./lib/analytics";
+import { AGENT_SETUP_PROMPT } from "./lib/agentPrompt";
+import { copyText } from "./lib/clipboard";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
@@ -237,7 +239,8 @@ function Hero() {
 						<InstallTabs />
 					</div>
 					<div className="flex items-center justify-center lg:justify-start gap-3 flex-wrap">
-						<a href="#how-it-works" className="btn-signal">
+						<CopyPromptButton />
+						<a href="#how-it-works" className="btn-ghost">
 							See how it works
 						</a>
 						<a
@@ -250,6 +253,10 @@ function Hero() {
 							Star on GitHub
 						</a>
 					</div>
+					<p className="text-muted text-[12.5px] mt-3">
+						Paste it into Claude Code, Cursor, or Codex — it installs devbar and wires up the local
+						agent for you.
+					</p>
 				</div>
 
 				{/* Right: live inspector demo */}
@@ -265,6 +272,44 @@ function Hero() {
 				project="devbar"
 			/>
 		</section>
+	);
+}
+
+/**
+ * Hands the getting-started prompt to whatever agent the visitor already has
+ * open. Falls back to a "Copy failed" label rather than a silent no-op, since
+ * this is the hero's primary action and a lie here costs a signup.
+ */
+function CopyPromptButton() {
+	const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+
+	const handleCopy = () => {
+		copyText(AGENT_SETUP_PROMPT).then((ok) => {
+			setState(ok ? "copied" : "failed");
+			if (ok) trackEvent("copy-agent-prompt");
+			setTimeout(() => setState("idle"), 2000);
+		});
+	};
+
+	return (
+		<button type="button" onClick={handleCopy} className="btn-signal" aria-live="polite">
+			{state === "copied" ? (
+				<>
+					<CheckGlyph />
+					Copied — paste it to your agent
+				</>
+			) : state === "failed" ? (
+				<>
+					<XGlyph />
+					Copy failed — try again
+				</>
+			) : (
+				<>
+					<SparkGlyph />
+					Copy the setup prompt
+				</>
+			)}
+		</button>
 	);
 }
 
@@ -1129,13 +1174,11 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 	}, [code, lang, dark]);
 
 	const handleCopy = () => {
-		navigator.clipboard
-			.writeText(code)
-			.then(() => {
-				setCopied(true);
-				setTimeout(() => setCopied(false), 1500);
-			})
-			.catch(() => {});
+		copyText(code).then((ok) => {
+			if (!ok) return;
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		});
 	};
 
 	return (
@@ -1693,6 +1736,23 @@ function XGlyph() {
 			<circle cx="12" cy="12" r="10" />
 			<line x1="15" y1="9" x2="9" y2="15" />
 			<line x1="9" y1="9" x2="15" y2="15" />
+		</svg>
+	);
+}
+function SparkGlyph() {
+	return (
+		<svg
+			width="14"
+			height="14"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.8"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
+			<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+			<path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" />
 		</svg>
 	);
 }

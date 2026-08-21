@@ -41,3 +41,11 @@ bunx vite build
 
 Output lands in `app/dist`, which is Vercel's `outputDirectory`. Environment
 variables (`VITE_*`) are documented in the root [README](../README.md).
+
+## Hero setup prompt
+
+The hero's **Copy the setup prompt** button hands a ready-to-paste prompt to the
+visitor's coding agent. It lives in [`src/lib/agentPrompt.ts`](./src/lib/agentPrompt.ts)
+and repeats the install and local-agent commands from the root
+[README](../README.md) — change one and change the other, or
+`test/agent-prompt.test.ts` fails.
