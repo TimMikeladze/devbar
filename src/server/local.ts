@@ -6,6 +6,7 @@ import { createRegistry, type Registry, type ProjectConfig } from "./registry";
 import { createDispatcher, type Dispatcher } from "./dispatcher";
 import { createReportStore, type ReportStore } from "./report-store";
 import { createPageBus, PageRpcError, type PageBus } from "./page-bus";
+import { createMcpSessions, type McpSessions } from "./mcp-sessions";
 import { fanOut } from "./destinations";
 
 const DEVBAR_DIR = join(homedir(), ".devbar");
@@ -89,6 +90,7 @@ export type LocalServer = {
 	dispatcher: Dispatcher;
 	store: ReportStore;
 	pages: PageBus;
+	mcpSessions: McpSessions;
 	start: () => Promise<{ port: number; host: string }>;
 	stop: () => Promise<void>;
 };
@@ -119,6 +121,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 	const registry = await createRegistry(projectsFile);
 	const store = createReportStore(reportsDir);
 	const pages = createPageBus();
+	const mcpSessions = createMcpSessions();
 
 	const dispatcher = createDispatcher({
 		store,
@@ -164,6 +167,14 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		// run code on this machine.
 		if (origin && (isLoopbackOrigin(origin) || registry.findByOrigin(origin) || options.token)) {
 			headers["Access-Control-Allow-Origin"] = origin;
+			// The toolbar submits with `credentials: "include"` whenever it has no
+			// bearer token, which is the ordinary case here: this server authorizes
+			// a loopback origin on the origin alone. Without this header the browser
+			// rejects the preflight and the POST is never sent — submitting a report
+			// fails as "Failed to fetch" with nothing in the server log. Safe to send
+			// because the origin above is always a specific one, never "*", and a
+			// cookie grants no access this server was not already going to give.
+			headers["Access-Control-Allow-Credentials"] = "true";
 		}
 		return headers;
 	}
@@ -264,14 +275,30 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 				ok: true,
 				requiresToken: !!options.token,
 				matchedProject: matched?.slug,
+				// The whole agent configuration, not just the two fields the toolbar
+				// used to show. A dispatch runs an agent in someone's repository;
+				// which command, on what model, under which permission level, and
+				// whether it fires without asking are the facts they need in front
+				// of them before they press Submit — not ones to go read a config
+				// file for.
 				projects: registry.list().map((p) => ({
 					slug: p.slug,
+					dir: p.dir,
 					origins: p.origins ?? [],
 					autoDispatch: p.autoDispatch,
 					model: p.model,
+					effort: p.effort,
 					command: p.command ?? "claude",
+					permission: p.permission,
+					permissionMode: p.permissionMode,
+					concurrency: p.concurrency,
+					maxBudgetUsd: p.maxBudgetUsd,
+					timeoutMs: p.timeoutMs,
+					resumeSession: p.resumeSession,
+					routes: (p.routes ?? []).map((r) => (typeof r === "string" ? r : "webhook")),
 					live: p.live ?? { enabled: true, allowMutating: false },
 				})),
+				mcpSessions: mcpSessions.list().length,
 			});
 			return;
 		}
@@ -562,6 +589,51 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			return;
 		}
 
+		// ─── mcp sessions ───────────────────────────────────────────────────
+		//
+		// The pull half of devbar announces itself here so the toolbar can show
+		// whether an agent is actually attached. Registration is a claim, not a
+		// credential: it only reaches this point through `authorize`, and what a
+		// session says about itself is displayed, never trusted.
+		if (method === "POST" && path === "/api/mcp/sessions") {
+			const body = await readJson<{
+				client?: string;
+				clientVersion?: string;
+				project?: string;
+				tools?: string[];
+			}>(ctx);
+			if (!body) return;
+			const session = mcpSessions.register(body);
+			respond(ctx, 200, { session });
+			return;
+		}
+
+		if (method === "GET" && path === "/api/mcp/sessions") {
+			// Swept on read rather than on a timer: nothing else needs the list to
+			// be fresh, and a timer would keep the process awake for bookkeeping.
+			mcpSessions.sweep();
+			respond(ctx, 200, {
+				sessions: mcpSessions.list({ project: url.searchParams.get("project") ?? undefined }),
+			});
+			return;
+		}
+
+		const mcpHeartbeatMatch = /^\/api\/mcp\/sessions\/([^/]+)\/heartbeat$/.exec(path);
+		if (method === "POST" && mcpHeartbeatMatch) {
+			const body = await readJson<{ lastTool?: string }>(ctx);
+			if (!body) return;
+			const ok = mcpSessions.heartbeat(mcpHeartbeatMatch[1] as string, { lastTool: body.lastTool });
+			respond(ctx, ok ? 200 : 404, ok ? { ok } : { error: "Session not found" });
+			return;
+		}
+
+		const mcpSessionMatch = /^\/api\/mcp\/sessions\/([^/]+)$/.exec(path);
+		if (method === "DELETE" && mcpSessionMatch) {
+			mcpSessions.disconnect(mcpSessionMatch[1] as string);
+			respond(ctx, 200, { ok: true });
+			return;
+		}
+
 		// ─── live pages ─────────────────────────────────────────────────────
 		if (method === "POST" && path === "/api/pages") {
 			const body = await readJson<Record<string, unknown>>(ctx);
@@ -681,6 +753,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		dispatcher,
 		store,
 		pages,
+		mcpSessions,
 		start: () =>
 			new Promise((resolve) => {
 				server.listen(port, host, () => {

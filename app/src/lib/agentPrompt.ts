@@ -52,8 +52,8 @@ Do this:
 4. Register the MCP server with the agent CLI you are running as:
 
    \`\`\`bash
-   claude mcp add devbar -- devbar mcp
-   # codex mcp add devbar -- devbar mcp
+   claude mcp add devbar -- bunx devbar.sh mcp
+   # codex mcp add devbar -- bunx devbar.sh mcp
    \`\`\`
 
 5. Run \`bunx devbar.sh doctor\` and fix whatever it flags.

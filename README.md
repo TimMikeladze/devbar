@@ -112,7 +112,7 @@ From there, reports go two ways:
   at right now.
 
 ```bash
-claude mcp add devbar -- devbar mcp
+claude mcp add devbar -- bunx devbar.sh mcp
 ```
 
 | Command                  | Does                                                |
@@ -189,8 +189,26 @@ element's tag and pixel size. `↑` widens the selection to the parent element a
 mean instead of whichever node happens to be under the pointer.
 
 Everything you capture collects in the dedicated **Annotations** panel, alongside
-**History** for past exports. **Settings** and **Shortcuts** live in a separate
-preferences panel opened from the toolbar's gear button.
+**History** for past exports. **Agent**, **Settings** and **Shortcuts** live in a
+separate preferences panel opened from the toolbar's gear button.
+
+### The Agent tab
+
+Dispatch runs an agent inside your repository, so the toolbar says what that
+means before you ask for it and what happened after:
+
+- **Configuration** — the agent command, model, effort, permission level,
+  auto-dispatch, concurrency, budget and working directory for the project that
+  claims this page, read live from the running server. Auto-dispatch is called
+  out when it is on: that is the setting that runs an agent without asking.
+- **Waiting on you** — reports you have submitted that no agent has been given.
+  With `autoDispatch` off (the default) Submit stores a report and stops, so
+  each one gets a **Dispatch** button rather than sitting there looking ignored.
+- **Runs** — queued, running and finished dispatches, with elapsed time, model
+  and cost. **Stop** cancels one still in flight. Opening a run shows the exact
+  prompt the agent was handed, its output, and the files it touched.
+- **MCP** — which agent sessions are attached over MCP right now, what they can
+  call, and the last tool they used.
 
 At the top of the Annotations tab is a **task field**: one line saying what you
 actually want changed. Annotations are evidence; the task is the intent. When

@@ -15,6 +15,9 @@ import { createMcpStdioServer, type McpStdioServer, type ToolResult } from "./st
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 
+/** Comfortably inside the server's 45s staleness window. */
+const HEARTBEAT_MS = 15_000;
+
 function text(value: string): ToolResult {
 	return { content: [{ type: "text", text: value }] };
 }
@@ -96,11 +99,79 @@ export type LocalMcpOptions = {
 	createClient?: () => Promise<LocalClient>;
 };
 
-export function createLocalMcpServer(options: LocalMcpOptions = {}): McpStdioServer {
-	const server = createMcpStdioServer({ name: "devbar-local", version: "1.0.0" });
+/** The stdio server, plus the one thing `devbar mcp` has to do on the way out. */
+export type LocalMcpServer = McpStdioServer & {
+	/** Drops this process's MCP session from the devbar server. */
+	release(): Promise<void>;
+};
 
+export function createLocalMcpServer(options: LocalMcpOptions = {}): LocalMcpServer {
 	let cached: LocalClient | undefined;
-	async function client(): Promise<LocalClient> {
+
+	/**
+	 * Presence, announced to the running devbar server.
+	 *
+	 * This process is stdio-only and stateless, so nothing about it was visible
+	 * from the toolbar: a user could not tell an agent that had attached from a
+	 * command they had never run. The session is registered when the client
+	 * identifies itself, kept alive by tool calls and a heartbeat, and dropped
+	 * when stdin closes. Registration failures are swallowed — presence is a
+	 * nicety, and an MCP server that refused to start because it could not
+	 * announce itself would be a worse trade.
+	 */
+	const presence = {
+		id: undefined as string | undefined,
+		timer: undefined as ReturnType<typeof setInterval> | undefined,
+
+		announce(client: { name?: string; version?: string }): void {
+			void (async () => {
+				try {
+					const c = await connect();
+					const session = await c.registerMcpSession({
+						client: client.name,
+						clientVersion: client.version,
+						project: options.project,
+						tools: server.tools().map((tool) => tool.name),
+					});
+					presence.id = session.id;
+					presence.timer ??= setInterval(() => void presence.beat(), HEARTBEAT_MS);
+					presence.timer.unref?.();
+				} catch {}
+			})();
+		},
+
+		async beat(tool?: string): Promise<void> {
+			if (!presence.id) return;
+			try {
+				const c = await connect();
+				const alive = await c.heartbeatMcpSession(presence.id, tool);
+				// The server forgot us — it restarted, or swept us as stale. Drop the
+				// id so the next announce starts a fresh session rather than beating
+				// against one that no longer exists.
+				if (!alive) presence.id = undefined;
+			} catch {}
+		},
+
+		async release(): Promise<void> {
+			if (presence.timer) clearInterval(presence.timer);
+			if (!presence.id) return;
+			const id = presence.id;
+			presence.id = undefined;
+			try {
+				await (await connect()).disconnectMcpSession(id);
+			} catch {}
+		},
+	};
+
+	const server = createMcpStdioServer(
+		{ name: "devbar-local", version: "1.0.0" },
+		{
+			onInitialize: (client) => presence.announce(client),
+			onToolCall: (name) => void presence.beat(name),
+		},
+	);
+
+	async function connect(): Promise<LocalClient> {
 		if (cached) return cached;
 		cached = options.createClient
 			? await options.createClient()
@@ -111,7 +182,7 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): McpStdioSer
 	/** Every handler funnels through here so a stopped server reads as a message, not a crash. */
 	async function withClient(fn: (c: LocalClient) => Promise<ToolResult>): Promise<ToolResult> {
 		try {
-			return await fn(await client());
+			return await fn(await connect());
 		} catch (err) {
 			cached = undefined;
 			return failure(err instanceof Error ? err.message : String(err));
@@ -420,12 +491,15 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): McpStdioSer
 			}),
 	});
 
-	return server;
+	return Object.assign(server, { release: presence.release });
 }
 
 /** Runs the server on stdio. This is what `devbar mcp` executes. */
 export async function startLocalMcp(options: LocalMcpOptions = {}): Promise<void> {
-	createLocalMcpServer(options).listen();
+	const server = createLocalMcpServer(options);
+	server.listen();
 	// Hold the process open; stdin closing is what ends an MCP server.
 	await new Promise<void>((resolve) => process.stdin.on("close", resolve));
+	// Say goodbye rather than leaving the toolbar to time the session out.
+	await server.release();
 }

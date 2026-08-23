@@ -44,6 +44,17 @@ export type ToolDefinition = {
 	handler: (args: Record<string, unknown>) => Promise<ToolResult> | ToolResult;
 };
 
+/**
+ * Lifecycle callbacks, so a caller can tell the running devbar server that an
+ * agent session exists. The protocol carries the only two moments worth
+ * reporting — the client identifying itself, and it calling a tool — and this
+ * module stays otherwise ignorant of what anyone does with them.
+ */
+export type McpStdioHooks = {
+	onInitialize?: (client: { name?: string; version?: string }) => void;
+	onToolCall?: (name: string) => void;
+};
+
 export type McpStdioServer = {
 	tool(definition: ToolDefinition): void;
 	/** Handles one JSON-RPC message. Returns undefined for notifications. */
@@ -120,7 +131,10 @@ export function coerceArgs(
 	return { args };
 }
 
-export function createMcpStdioServer(info: { name: string; version: string }): McpStdioServer {
+export function createMcpStdioServer(
+	info: { name: string; version: string },
+	hooks: McpStdioHooks = {},
+): McpStdioServer {
 	const registry = new Map<string, ToolDefinition>();
 
 	const server: McpStdioServer = {
@@ -152,6 +166,11 @@ export function createMcpStdioServer(info: { name: string; version: string }): M
 				case "initialize": {
 					const requested =
 						typeof params.protocolVersion === "string" ? params.protocolVersion : "";
+					const clientInfo = isRecord(params.clientInfo) ? params.clientInfo : {};
+					hooks.onInitialize?.({
+						name: typeof clientInfo.name === "string" ? clientInfo.name : undefined,
+						version: typeof clientInfo.version === "string" ? clientInfo.version : undefined,
+					});
 					return reply({
 						protocolVersion: SUPPORTED_PROTOCOLS.includes(requested) ? requested : LATEST_PROTOCOL,
 						capabilities: { tools: { listChanged: false } },
@@ -179,6 +198,8 @@ export function createMcpStdioServer(info: { name: string; version: string }): M
 
 					const coerced = coerceArgs(tool.inputSchema, params.arguments);
 					if ("error" in coerced) return fail(INVALID_PARAMS, coerced.error);
+
+					hooks.onToolCall?.(name);
 
 					try {
 						return reply(await tool.handler(coerced.args));

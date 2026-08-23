@@ -3328,3 +3328,308 @@
 .devbar-toast-action:hover {
 	background: rgba(128, 128, 128, 0.38);
 }
+
+/* ─── Agent tab ─── */
+.devbar-agent-section {
+	padding-bottom: 12px;
+	margin-bottom: 12px;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-agent-section:last-child {
+	padding-bottom: 0;
+	margin-bottom: 0;
+	border-bottom: none;
+}
+
+.devbar-agent-section-title {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--devbar-text-muted);
+	margin-bottom: 8px;
+}
+
+.devbar-agent-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 15px;
+	height: 15px;
+	padding: 0 4px;
+	border-radius: 999px;
+	background: var(--devbar-accent-glow);
+	color: var(--devbar-text);
+	font-size: 9.5px;
+	font-weight: 600;
+	letter-spacing: 0;
+}
+
+.devbar-agent-facts {
+	margin: 0;
+	display: grid;
+	gap: 2px;
+}
+
+/* Label and value on one line, the value free to elide: a project directory is
+   long, and wrapping it pushes every following row out of alignment. */
+.devbar-agent-fact {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 3px 0;
+	min-width: 0;
+}
+
+.devbar-agent-fact-label {
+	font-size: 11.5px;
+	color: var(--devbar-text-muted);
+	flex-shrink: 0;
+}
+
+.devbar-agent-fact-value {
+	margin: 0;
+	font-size: 11.5px;
+	font-family: var(--devbar-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+	color: var(--devbar-text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: right;
+}
+
+.devbar-agent-fact-warn {
+	color: #f59e0b;
+}
+
+.devbar-agent-note,
+.devbar-agent-empty {
+	font-size: 10.5px;
+	line-height: 1.5;
+	color: var(--devbar-text-muted);
+}
+
+.devbar-agent-note {
+	margin-top: 8px;
+}
+
+.devbar-agent-note code,
+.devbar-agent-empty code {
+	padding: 1px 4px;
+	margin: 0 2px;
+	border-radius: 4px;
+	background: var(--devbar-accent-glow);
+	font-family: var(--devbar-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+	font-size: 10px;
+	color: var(--devbar-text);
+}
+
+.devbar-agent-run-item {
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-agent-run-item:last-child {
+	border-bottom: none;
+}
+
+.devbar-agent-run {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 0;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-agent-run-item .devbar-agent-run {
+	border-bottom: none;
+}
+
+.devbar-agent-run:last-child {
+	border-bottom: none;
+}
+
+/* A button, so the row is reachable by keyboard, but it has to look like the
+   row it replaced rather than like a control. */
+.devbar-agent-run-main {
+	flex: 1;
+	min-width: 0;
+	appearance: none;
+	border: none;
+	background: none;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.devbar-agent-run-main:hover .devbar-agent-run-title {
+	color: var(--devbar-text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.devbar-agent-run-detail {
+	padding: 0 0 8px 16px;
+	display: grid;
+	gap: 4px;
+}
+
+.devbar-agent-detail-label {
+	font-size: 9.5px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--devbar-text-muted);
+	margin-top: 4px;
+}
+
+/* The prompt carries a whole report, so it scrolls in place instead of pushing
+   the rest of the panel out of reach. */
+.devbar-agent-detail-body {
+	margin: 0;
+	max-height: 160px;
+	overflow: auto;
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: var(--devbar-accent-glow);
+	font-family: var(--devbar-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+	font-size: 10px;
+	line-height: 1.5;
+	color: var(--devbar-text-secondary);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.devbar-agent-run-title {
+	font-size: 11.5px;
+	font-weight: 500;
+	color: var(--devbar-text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Only the status word is title-cased. The same row renders an MCP client name,
+   and capitalizing that turns "claude-code" into "Claude-Code". */
+.devbar-agent-run-status-word {
+	text-transform: capitalize;
+}
+
+.devbar-agent-run-report {
+	font-weight: 400;
+	color: var(--devbar-text-muted);
+	font-family: var(--devbar-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+	text-transform: none;
+}
+
+.devbar-agent-run-meta {
+	font-size: 10px;
+	color: var(--devbar-text-muted);
+	margin-top: 1px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Status carries meaning that colour alone cannot: a run in flight also pulses,
+   so it reads as busy without asking anyone to distinguish amber from green. */
+.devbar-agent-status {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	background: var(--devbar-text-secondary);
+	opacity: 0.4;
+}
+
+.devbar-agent-status-running {
+	background: #22c55e;
+	opacity: 1;
+	animation: devbar-agent-pulse 1.6s ease-in-out infinite;
+}
+
+.devbar-agent-status-queued {
+	background: #f59e0b;
+	opacity: 1;
+}
+
+.devbar-agent-status-completed {
+	background: #22c55e;
+	opacity: 0.85;
+}
+
+.devbar-agent-status-failed,
+.devbar-agent-status-timeout {
+	background: #ef4444;
+	opacity: 1;
+}
+
+@keyframes devbar-agent-pulse {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35);
+	}
+	50% {
+		box-shadow: 0 0 0 4px rgba(34, 197, 94, 0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.devbar-agent-status-running {
+		animation: none;
+	}
+}
+
+.devbar-agent-cancel {
+	flex-shrink: 0;
+	padding: 3px 8px;
+	border: 1px solid var(--devbar-border-hover);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--devbar-text-muted);
+	font-family: inherit;
+	font-size: 10.5px;
+	cursor: pointer;
+}
+
+.devbar-agent-cancel:hover {
+	border-color: #ef4444;
+	color: #ef4444;
+}
+
+/* The pending rows are not expandable, so their text block is a div rather than
+   the button the run rows use. */
+.devbar-agent-run-main-static {
+	flex: 1;
+	min-width: 0;
+}
+
+.devbar-agent-dispatch {
+	flex-shrink: 0;
+	padding: 3px 8px;
+	border: 1px solid var(--devbar-border-hover);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--devbar-text);
+	font-family: inherit;
+	font-size: 10.5px;
+	cursor: pointer;
+}
+
+.devbar-agent-dispatch:hover {
+	border-color: var(--devbar-border-active);
+	background: var(--devbar-accent-glow);
+}
+
+.devbar-agent-dispatch-all {
+	width: 100%;
+	margin-top: 8px;
+	padding: 5px 8px;
+}

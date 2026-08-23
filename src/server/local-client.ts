@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Task } from "./dispatcher";
+import type { McpSessionInfo, McpSessionRegistration } from "./mcp-sessions";
 import type { PageInfo } from "./page-bus";
 import type { StoredReport } from "./report-store";
 
@@ -38,6 +39,10 @@ export type LocalClient = {
 	call(pageId: string, method: string, params?: unknown, timeoutMs?: number): Promise<unknown>;
 	listProjects(): Promise<unknown[]>;
 	hello(): Promise<{ projects: { slug: string }[] }>;
+	registerMcpSession(registration: McpSessionRegistration): Promise<McpSessionInfo>;
+	heartbeatMcpSession(id: string, lastTool?: string): Promise<boolean>;
+	disconnectMcpSession(id: string): Promise<void>;
+	listMcpSessions(project?: string): Promise<McpSessionInfo[]>;
 };
 
 export async function readStoredToken(): Promise<string | undefined> {
@@ -193,5 +198,39 @@ export async function createLocalClient(options: LocalClientOptions = {}): Promi
 		},
 
 		hello: () => request<{ projects: { slug: string }[] }>("/api/hello"),
+
+		async registerMcpSession(registration) {
+			const data = await request<{ session: McpSessionInfo }>("/api/mcp/sessions", {
+				method: "POST",
+				body: JSON.stringify(registration),
+			});
+			return data.session;
+		},
+
+		async heartbeatMcpSession(id, lastTool) {
+			try {
+				await request(`/api/mcp/sessions/${encodeURIComponent(id)}/heartbeat`, {
+					method: "POST",
+					body: JSON.stringify({ lastTool }),
+				});
+				return true;
+			} catch {
+				// A restarted server has never heard of this session. Saying so lets
+				// the caller register again instead of heartbeating into the void.
+				return false;
+			}
+		},
+
+		async disconnectMcpSession(id) {
+			try {
+				await request(`/api/mcp/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
+			} catch {}
+		},
+
+		async listMcpSessions(project) {
+			const query = project ? `?project=${encodeURIComponent(project)}` : "";
+			const data = await request<{ sessions: McpSessionInfo[] }>(`/api/mcp/sessions${query}`);
+			return data.sessions;
+		},
 	};
 }

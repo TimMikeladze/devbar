@@ -52,6 +52,27 @@ describe("local server API", () => {
 		...extra,
 	});
 
+	// The toolbar submits with `credentials: "include"` whenever it has no bearer
+	// token, which is what happens against a discovered local server: this one
+	// authorizes a loopback origin on the origin alone. A preflight that reflects
+	// the origin but omits Allow-Credentials is rejected by the browser, and the
+	// POST is never sent — a submit that fails as "Failed to fetch" with nothing
+	// in the server log.
+	test("preflight allows credentialed requests from an origin it would authorize", async () => {
+		const res = await fetch(`${baseUrl}/api/reports`, {
+			method: "OPTIONS",
+			headers: {
+				Origin: "http://localhost:3005",
+				"Access-Control-Request-Method": "POST",
+				"Access-Control-Request-Headers": "content-type",
+			},
+		});
+
+		expect(res.status).toBe(204);
+		expect(res.headers.get("access-control-allow-origin")).toBe("http://localhost:3005");
+		expect(res.headers.get("access-control-allow-credentials")).toBe("true");
+	});
+
 	test("POST /api/projects registers a project", async () => {
 		const res = await fetch(`${baseUrl}/api/projects`, {
 			method: "POST",
@@ -70,6 +91,74 @@ describe("local server API", () => {
 		const data = await res.json();
 		expect(data.ok).toBe(true);
 		expect(data.slug).toBe("test-proj");
+	});
+
+	// The toolbar's Agent tab renders straight from this payload, so a field
+	// dropped here is a field that silently disappears from the panel.
+	test("GET /api/hello reports a project's full agent configuration", async () => {
+		const res = await fetch(`${baseUrl}/api/hello`, { headers: headers() });
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		const project = data.projects.find((p: any) => p.slug === "test-proj");
+
+		expect(project).toBeDefined();
+		expect(project.dir).toBe("/tmp/test-proj");
+		expect(project.model).toBe("sonnet");
+		expect(project.effort).toBe("medium");
+		expect(project.command).toBe("claude");
+		expect(project.permissionMode).toBe("plan");
+		expect(project.concurrency).toBe(1);
+		expect(project.autoDispatch).toBe(false);
+		expect(typeof data.mcpSessions).toBe("number");
+	});
+
+	test("MCP sessions register, heartbeat, list and disconnect", async () => {
+		const created = await fetch(`${baseUrl}/api/mcp/sessions`, {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({
+				client: "claude-code",
+				clientVersion: "2.1.0",
+				project: "test-proj",
+				tools: ["list_reports"],
+			}),
+		});
+		expect(created.status).toBe(200);
+		const { session } = await created.json();
+		expect(session.client).toBe("claude-code");
+
+		const listed = await fetch(`${baseUrl}/api/mcp/sessions`, { headers: headers() });
+		const { sessions } = await listed.json();
+		expect(sessions.some((s: any) => s.id === session.id)).toBe(true);
+
+		const beat = await fetch(`${baseUrl}/api/mcp/sessions/${session.id}/heartbeat`, {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({ lastTool: "list_reports" }),
+		});
+		expect(beat.status).toBe(200);
+
+		const removed = await fetch(`${baseUrl}/api/mcp/sessions/${session.id}`, {
+			method: "DELETE",
+			headers: headers(),
+		});
+		expect(removed.status).toBe(200);
+
+		const after = await fetch(`${baseUrl}/api/mcp/sessions`, { headers: headers() });
+		const { sessions: remaining } = await after.json();
+		expect(remaining.some((s: any) => s.id === session.id)).toBe(false);
+	});
+
+	// A heartbeat for a session the server never had — the usual cause is a
+	// restart — has to say so, so the MCP process registers again instead of
+	// beating into the void.
+	test("heartbeat for an unknown session is a 404", async () => {
+		const res = await fetch(`${baseUrl}/api/mcp/sessions/nope/heartbeat`, {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({}),
+		});
+		expect(res.status).toBe(404);
 	});
 
 	test("GET /api/projects lists registered projects", async () => {

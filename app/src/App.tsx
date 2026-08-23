@@ -894,8 +894,8 @@ function LocalAgent() {
 bunx devbar.sh init   # writes devbar.config.ts
 bunx devbar.sh        # serves on 127.0.0.1:3100
 
-claude mcp add devbar -- devbar mcp
-codex  mcp add devbar -- devbar mcp`}
+claude mcp add devbar -- bunx devbar.sh mcp
+codex  mcp add devbar -- bunx devbar.sh mcp`}
 					/>
 					<p className="text-[12px] text-dim leading-relaxed mt-3">
 						The toolbar probes <code className="font-mono">127.0.0.1:3100</code> and{" "}

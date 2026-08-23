@@ -29,7 +29,7 @@ import { CaptureOverlay } from "@/tools/capture/capture-overlay";
 import { RecordOverlay } from "@/tools/record/record-overlay";
 import { MarkerOverlay } from "@/tools/marker/marker-overlay";
 import { AuthModal } from "@/server/auth-modal";
-import { useLocalAgent } from "@/live/use-local-agent";
+import { useLocalAgent, type LocalRunDetail, type LocalTask } from "@/live/use-local-agent";
 import { useCollaboration, type CollaborationCallbacks } from "@/collaboration/use-collaboration";
 import {
 	PeerCursors,
@@ -106,7 +106,7 @@ export type DevbarProps = {
 	orgId?: string;
 };
 
-type PanelTab = "annotations" | "history" | "settings" | "shortcuts";
+type PanelTab = "annotations" | "history" | "agent" | "settings" | "shortcuts";
 
 const ANNOTATION_TABS: { key: PanelTab; label: string }[] = [
 	{ key: "annotations", label: "Annotations" },
@@ -114,6 +114,7 @@ const ANNOTATION_TABS: { key: PanelTab; label: string }[] = [
 ];
 
 const PREFERENCE_TABS: { key: PanelTab; label: string }[] = [
+	{ key: "agent", label: "Agent" },
 	{ key: "settings", label: "Settings" },
 	{ key: "shortcuts", label: "Shortcuts" },
 ];
@@ -608,6 +609,173 @@ const THEME_LABELS: Record<DevbarTheme, string> = {
 	dark: "Dark",
 	auto: "System",
 };
+
+const PERMISSION_HINTS: Record<string, string> = {
+	plan: "Read-only — the agent may look, not edit",
+	auto: "May edit files inside the project directory",
+	full: "No sandbox and no prompts",
+};
+
+/** One label/value line in the agent configuration list. */
+function AgentFact({
+	label,
+	value,
+	hint,
+	tone,
+}: {
+	label: string;
+	value: string;
+	hint?: string;
+	tone?: "warn";
+}): React.ReactNode {
+	return (
+		<div className="devbar-agent-fact" title={hint}>
+			<dt className="devbar-agent-fact-label">{label}</dt>
+			<dd
+				className={`devbar-agent-fact-value ${tone === "warn" ? "devbar-agent-fact-warn" : ""}`}
+				title={value}
+			>
+				{value}
+			</dd>
+		</div>
+	);
+}
+
+function formatDuration(ms: number): string {
+	if (ms < 1000) return "just now";
+	const seconds = Math.round(ms / 1000);
+	if (seconds < 60) return `${seconds}s`;
+	const minutes = Math.floor(seconds / 60);
+	if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+	return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+/**
+ * One dispatch run, openable.
+ *
+ * A run in flight re-renders on a timer so the elapsed time actually moves — a
+ * run list frozen at "0s" reads as broken rather than as busy. Opening a row
+ * shows the prompt the agent was handed and, once it has finished, what it
+ * said back: a list that only reports status asks you to take on faith what
+ * was sent on your behalf.
+ */
+function AgentRun({
+	task,
+	onCancel,
+	getDetail,
+}: {
+	task: LocalTask;
+	onCancel: (id: string) => Promise<void>;
+	getDetail: (task: LocalTask) => Promise<LocalRunDetail>;
+}): React.ReactNode {
+	const inFlight = task.status === "queued" || task.status === "running";
+	const [, tick] = useState(0);
+	const [open, setOpen] = useState(false);
+	const [detail, setDetail] = useState<LocalRunDetail | undefined>(undefined);
+	const [loading, setLoading] = useState(false);
+
+	useEffect(() => {
+		if (!inFlight) return;
+		const timer = setInterval(() => tick((n) => n + 1), 1000);
+		return () => clearInterval(timer);
+	}, [inFlight]);
+
+	// Re-read when a run finishes while open: the output only exists at the end,
+	// so the box the user is already looking at would otherwise stay empty.
+	useEffect(() => {
+		if (!open) return;
+		let cancelled = false;
+		setLoading(true);
+		void getDetail(task).then((result) => {
+			if (cancelled) return;
+			setDetail(result);
+			setLoading(false);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [open, task.status, task.id, getDetail, task]);
+
+	const started = task.startedAt ?? task.createdAt;
+	const elapsed = inFlight ? Date.now() - started : (task.completedAt ?? started) - started;
+	const cost = task.result?.costUsd;
+
+	return (
+		<div className={`devbar-agent-run-item ${open ? "devbar-agent-run-item-open" : ""}`}>
+			<div className="devbar-agent-run">
+				<div
+					className={`devbar-agent-status devbar-agent-status-${task.status}`}
+					title={task.status}
+				/>
+				<button
+					type="button"
+					className="devbar-agent-run-main"
+					aria-expanded={open}
+					onClick={() => setOpen((v) => !v)}
+					title={open ? "Hide what was sent" : "Show what was sent"}
+				>
+					<div className="devbar-agent-run-title">
+						{/* A run the server killed on its way down is not the agent
+						    failing, and reading it as "failed · exit 1" sends people
+						    looking for a bug in their own project. */}
+						<span className="devbar-agent-run-status-word">
+							{task.result?.interrupted ? "interrupted" : task.status}
+						</span>
+						<span className="devbar-agent-run-report"> · {task.reportId.slice(0, 8)}</span>
+					</div>
+					<div className="devbar-agent-run-meta">
+						{formatDuration(elapsed)}
+						{task.result?.model ? ` · ${task.result.model}` : ""}
+						{typeof cost === "number" ? ` · $${cost.toFixed(2)}` : ""}
+						{task.projectSlug ? ` · ${task.projectSlug}` : ""}
+					</div>
+				</button>
+				{inFlight && (
+					<button
+						type="button"
+						className="devbar-agent-cancel"
+						onClick={() => void onCancel(task.id)}
+						title="Stop this run"
+					>
+						Stop
+					</button>
+				)}
+			</div>
+			{open && (
+				<div className="devbar-agent-run-detail">
+					{loading && !detail && <div className="devbar-agent-empty">Loading…</div>}
+					{detail?.error && <div className="devbar-agent-empty">{detail.error}</div>}
+					{detail?.prompt && (
+						<>
+							<div className="devbar-agent-detail-label">Sent to the agent</div>
+							<pre className="devbar-agent-detail-body">{detail.prompt}</pre>
+						</>
+					)}
+					{detail?.output && (
+						<>
+							<div className="devbar-agent-detail-label">
+								Agent output
+								{typeof detail.exitCode === "number" ? ` · exit ${detail.exitCode}` : ""}
+							</div>
+							<pre className="devbar-agent-detail-body">{detail.output}</pre>
+						</>
+					)}
+					{detail?.changedFiles && detail.changedFiles.length > 0 && (
+						<>
+							<div className="devbar-agent-detail-label">
+								Files touched · {detail.changedFiles.length}
+							</div>
+							<pre className="devbar-agent-detail-body">{detail.changedFiles.join("\n")}</pre>
+						</>
+					)}
+					{!loading && detail && !detail.prompt && !detail.output && !detail.error && (
+						<div className="devbar-agent-empty">Nothing recorded for this run.</div>
+					)}
+				</div>
+			)}
+		</div>
+	);
+}
 
 function detectHostDark(): boolean {
 	// Read during render, which on a server-rendered host happens where there is
@@ -1129,7 +1297,8 @@ export function Devbar({
 	// same positioning shell. This keeps the work being collected distinct from
 	// configuration UI.
 	const annotationPanelOpen = panelOpen && (panelTab === "annotations" || panelTab === "history");
-	const preferencePanelOpen = panelOpen && (panelTab === "settings" || panelTab === "shortcuts");
+	const preferencePanelOpen =
+		panelOpen && (panelTab === "agent" || panelTab === "settings" || panelTab === "shortcuts");
 	const visiblePanelTabs = annotationPanelOpen ? ANNOTATION_TABS : PREFERENCE_TABS;
 
 	const closePanel = useCallback(() => {
@@ -2168,6 +2337,209 @@ export function Devbar({
 		</details>
 	);
 
+	// Watch the activity feed only while the Agent tab is the one on screen.
+	useEffect(() => {
+		const active = panelOpen && panelTab === "agent";
+		localAgent.watchActivity(active);
+		return () => localAgent.watchActivity(false);
+	}, [panelOpen, panelTab, localAgent.watchActivity]);
+
+	const activeProject = localAgent.projects.find((p) => p.slug === localAgent.project);
+
+	/**
+	 * What the agent side of devbar is actually doing, in one place.
+	 *
+	 * Dispatch runs an agent inside someone's repository, and every fact that
+	 * governs it — which CLI, which model, how much rope, whether it fires
+	 * without asking — used to live only in a config file on disk. So did the
+	 * answer to "is anything running right now?" and "is my editor even
+	 * attached?". A tool that hands work to an agent has to be able to say all
+	 * three without the user leaving the page.
+	 */
+	const renderAgentContent = () => {
+		if (localAgent.status !== "connected") {
+			return (
+				<div className="devbar-panel-body" style={{ padding: 12 }}>
+					<div className="devbar-agent-empty">
+						{localAgent.status === "searching"
+							? "Looking for a local devbar server…"
+							: localAgent.status === "unavailable"
+								? "No devbar server is running. Start one with `devbar` in your project directory."
+								: "Local discovery is off, so there is no agent to report on."}
+					</div>
+				</div>
+			);
+		}
+
+		const active = localAgent.tasks.filter(
+			(task) => task.status === "queued" || task.status === "running",
+		);
+		const recent = localAgent.tasks.filter(
+			(task) => task.status !== "queued" && task.status !== "running",
+		);
+
+		return (
+			<div className="devbar-panel-body" style={{ padding: 12 }}>
+				<div className="devbar-agent-section">
+					<div className="devbar-agent-section-title">Configuration</div>
+					{activeProject ? (
+						<>
+							<dl className="devbar-agent-facts">
+								<AgentFact label="Project" value={activeProject.slug} />
+								<AgentFact label="Command" value={activeProject.command} />
+								<AgentFact label="Model" value={activeProject.model} />
+								{activeProject.effort && <AgentFact label="Effort" value={activeProject.effort} />}
+								<AgentFact
+									label="Permission"
+									value={activeProject.permissionMode ?? activeProject.permission ?? "plan"}
+									hint={PERMISSION_HINTS[activeProject.permission ?? "plan"]}
+								/>
+								<AgentFact
+									label="Auto-dispatch"
+									value={activeProject.autoDispatch ? "on" : "off"}
+									tone={activeProject.autoDispatch ? "warn" : undefined}
+									hint={
+										activeProject.autoDispatch
+											? "Reports run an agent as soon as they are submitted"
+											: "Reports queue until you dispatch them"
+									}
+								/>
+								{typeof activeProject.concurrency === "number" && (
+									<AgentFact label="Concurrency" value={String(activeProject.concurrency)} />
+								)}
+								{typeof activeProject.maxBudgetUsd === "number" && (
+									<AgentFact label="Budget" value={`$${activeProject.maxBudgetUsd}`} />
+								)}
+								{typeof activeProject.timeoutMs === "number" && (
+									<AgentFact
+										label="Timeout"
+										value={`${Math.round(activeProject.timeoutMs / 1000)}s`}
+									/>
+								)}
+								{activeProject.routes && activeProject.routes.length > 0 && (
+									<AgentFact label="Routes" value={activeProject.routes.join(", ")} />
+								)}
+								{activeProject.dir && <AgentFact label="Directory" value={activeProject.dir} />}
+							</dl>
+							<div className="devbar-agent-note">
+								Edit these in <code>devbar.config.ts</code>, then restart <code>devbar</code>.
+							</div>
+						</>
+					) : (
+						<div className="devbar-agent-empty">
+							No project claims{" "}
+							<code>{typeof window === "undefined" ? "" : window.location.origin}</code>. Add it to{" "}
+							<code>origins</code> in <code>devbar.config.ts</code>, or pick a project in Settings.
+						</div>
+					)}
+				</div>
+
+				{localAgent.pendingReports.length > 0 && (
+					<div className="devbar-agent-section">
+						<div className="devbar-agent-section-title">
+							Waiting on you
+							<span className="devbar-agent-count">{localAgent.pendingReports.length}</span>
+						</div>
+						<div className="devbar-agent-note" style={{ marginTop: 0, marginBottom: 8 }}>
+							{activeProject?.autoDispatch
+								? "Submitted, not yet picked up."
+								: "Auto-dispatch is off, so these are submitted and waiting. Hand them to the agent when you are ready."}
+						</div>
+						{localAgent.pendingReports.slice(0, 5).map((report) => (
+							<div key={report.id} className="devbar-agent-run">
+								<div className="devbar-agent-status devbar-agent-status-queued" title="waiting" />
+								<div className="devbar-agent-run-main-static">
+									<div className="devbar-agent-run-title">
+										<span className="devbar-agent-run-report">{report.id.slice(0, 8)}</span>
+									</div>
+									<div className="devbar-agent-run-meta">
+										{formatDuration(Date.now() - report.createdAt)} ago
+										{report.assets.length > 0 ? ` · ${report.assets.length} images` : ""}
+									</div>
+								</div>
+								<button
+									type="button"
+									className="devbar-agent-dispatch"
+									onClick={() => void localAgent.dispatchReports(report.id)}
+									title="Run the agent on this report"
+								>
+									Dispatch
+								</button>
+							</div>
+						))}
+						{localAgent.pendingReports.length > 1 && (
+							<button
+								type="button"
+								className="devbar-agent-dispatch devbar-agent-dispatch-all"
+								onClick={() => void localAgent.dispatchReports()}
+							>
+								Dispatch all {localAgent.pendingReports.length}
+							</button>
+						)}
+					</div>
+				)}
+
+				<div className="devbar-agent-section">
+					<div className="devbar-agent-section-title">
+						Runs
+						{active.length > 0 && <span className="devbar-agent-count">{active.length}</span>}
+					</div>
+					{localAgent.activityError && (
+						<div className="devbar-agent-empty">
+							Could not read runs: {localAgent.activityError}
+						</div>
+					)}
+					{active.length === 0 && recent.length === 0 && !localAgent.activityError && (
+						<div className="devbar-agent-empty">
+							Nothing has run yet. Submitting a report queues one.
+						</div>
+					)}
+					{[...active, ...recent].slice(0, 8).map((task) => (
+						<AgentRun
+							key={task.id}
+							task={task}
+							onCancel={localAgent.cancelTask}
+							getDetail={localAgent.getRunDetail}
+						/>
+					))}
+				</div>
+
+				<div className="devbar-agent-section">
+					<div className="devbar-agent-section-title">
+						MCP
+						{localAgent.mcpSessions.length > 0 && (
+							<span className="devbar-agent-count">{localAgent.mcpSessions.length}</span>
+						)}
+					</div>
+					{localAgent.mcpSessions.length === 0 ? (
+						<div className="devbar-agent-empty">
+							No agent session is attached. Register the server once with
+							<code>claude mcp add devbar -- bunx devbar.sh mcp</code>, then an open session can
+							pull reports and inspect this page.
+						</div>
+					) : (
+						localAgent.mcpSessions.map((session) => (
+							<div key={session.id} className="devbar-agent-run">
+								<div className="devbar-live-dot devbar-live-dot-on" />
+								<div className="devbar-agent-run-main">
+									<div className="devbar-agent-run-title">
+										{session.client}
+										{session.clientVersion ? ` ${session.clientVersion}` : ""}
+									</div>
+									<div className="devbar-agent-run-meta">
+										{session.tools.length} tools
+										{session.lastTool ? ` · last: ${session.lastTool.name}` : " · idle"}
+										{session.project ? ` · ${session.project}` : ""}
+									</div>
+								</div>
+							</div>
+						))
+					)}
+				</div>
+			</div>
+		);
+	};
+
 	// Settings content renderer
 	const renderSettingsContent = () => (
 		<div className="devbar-panel-body" style={{ padding: 12 }}>
@@ -3017,6 +3389,7 @@ export function Devbar({
 					{panelTab === "annotations" &&
 						(previewMode !== "off" ? renderPreview() : renderAnnotationList())}
 					{panelTab === "history" && renderHistoryTab()}
+					{panelTab === "agent" && renderAgentContent()}
 					{panelTab === "settings" && renderSettingsContent()}
 					{panelTab === "shortcuts" && renderHelpContent()}
 					{panelTab === "annotations" && renderFooter()}

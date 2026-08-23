@@ -14,7 +14,10 @@ describe("hero setup prompt", () => {
 	const commands = [
 		"bunx devbar.sh init",
 		"bunx devbar.sh",
-		"claude mcp add devbar -- devbar mcp",
+		// `bunx devbar.sh`, never a bare `devbar`: the binary only exists on PATH
+		// inside a project that installed the package, so an agent launched
+		// anywhere else fails to spawn it with ENOENT.
+		"claude mcp add devbar -- bunx devbar.sh mcp",
 		"devbar.sh/styles.css",
 		"https://devbar.sh/cdn.global.js",
 	];

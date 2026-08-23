@@ -31,3 +31,4 @@ app/public/cdn.global.js
 # Playwright
 test-results/
 playwright-report/
+.claude

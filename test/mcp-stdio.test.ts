@@ -146,6 +146,56 @@ describe("mcp stdio protocol", () => {
 	});
 });
 
+// Presence in the toolbar is built on these two callbacks: the client naming
+// itself on initialize, and every tool call keeping the session warm.
+describe("lifecycle hooks", () => {
+	test("initialize reports the client, and tool calls report the tool", async () => {
+		const clients: { name?: string; version?: string }[] = [];
+		const called: string[] = [];
+		const server = createMcpStdioServer(
+			{ name: "test", version: "0.0.0" },
+			{ onInitialize: (client) => clients.push(client), onToolCall: (name) => called.push(name) },
+		);
+		server.tool({
+			name: "echo",
+			description: "echo",
+			inputSchema: { type: "object", properties: {} },
+			handler: async () => ({ content: [{ type: "text", text: "ok" }] }),
+		});
+
+		await server.handle({
+			jsonrpc: "2.0",
+			id: 1,
+			method: "initialize",
+			params: {
+				protocolVersion: "2025-06-18",
+				clientInfo: { name: "claude-code", version: "2.1.0" },
+			},
+		});
+		await server.handle({
+			jsonrpc: "2.0",
+			id: 2,
+			method: "tools/call",
+			params: { name: "echo", arguments: {} },
+		});
+
+		expect(clients).toEqual([{ name: "claude-code", version: "2.1.0" }]);
+		expect(called).toEqual(["echo"]);
+	});
+
+	test("a client that sends no clientInfo still announces itself", async () => {
+		const clients: { name?: string }[] = [];
+		const server = createMcpStdioServer(
+			{ name: "test", version: "0.0.0" },
+			{ onInitialize: (client) => clients.push(client) },
+		);
+
+		await server.handle({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
+
+		expect(clients).toEqual([{ name: undefined, version: undefined }]);
+	});
+});
+
 describe("argument coercion", () => {
 	const schema = {
 		type: "object" as const,

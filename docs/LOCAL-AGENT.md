@@ -36,9 +36,19 @@ tells you what is missing if it does not.
 Then register the MCP server with your agent:
 
 ```bash
-claude mcp add devbar -- devbar mcp
-codex mcp add devbar -- devbar mcp
+claude mcp add devbar -- bunx devbar.sh mcp
+codex mcp add devbar -- bunx devbar.sh mcp
 ```
+
+`bunx devbar.sh mcp`, not a bare `devbar mcp`: the binary only exists on PATH
+inside a project that installed the package, and an agent launched from anywhere
+else fails to spawn it with `ENOENT`. `devbar doctor` reports whether `devbar`
+resolves globally for exactly this reason.
+
+Each MCP process registers with the running server when its client identifies
+itself and heartbeats while it lives, so the toolbar's **Agent** tab can show
+which sessions are attached, what they can call, and the last tool they used. A
+session that stops heartbeating ages out after 45 seconds.
 
 ## devbar.config.ts
 

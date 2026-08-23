@@ -14,6 +14,17 @@ export type LocalProject = {
 	model: string;
 	command: string;
 	live?: { enabled?: boolean; allowMutating?: boolean };
+	/** Everything below is the dispatch configuration, shown in the Agent tab. */
+	dir?: string;
+	effort?: string;
+	permission?: "plan" | "auto" | "full";
+	permissionMode?: string;
+	concurrency?: number;
+	maxBudgetUsd?: number;
+	timeoutMs?: number;
+	resumeSession?: boolean;
+	/** Destination kinds every report for this project is routed to. */
+	routes?: string[];
 };
 
 export type LocalHandshake = {

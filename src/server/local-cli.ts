@@ -339,10 +339,27 @@ async function commandDoctor(args: CliArgs): Promise<void> {
 			const reports = await client.listReports();
 			const pending = reports.filter((r) => r.status === "new").length;
 			lines.push(`  reports: ${reports.length} (${pending} unworked)`);
+			const sessions = await client.listMcpSessions();
+			lines.push(
+				sessions.length
+					? `  MCP sessions: ${sessions.map((s) => s.client).join(", ")}`
+					: "  MCP sessions: none attached",
+			);
 		} catch (err) {
 			check(false, "server responded", String(err));
 		}
 	}
+
+	// An agent registered as `-- devbar mcp` spawns from wherever the agent was
+	// launched, not from this directory, so a `devbar` that only exists in a
+	// project's node_modules/.bin fails there with ENOENT. Say so here rather
+	// than leaving it to be discovered as a reconnect error inside the agent.
+	const devbarOnPath = await which("devbar");
+	check(
+		!!devbarOnPath,
+		"`devbar` resolves globally",
+		devbarOnPath ?? "register MCP as `bunx devbar.sh mcp` instead of a bare `devbar`",
+	);
 
 	const token = await readStoredToken();
 	check(!!token, "token readable", token ? "~/.devbar/token" : "will be created on first run");
@@ -451,8 +468,11 @@ async function commandLink(args: CliArgs): Promise<void> {
 	);
 	console.log("");
 	console.log("Register the MCP server with your agent:");
-	console.log("  claude mcp add devbar -- devbar mcp");
-	console.log("  codex mcp add devbar -- devbar mcp");
+	// `bunx devbar.sh` rather than a bare `devbar`: the binary only exists on
+	// PATH inside a project that installed the package, and an agent launched
+	// anywhere else fails to spawn it with ENOENT.
+	console.log("  claude mcp add devbar -- bunx devbar.sh mcp");
+	console.log("  codex mcp add devbar -- bunx devbar.sh mcp");
 }
 
 async function commandServe(args: CliArgs): Promise<void> {
