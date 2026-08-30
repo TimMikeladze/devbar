@@ -860,9 +860,14 @@ function useBarDrag() {
 	});
 	const dragging = useRef(false);
 	const dragStart = useRef({ x: 0, y: 0 });
+	// Where the bar was last put, readable synchronously. Persisting from inside
+	// a setOffset updater ran *after* a double-click's reset had already cleared
+	// storage, so the stale position came straight back on reload.
+	const moved = useRef<{ x: number; y: number } | null>(null);
 
 	const onMouseDown = useCallback((e: React.MouseEvent) => {
 		dragging.current = true;
+		moved.current = null;
 		const container =
 			(e.currentTarget as HTMLElement).closest(".devbar-bar") ??
 			(e.currentTarget as HTMLElement).closest(".devbar-dot") ??
@@ -882,20 +887,17 @@ function useBarDrag() {
 				x: e.clientX - dragStart.current.x,
 				y: e.clientY - dragStart.current.y,
 			};
+			moved.current = pos;
 			setOffset(pos);
 		};
 		const onMouseUp = () => {
-			if (dragging.current) {
-				dragging.current = false;
-				// Persist position after drag ends
-				setOffset((current) => {
-					if (current) {
-						try {
-							localStorage.setItem("devbar-bar-position", JSON.stringify(current));
-						} catch {}
-					}
-					return current;
-				});
+			if (!dragging.current) return;
+			dragging.current = false;
+			// Persist position after an actual drag; a plain click leaves storage alone.
+			if (moved.current) {
+				try {
+					localStorage.setItem("devbar-bar-position", JSON.stringify(moved.current));
+				} catch {}
 			}
 		};
 		const onResize = () => {
@@ -916,7 +918,16 @@ function useBarDrag() {
 		};
 	}, []);
 
-	return { offset, onMouseDown };
+	/** Back to the default spot — for a bar dragged somewhere it is now in the way. */
+	const reset = useCallback(() => {
+		moved.current = null;
+		setOffset(null);
+		try {
+			localStorage.removeItem("devbar-bar-position");
+		} catch {}
+	}, []);
+
+	return { offset, onMouseDown, reset };
 }
 
 function useDevbarAuth(server?: string, user?: DevbarUser, authEnabled?: boolean) {
@@ -1491,14 +1502,29 @@ export function Devbar({
 	// Keyboard shortcuts
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+			// Typing in the host page — a form field or a rich-text editor — is
+			// never a toolbar shortcut.
+			if (
+				e.target instanceof HTMLInputElement ||
+				e.target instanceof HTMLTextAreaElement ||
+				(e.target instanceof HTMLElement && e.target.isContentEditable)
+			)
+				return;
 
-			// Undo: Cmd+Z / Ctrl+Z
+			// Undo: Cmd+Z / Ctrl+Z. Only while devbar is the thing being used — a
+			// tool is active, the panel is open, or an Undo/Restore is on offer —
+			// otherwise the host app's own undo would be silently eaten.
 			if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
-				if (state.annotations.length > 0) {
+				if (toastAction && (toastAction.label === "Undo" || toastAction.label === "Restore")) {
+					e.preventDefault();
+					const run = toastAction.run;
+					dismissToast();
+					run();
+					return;
+				}
+				if ((panelOpen || state.activeMode) && state.annotations.length > 0) {
 					e.preventDefault();
 					localRemoveAnnotation(state.annotations[state.annotations.length - 1]!.id);
-					showToast("Undid last annotation");
 					return;
 				}
 			}
@@ -1643,6 +1669,7 @@ export function Devbar({
 		showExportMenu,
 		showFooterMenu,
 		effectiveServer,
+		toastAction,
 	]);
 
 	const toastTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -2576,6 +2603,35 @@ export function Devbar({
 							getDetail={localAgent.getRunDetail}
 						/>
 					))}
+				</div>
+
+				<div className="devbar-agent-section">
+					<div className="devbar-agent-section-title">Live page</div>
+					{/* The same switch as in Settings. People looking for "let the agent
+					    see my page" look here first, and used to find only a hint that
+					    it existed somewhere else. */}
+					<div className="devbar-settings-row devbar-settings-row-compact">
+						<div className="devbar-settings-label">
+							<div className="devbar-settings-title">Agent live</div>
+							<div className="devbar-settings-desc">
+								{localAgent.liveEnabled
+									? localAgent.liveState.status === "connected"
+										? "Connected — the agent can inspect and screenshot this page"
+										: localAgent.liveState.status === "error"
+											? `Not connected: ${localAgent.liveState.message}`
+											: "Connecting…"
+									: "Let an agent inspect and screenshot this page"}
+							</div>
+						</div>
+						<button
+							type="button"
+							className={`devbar-toggle ${localAgent.liveEnabled ? "devbar-toggle-on" : ""}`}
+							onClick={() => localAgent.setLiveEnabled(!localAgent.liveEnabled)}
+							title={localAgent.liveEnabled ? "Disconnect the agent" : "Allow agent access"}
+						>
+							<div className="devbar-toggle-thumb" />
+						</button>
+					</div>
 				</div>
 
 				<div className="devbar-agent-section">
@@ -3628,7 +3684,12 @@ export function Devbar({
 							: undefined
 					}
 				>
-					<div className="devbar-bar-drag" onMouseDown={drag.onMouseDown}>
+					<div
+						className="devbar-bar-drag"
+						onMouseDown={drag.onMouseDown}
+						onDoubleClick={drag.reset}
+						title="Drag to move · double-click to reset"
+					>
 						<DragHandleIcon />
 					</div>
 					<div className="devbar-bar-divider" />

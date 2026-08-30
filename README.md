@@ -179,7 +179,7 @@ Pick a tool, mark up the page, then export everything as a single prompt.
 | ----------- | -------------------------------------------------------------------- |
 | **Select**  | An element plus its selector, React component path, and diagnostics  |
 | **Marker**  | A numbered pin at a point on the page                                |
-| **Draw**    | Freehand annotation over a screenshot                                |
+| **Draw**    | Freehand annotation over a screenshot (remembers your last pen)      |
 | **Capture** | A region screenshot — press `F` (or the minibar button) for the page |
 | **Record**  | A recording of this tab; the browser's picker also offers the screen |
 
@@ -230,30 +230,34 @@ button that scrolls the annotated element back into view.
 
 ### Keyboard shortcuts
 
-| Keys                            | Action                                                   |
-| ------------------------------- | -------------------------------------------------------- |
-| `Alt+S` / `M` / `D` / `C` / `R` | Select / Marker / Draw / Capture / Record                |
-| `⇧Alt+C`                        | Full-page screenshot (no region step)                    |
-| `↑` `↓`                         | Widen / narrow the selection (Select tool)               |
-| `←` `→`                         | Previous / next sibling (Select tool)                    |
-| `↵`                             | Annotate the current element, or save the note           |
-| `⇧ click` / `⇧↵`                | Annotate the element without a note (Select tool)        |
-| `F`                             | Capture the whole page (Capture tool)                    |
-| `↵`                             | Finish the drawing (Draw tool)                           |
-| `Esc`                           | Discard the note, exit the tool, or close the open panel |
-| `Alt+A`                         | Toggle the annotations panel                             |
-| `Alt+T`                         | Focus the task field                                     |
-| `Alt+P`                         | Preview the report                                       |
-| `Alt+H`                         | Hide / show the toolbar                                  |
-| `Alt+,`                         | Settings                                                 |
-| `Alt+/`                         | Keyboard shortcuts                                       |
-| `⌘Z`                            | Undo the last annotation                                 |
-| `⌘↵`                            | Copy the report — or submit it when a server is set      |
+| Keys                            | Action                                                    |
+| ------------------------------- | --------------------------------------------------------- |
+| `Alt+S` / `M` / `D` / `C` / `R` | Select / Marker / Draw / Capture / Record                 |
+| `⇧Alt+C`                        | Full-page screenshot (no region step)                     |
+| `↑` `↓`                         | Widen / narrow the selection (Select tool)                |
+| `←` `→`                         | Previous / next sibling (Select tool)                     |
+| `↵`                             | Annotate the current element, or save the note            |
+| `⇧ click` / `⇧↵`                | Annotate the element without a note (Select tool)         |
+| `F`                             | Capture the whole page (Capture tool)                     |
+| `↵`                             | Finish the drawing (Draw tool)                            |
+| `Esc`                           | Discard the note, exit the tool, or close the open panel  |
+| `Alt+A`                         | Toggle the annotations panel                              |
+| `Alt+T`                         | Focus the task field                                      |
+| `Alt+P`                         | Preview the report                                        |
+| `Alt+H`                         | Hide / show the toolbar                                   |
+| `Alt+,`                         | Settings                                                  |
+| `Alt+/`                         | Keyboard shortcuts                                        |
+| `⌘Z`                            | Undo — a removal, a clear, an export, or the last capture |
+| `⌘↵`                            | Copy the report — or submit it when a server is set       |
 
 An `Alt+<tool>` shortcut works while another tool is active, switching directly
 between tools; the minibar shown during a tool does the same with one click.
 On macOS the shortcuts use the physical key, so `Option+S` works even though the
-key event reports `ß`.
+key event reports `ß`. Shortcuts never fire while you are typing in one of the
+host page's fields or editors, and `⌘Z` only reaches devbar while a tool is
+active, the panel is open, or an Undo/Restore is on offer — the rest of the
+time it belongs to your app. Double-click the drag handle to send the bar back
+to its default spot.
 
 ## Contributing
 

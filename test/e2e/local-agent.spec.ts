@@ -170,4 +170,15 @@ test.describe("local agent", () => {
 			0,
 		);
 	});
+
+	test("the Agent tab carries the live toggle too", async ({ page }) => {
+		await page.locator(".devbar-bar").getByRole("button", { name: "Settings" }).click();
+		await expect(page.locator(".devbar-live-dot-on")).toBeVisible();
+		await page.locator(".devbar-panel-tab", { hasText: "Agent" }).click();
+
+		const row = page.locator(".devbar-agent-section", { hasText: "Live page" });
+		await row.getByRole("button").click();
+		await expect.poll(() => server?.pages.list().length ?? 0).toBe(1);
+		await expect(row).toContainText("Connected");
+	});
 });

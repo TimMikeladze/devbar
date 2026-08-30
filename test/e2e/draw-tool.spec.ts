@@ -117,3 +117,29 @@ test.describe("Draw Tool: finishing", () => {
 		await expect(page.locator(".devbar-badge")).toHaveCount(0);
 	});
 });
+
+test.describe("Draw Tool: remembered pen", () => {
+	test("the last colour, width and tool come back next time", async ({ page }) => {
+		await page.goto("/");
+		await page.waitForSelector(".devbar-bar");
+		await page.keyboard.press("Alt+d");
+		await page.locator(".devbar-color-swatch").nth(3).click();
+		await page.getByRole("button", { name: "L", exact: true }).click();
+		await page.getByRole("button", { name: /^Arrow/ }).click();
+		await page.keyboard.press("Escape");
+		await expect(page.locator(".devbar-bar")).toBeVisible();
+
+		await page.reload();
+		await page.waitForSelector(".devbar-bar");
+		await page.keyboard.press("Alt+d");
+		await expect(page.locator(".devbar-color-swatch").nth(3)).toHaveClass(
+			/devbar-color-swatch-active/,
+		);
+		await expect(page.getByRole("button", { name: "L", exact: true })).toHaveClass(
+			/devbar-overlay-btn-active/,
+		);
+		await expect(page.getByRole("button", { name: /^Arrow/ })).toHaveClass(
+			/devbar-overlay-btn-active/,
+		);
+	});
+});

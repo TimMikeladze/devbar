@@ -1,7 +1,37 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation } from "@/session/types";
 import { captureFullPage } from "@/tools/capture/screenshot";
 import { type DrawPoint, type DrawShape, type DrawTool, renderShape } from "./shapes";
+
+type DrawPrefs = { tool: DrawTool; color: string; width: number };
+
+const DRAW_PREFS_KEY = "devbar-draw-prefs";
+const DEFAULT_DRAW_PREFS: DrawPrefs = { tool: "pen", color: "#ff3b30", width: 2.5 };
+
+function readDrawPrefs(): DrawPrefs {
+	try {
+		const raw = localStorage.getItem(DRAW_PREFS_KEY);
+		if (!raw) return DEFAULT_DRAW_PREFS;
+		const parsed = JSON.parse(raw) as Partial<DrawPrefs>;
+		return {
+			tool: (["pen", "arrow", "rectangle", "circle"] as DrawTool[]).includes(
+				parsed.tool as DrawTool,
+			)
+				? (parsed.tool as DrawTool)
+				: DEFAULT_DRAW_PREFS.tool,
+			color: typeof parsed.color === "string" ? parsed.color : DEFAULT_DRAW_PREFS.color,
+			width: typeof parsed.width === "number" ? parsed.width : DEFAULT_DRAW_PREFS.width,
+		};
+	} catch {
+		return DEFAULT_DRAW_PREFS;
+	}
+}
+
+function writeDrawPrefs(prefs: DrawPrefs): void {
+	try {
+		localStorage.setItem(DRAW_PREFS_KEY, JSON.stringify(prefs));
+	} catch {}
+}
 
 type DrawOverlayProps = {
 	onCapture: (annotation: Annotation) => void;
@@ -68,9 +98,15 @@ export function DrawOverlay({
 	enableScreenshots = true,
 }: DrawOverlayProps): React.ReactNode {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const [activeTool, setActiveTool] = useState<DrawTool>("pen");
-	const [activeColor, setActiveColor] = useState("#ff3b30");
-	const [activeWidth, setActiveWidth] = useState(2.5);
+	// Whoever drew in orange with the thick pen last time wants it again —
+	// resetting to red every time is three clicks per drawing for nothing.
+	const remembered = useMemo(() => readDrawPrefs(), []);
+	const [activeTool, setActiveTool] = useState<DrawTool>(remembered.tool);
+	const [activeColor, setActiveColor] = useState(remembered.color);
+	const [activeWidth, setActiveWidth] = useState(remembered.width);
+	useEffect(() => {
+		writeDrawPrefs({ tool: activeTool, color: activeColor, width: activeWidth });
+	}, [activeTool, activeColor, activeWidth]);
 	const [shapes, setShapes] = useState<DrawShape[]>([]);
 	const currentShape = useRef<DrawShape | null>(null);
 	const drawing = useRef(false);

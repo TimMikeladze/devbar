@@ -62,7 +62,7 @@ test.describe("Edge Cases: Annotations", () => {
 		await expect(page.locator(".devbar-badge")).not.toBeVisible();
 	});
 
-	test("clear then undo does nothing (annotations are gone)", async ({ page }) => {
+	test("clear then Cmd+Z brings the annotations back", async ({ page }) => {
 		await addAnnotation(page, "h1");
 		await addAnnotation(page, "table");
 
@@ -72,12 +72,43 @@ test.describe("Edge Cases: Annotations", () => {
 		await page.getByRole("button", { name: "Clear all" }).click();
 		await page.getByRole("button", { name: "Confirm clear?" }).click();
 
-		// Badge should be gone
+		// Badge should be gone, and the toast offers the way back
 		await expect(page.locator(".devbar-badge")).not.toBeVisible();
+		await expect(page.locator(".devbar-toast-action")).toHaveText("Undo");
 
-		// Undo should do nothing (clear is not undoable)
+		// Cmd+Z takes the offer
 		await page.keyboard.press("Meta+z");
-		await expect(page.locator(".devbar-badge")).not.toBeVisible();
+		await expect(page.locator(".devbar-badge")).toHaveText("2");
+	});
+
+	test("Cmd+Z leaves the host app alone when devbar is not in use", async ({ page }) => {
+		await addAnnotation(page, "h1");
+		await expect(page.locator(".devbar-badge")).toHaveText("1");
+		await expect(page.locator(".devbar-toast")).toHaveCount(0, { timeout: 8000 });
+
+		// Panel closed, no tool active: the page owns Cmd+Z.
+		await page.keyboard.press("Meta+z");
+		await expect(page.locator(".devbar-badge")).toHaveText("1");
+
+		// Panel open: devbar owns it.
+		await page.keyboard.press("Alt+a");
+		await page.keyboard.press("Meta+z");
+		await expect(page.locator(".devbar-badge")).toHaveCount(0);
+	});
+
+	test("shortcuts are ignored inside a contenteditable host editor", async ({ page }) => {
+		await page.evaluate(() => {
+			const editor = document.createElement("div");
+			editor.id = "rich";
+			editor.contentEditable = "true";
+			editor.textContent = "Type here";
+			document.querySelector("main")?.prepend(editor);
+		});
+		await page.locator("#rich").click();
+		await page.keyboard.press("Alt+s");
+		await expect(page.locator(".devbar-minibar")).not.toBeVisible();
+		await page.keyboard.press("Alt+a");
+		await expect(page.locator(".devbar-panel")).not.toBeVisible();
 	});
 
 	test("adding multiple annotations shows correct count", async ({ page }) => {

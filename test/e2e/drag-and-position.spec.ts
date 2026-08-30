@@ -57,3 +57,30 @@ test.describe("Toolbar Responsiveness", () => {
 		await expect(page.locator(".devbar-bar")).toBeVisible();
 	});
 });
+
+test.describe("Toolbar position reset", () => {
+	test("double-clicking the drag handle returns the bar to the default spot", async ({ page }) => {
+		await page.goto("/");
+		await page.waitForSelector(".devbar-bar");
+		const handle = page.locator(".devbar-bar-drag");
+		const box = (await handle.boundingBox())!;
+		const before = (await page.locator(".devbar-bar").boundingBox())!;
+
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(box.x - 300, box.y - 200, { steps: 5 });
+		await page.mouse.up();
+		const moved = (await page.locator(".devbar-bar").boundingBox())!;
+		expect(moved.y).toBeLessThan(before.y);
+
+		await page.locator(".devbar-bar-drag").dblclick();
+		const reset = (await page.locator(".devbar-bar").boundingBox())!;
+		expect(Math.abs(reset.y - before.y)).toBeLessThan(2);
+		expect(Math.abs(reset.x - before.x)).toBeLessThan(2);
+		// Survives a reload: the stored position is gone too.
+		await page.reload();
+		await page.waitForSelector(".devbar-bar");
+		const after = (await page.locator(".devbar-bar").boundingBox())!;
+		expect(Math.abs(after.x - before.x)).toBeLessThan(2);
+	});
+});
