@@ -148,6 +148,27 @@ export function SelectOverlay({
 		setCommentText("");
 	}, []);
 
+	/** Annotate `el` right now, no popover. Screenshot still attaches. */
+	const quickCapture = useCallback(async (el: Element) => {
+		const data = extractElementData(el, captureRef.current);
+		const r = rectOf(el);
+		const annotation: Annotation = {
+			id: crypto.randomUUID(),
+			type: "element",
+			timestamp: Date.now(),
+			data,
+			comments: [],
+		};
+		if (captureRef.current?.elementScreenshot !== false) {
+			const screenshot = await captureElement(r).catch(() => "");
+			if (screenshot) {
+				onCaptureRef.current({ ...annotation, data: { ...data, elementScreenshot: screenshot } });
+				return;
+			}
+		}
+		onCaptureRef.current(annotation);
+	}, []);
+
 	useEffect(() => {
 		const onMouseMove = (e: MouseEvent) => {
 			if (commentOpenRef.current) return;
@@ -162,6 +183,14 @@ export function SelectOverlay({
 			retarget(el);
 		};
 
+		// Shift+click would otherwise extend the page's text selection from
+		// wherever the caret last was, painting half the page blue.
+		const onMouseDown = (e: MouseEvent) => {
+			if (commentOpenRef.current || !e.shiftKey) return;
+			if ((e.target as HTMLElement).closest("[data-devbar]")) return;
+			e.preventDefault();
+		};
+
 		const onClick = (e: MouseEvent) => {
 			if (commentOpenRef.current) return;
 			if ((e.target as HTMLElement).closest("[data-devbar]")) return;
@@ -174,6 +203,12 @@ export function SelectOverlay({
 			const existing = findExistingAnnotation(el);
 			if (existing && onFocusAnnotationRef.current) {
 				onFocusAnnotationRef.current(existing.id);
+				return;
+			}
+			// Shift skips the note: the element and its evidence are the point,
+			// and the task field already says what should change.
+			if (e.shiftKey) {
+				void quickCapture(el);
 				return;
 			}
 			beginComment(el);
@@ -207,6 +242,10 @@ export function SelectOverlay({
 					onFocusAnnotationRef.current(existing.id);
 					return;
 				}
+				if (e.shiftKey) {
+					void quickCapture(el);
+					return;
+				}
 				beginComment(el);
 				return;
 			}
@@ -229,16 +268,18 @@ export function SelectOverlay({
 		};
 
 		window.addEventListener("mousemove", onMouseMove, true);
+		window.addEventListener("mousedown", onMouseDown, true);
 		window.addEventListener("click", onClick, true);
 		window.addEventListener("keydown", onKeyDown, true);
 		window.addEventListener("scroll", onScroll, true);
 		return () => {
 			window.removeEventListener("mousemove", onMouseMove, true);
+			window.removeEventListener("mousedown", onMouseDown, true);
 			window.removeEventListener("click", onClick, true);
 			window.removeEventListener("keydown", onKeyDown, true);
 			window.removeEventListener("scroll", onScroll, true);
 		};
-	}, [findExistingAnnotation, beginComment, retarget]);
+	}, [findExistingAnnotation, beginComment, quickCapture, retarget]);
 
 	const closeComment = useCallback(() => {
 		commentOpenRef.current = false;
@@ -410,7 +451,7 @@ export function SelectOverlay({
 				</>
 			)}
 			<div className="devbar-instruction">
-				Click to annotate · <kbd>↑</kbd>
+				Click to annotate · <kbd>⇧</kbd>click to skip the note · <kbd>↑</kbd>
 				<kbd>↓</kbd> resize selection · <kbd>Esc</kbd> to finish
 			</div>
 		</div>

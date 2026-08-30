@@ -1156,16 +1156,46 @@ export function Devbar({
 	}, [state.clearAnnotations, collab.sendClear]);
 
 	const localArchiveAndClear = useCallback(
-		(method: ExportMethod) => {
-			state.archiveAndClear(method);
+		(method: ExportMethod): string | null => {
+			const id = state.archiveAndClear(method);
 			collab.sendClear();
 			// The task describes the batch that was just exported, so it goes with it.
 			setTask("");
 			try {
 				localStorage.removeItem("devbar-task");
 			} catch {}
+			return id;
 		},
 		[state.archiveAndClear, collab.sendClear],
+	);
+
+	// Exporting clears the batch. That is right most of the time and wrong just
+	// often enough — a copy that landed in the wrong window, a follow-up you
+	// meant to add — that the way back has to be one click, not a trip through
+	// History.
+	const restoreExport = useCallback(
+		(id: string): Annotation[] => {
+			const restored = state.restoreExport(id);
+			for (const annotation of restored) collab.sendAnnotationAdd(annotation);
+			if (restored.length > 0) {
+				showToastRef.current(
+					`Restored ${restored.length} annotation${restored.length === 1 ? "" : "s"}`,
+				);
+			}
+			return restored;
+		},
+		[state.restoreExport, collab.sendAnnotationAdd],
+	);
+
+	/** Toast for a finished export, with the batch one click from coming back. */
+	const exportedToast = useCallback(
+		(message: string, archivedId: string | null) => {
+			showToastRef.current(
+				message,
+				archivedId ? { label: "Restore", run: () => restoreExport(archivedId) } : undefined,
+			);
+		},
+		[restoreExport],
 	);
 
 	const [uiMode] = useState<"toolbar" | "panel">("toolbar");
@@ -1284,8 +1314,7 @@ export function Devbar({
 		bottom: number;
 	} | null>(null);
 	const footerMenuRef = useRef<HTMLDivElement>(null);
-	const [toolMenu, setToolMenu] = useState<"capture" | "record" | null>(null);
-	const toolMenuRef = useRef<HTMLDivElement>(null);
+	const taskInputRef = useRef<HTMLTextAreaElement>(null);
 	const [captureSubMode, setCaptureSubMode] = useState<"fullpage" | "region" | null>(null);
 	const [recordSubMode, setRecordSubMode] = useState<"tab" | "screen" | null>(null);
 
@@ -1312,7 +1341,6 @@ export function Devbar({
 			setPanelTab(tab);
 			setPanelOpen(true);
 			setShowExportMenu(false);
-			setToolMenu(null);
 		},
 		[drag.offset],
 	);
@@ -1405,19 +1433,42 @@ export function Devbar({
 		return () => window.removeEventListener("mousedown", onClick);
 	}, [showFooterMenu]);
 
-	// Close tool menu on outside click
-	useEffect(() => {
-		if (!toolMenu) return;
-		const onClick = (e: MouseEvent) => {
-			if (toolMenuRef.current?.contains(e.target as Node)) return;
-			setToolMenu(null);
-		};
-		window.addEventListener("mousedown", onClick);
-		return () => window.removeEventListener("mousedown", onClick);
-	}, [toolMenu]);
-
 	// Ref to keep handleCopy fresh for the keyboard handler (declared after this effect)
 	const handleCopyRef = useRef<() => void>(() => {});
+	const handleServerSubmitRef = useRef<() => void>(() => {});
+
+	/**
+	 * Enter a tool directly. Capture and Record used to open a chooser first
+	 * (full page vs region, tab vs screen), which put a second click between
+	 * every screenshot and the person taking it. Both now start in their common
+	 * mode; the other is one key or one minibar button away.
+	 */
+	const startTool = useCallback(
+		(tool: ToolMode, variant?: "fullpage" | "region" | "tab" | "screen") => {
+			if (!tool) return;
+			if (tool === "capture") setCaptureSubMode(variant === "fullpage" ? "fullpage" : "region");
+			if (tool === "record") setRecordSubMode(variant === "screen" ? "screen" : "tab");
+			state.activateTool(tool);
+			collab.sendToolChange(tool);
+			closePanel();
+			setShowExportMenu(false);
+			setFocusedAnnotation(null);
+		},
+		[state.activateTool, collab.sendToolChange, closePanel],
+	);
+
+	const stopTool = useCallback(() => {
+		state.deactivateTool();
+		collab.sendToolChange(null);
+	}, [state.deactivateTool, collab.sendToolChange]);
+
+	/** Focus the task field, opening the annotations panel if it is not on screen. */
+	const focusTask = useCallback(() => {
+		openPanel("annotations");
+		setPreviewMode("off");
+		// The textarea does not exist until the panel has rendered.
+		requestAnimationFrame(() => taskInputRef.current?.focus());
+	}, [openPanel]);
 
 	// Keyboard shortcuts
 	useEffect(() => {
@@ -1434,43 +1485,49 @@ export function Devbar({
 				}
 			}
 
-			// Copy: Cmd+Enter / Ctrl+Enter
+			// Send the report: Cmd+Enter / Ctrl+Enter. Goes wherever the primary
+			// action goes — to the server when one is wired up, else the clipboard.
 			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
 				if (state.annotations.length > 0) {
 					e.preventDefault();
-					handleCopyRef.current();
+					if (effectiveServer) handleServerSubmitRef.current();
+					else handleCopyRef.current();
 					return;
 				}
 			}
 
+			// On macOS, Option+<letter> reports a symbol in `e.key` (Option+S is
+			// "ß"), so every Alt shortcut silently failed for Mac users. The physical
+			// key in `e.code` is layout-stable for the letters we bind.
 			const key = e.key.toLowerCase();
+			const code = e.code.startsWith("Key")
+				? e.code.slice(3).toLowerCase()
+				: e.code === "Slash"
+					? "/"
+					: e.code === "Comma"
+						? ","
+						: "";
+			const is = (k: string) => key === k || code === k;
+			const boundTool = e.altKey
+				? toolDefs.find((tool) => is(tool.shortcut.replace("Alt+", "").toLowerCase()))
+				: undefined;
 
 			// While a tool is active, Alt+<tool> switches straight to another tool
 			// rather than forcing an Esc round-trip. Escape belongs to the active
 			// overlay, so it is left alone here.
 			if (state.activeMode) {
 				if (!e.altKey) return;
-				for (const tool of toolDefs) {
-					if (key !== tool.shortcut.replace("Alt+", "").toLowerCase()) continue;
+				if (boundTool) {
 					e.preventDefault();
-					if (tool.key === state.activeMode) {
-						state.deactivateTool();
-					} else if (tool.key === "capture" || tool.key === "record") {
-						state.deactivateTool();
-						setToolMenu(tool.key as "capture" | "record");
-					} else {
-						state.activateTool(tool.key);
-					}
-					return;
+					if (boundTool.key === state.activeMode && !e.shiftKey) stopTool();
+					else startTool(boundTool.key, e.shiftKey ? "fullpage" : undefined);
 				}
 				return;
 			}
 
 			// Escape unwinds whatever is open, innermost first.
 			if (key === "escape") {
-				if (toolMenu) {
-					setToolMenu(null);
-				} else if (showExportMenu || showFooterMenu) {
+				if (showExportMenu || showFooterMenu) {
 					setShowExportMenu(false);
 					setShowFooterMenu(false);
 				} else if (focusedAnnotation) {
@@ -1486,32 +1543,66 @@ export function Devbar({
 			// All remaining shortcuts require Alt modifier
 			if (!e.altKey) return;
 
+			if (boundTool) {
+				e.preventDefault();
+				// Shift+Alt+C grabs the whole page without visiting region mode first.
+				startTool(
+					boundTool.key,
+					e.shiftKey && boundTool.key === "capture" ? "fullpage" : undefined,
+				);
+				return;
+			}
+
 			// Toggle annotations panel: Alt+A
-			if (key === "a") {
+			if (is("a")) {
 				e.preventDefault();
 				togglePanelTab("annotations");
 				return;
 			}
 
-			// Help: Alt+?
-			if (e.key === "?" || key === "/") {
+			// Task field: Alt+T
+			if (is("t")) {
 				e.preventDefault();
-				togglePanelTab("shortcuts");
+				focusTask();
 				return;
 			}
 
-			for (const tool of toolDefs) {
-				if (key === tool.shortcut.replace("Alt+", "").toLowerCase()) {
-					e.preventDefault();
-					if (tool.key === "capture" || tool.key === "record") {
-						setToolMenu((prev) => (prev === tool.key ? null : (tool.key as "capture" | "record")));
-					} else {
-						state.activateTool(tool.key);
-					}
-					closePanel();
-					setShowExportMenu(false);
+			// Preview the report: Alt+P
+			if (is("p")) {
+				e.preventDefault();
+				if (state.annotations.length === 0) {
+					showToast("Nothing to preview yet");
 					return;
 				}
+				if (panelOpen && panelTab === "annotations" && previewMode !== "off") {
+					setPreviewMode("off");
+				} else {
+					openPanel("annotations");
+					setPreviewMode("md");
+				}
+				return;
+			}
+
+			// Hide / show the toolbar: Alt+H
+			if (is("h")) {
+				e.preventDefault();
+				closePanel();
+				setCollapsed((v) => !v);
+				return;
+			}
+
+			// Settings: Alt+,
+			if (is(",")) {
+				e.preventDefault();
+				togglePanelTab("settings");
+				return;
+			}
+
+			// Help: Alt+?
+			if (e.key === "?" || is("/")) {
+				e.preventDefault();
+				togglePanelTab("shortcuts");
+				return;
 			}
 		};
 		window.addEventListener("keydown", onKeyDown);
@@ -1519,17 +1610,21 @@ export function Devbar({
 	}, [
 		state.activeMode,
 		toolDefs,
-		state.activateTool,
-		state.deactivateTool,
+		startTool,
+		stopTool,
+		focusTask,
 		state.annotations,
 		localRemoveAnnotation,
 		focusedAnnotation,
 		panelOpen,
+		panelTab,
+		previewMode,
+		openPanel,
 		closePanel,
 		togglePanelTab,
 		showExportMenu,
 		showFooterMenu,
-		toolMenu,
+		effectiveServer,
 	]);
 
 	const toastTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -1560,13 +1655,14 @@ export function Devbar({
 		const payload = buildPayload(state.annotations, promptTemplate, settings, task);
 		await copyToClipboard(payload);
 		setCopied(true);
-		showToast("Copied to clipboard!");
 		clearTimeout(copiedTimerRef.current);
 		copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
 		onSubmit?.(payload);
 		if (!onSubmit) {
-			localArchiveAndClear("clipboard");
+			exportedToast("Copied to clipboard!", localArchiveAndClear("clipboard"));
 			setPanelOpen(false);
+		} else {
+			showToast("Copied to clipboard!");
 		}
 	}, [
 		state.annotations,
@@ -1575,6 +1671,7 @@ export function Devbar({
 		task,
 		onSubmit,
 		showToast,
+		exportedToast,
 		localArchiveAndClear,
 	]);
 	handleCopyRef.current = handleCopy;
@@ -1595,13 +1692,14 @@ export function Devbar({
 			document.body.removeChild(textarea);
 		}
 		setCopied(true);
-		showToast("Copied JSON to clipboard!");
 		clearTimeout(copiedTimerRef.current);
 		copiedTimerRef.current = setTimeout(() => setCopied(false), 1500);
 		onSubmit?.(payload);
 		if (!onSubmit) {
-			localArchiveAndClear("json");
+			exportedToast("Copied JSON to clipboard!", localArchiveAndClear("json"));
 			setPanelOpen(false);
+		} else {
+			showToast("Copied JSON to clipboard!");
 		}
 	}, [
 		state.annotations,
@@ -1610,6 +1708,7 @@ export function Devbar({
 		task,
 		onSubmit,
 		showToast,
+		exportedToast,
 		localArchiveAndClear,
 	]);
 
@@ -1617,14 +1716,25 @@ export function Devbar({
 		(format: "json" | "md" = "md") => {
 			const payload = buildPayload(state.annotations, promptTemplate, settings, task);
 			exportToFile(payload, format, settings);
-			showToast(format === "md" ? "Saved markdown!" : "Saved JSON!");
+			const message = format === "md" ? "Saved markdown!" : "Saved JSON!";
 			onSubmit?.(payload);
 			if (!onSubmit) {
-				localArchiveAndClear(format === "md" ? "file-md" : "file-json");
+				exportedToast(message, localArchiveAndClear(format === "md" ? "file-md" : "file-json"));
 				setPanelOpen(false);
+			} else {
+				showToast(message);
 			}
 		},
-		[state.annotations, promptTemplate, settings, task, onSubmit, showToast, localArchiveAndClear],
+		[
+			state.annotations,
+			promptTemplate,
+			settings,
+			task,
+			onSubmit,
+			showToast,
+			exportedToast,
+			localArchiveAndClear,
+		],
 	);
 
 	const handleServerSubmit = useCallback(async () => {
@@ -1675,9 +1785,8 @@ export function Devbar({
 			if (res.ok) {
 				const data = await res.json();
 				console.log("[devbar] submit ok", data);
-				showToast("Submitted to server!");
 				onSubmit?.(payload);
-				localArchiveAndClear("server");
+				exportedToast("Submitted to server!", localArchiveAndClear("server"));
 				setPanelOpen(false);
 			} else {
 				const text = await res.text();
@@ -1701,40 +1810,20 @@ export function Devbar({
 		user,
 		onSubmit,
 		showToast,
+		exportedToast,
 		localArchiveAndClear,
 	]);
-
-	const closeAllPanels = useCallback(() => {
-		closePanel();
-		setShowExportMenu(false);
-		setToolMenu(null);
-	}, []);
+	handleServerSubmitRef.current = handleServerSubmit;
 
 	const handleToolClick = useCallback(
 		(tool: ToolMode) => {
-			// Capture and record show dropdown menus instead of activating directly
-			if (tool === "capture" || tool === "record") {
-				setToolMenu((prev) => (prev === tool ? null : tool));
-				closePanel();
-				setShowExportMenu(false);
-				return;
-			}
 			if (state.activeMode === tool) {
-				state.deactivateTool();
-				collab.sendToolChange(null);
+				stopTool();
 			} else {
-				state.activateTool(tool);
-				collab.sendToolChange(tool);
-				closeAllPanels();
+				startTool(tool);
 			}
 		},
-		[
-			state.activeMode,
-			state.activateTool,
-			state.deactivateTool,
-			collab.sendToolChange,
-			closeAllPanels,
-		],
+		[state.activeMode, startTool, stopTool],
 	);
 
 	const handleCapture = useCallback(
@@ -1992,6 +2081,7 @@ export function Devbar({
 					style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}
 				>
 					Settings
+					<span className="devbar-tooltip-key">Alt+,</span>
 				</span>
 			)}
 		</button>
@@ -2078,20 +2168,39 @@ export function Devbar({
 	);
 
 	// Shared export button + dropdown. With pending annotations this is the bar's
-	// primary action, so it takes a label and the count instead of hiding as a
-	// ghost glyph among the tools.
+	// primary action, so it takes a label instead of hiding as a ghost glyph
+	// among the tools — and clicking it *does the thing* (copy, or submit when a
+	// server is wired up) rather than opening a menu that asks again. The other
+	// formats sit behind the caret.
 	const renderExportButton = (tooltipBelow?: boolean) => {
 		const pending = state.annotations.length;
 		const isPrimary = pending > 0 && !isVertical;
+		const primaryLabel = effectiveServer ? "Submit" : "Copy";
+		const menuStyle: React.CSSProperties = tooltipBelow
+			? { bottom: "auto", top: "100%", marginTop: 8 }
+			: isVertical
+				? { left: "100%", marginLeft: 8, bottom: 0 }
+				: drag.offset && drag.offset.y < window.innerHeight / 2
+					? { top: "100%", marginTop: 8 }
+					: { bottom: "100%", marginBottom: 8 };
+		const tooltipStyle = tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined;
 		return (
-			<div className="devbar-bar-export-wrap" ref={exportMenuRef}>
+			<div
+				className={`devbar-bar-export-wrap${pending > 0 ? " devbar-bar-export-split" : ""}`}
+				ref={exportMenuRef}
+			>
 				<button
 					type="button"
-					className={`devbar-bar-btn ${isPrimary ? "devbar-bar-btn-primary" : ""} ${showExportMenu ? "devbar-bar-btn-active" : ""}`}
+					className={`devbar-bar-btn ${isPrimary ? "devbar-bar-btn-primary" : ""} ${pending > 0 ? "devbar-bar-btn-split-main" : ""}`}
 					onClick={() => {
-						setShowExportMenu((v) => !v);
-						closePanel();
-						setToolMenu(null);
+						setShowExportMenu(false);
+						if (pending === 0) {
+							// Nothing to send yet: land on the panel that says how to start.
+							togglePanelTab("annotations");
+							return;
+						}
+						if (effectiveServer) void handleServerSubmit();
+						else void handleCopy();
 					}}
 					style={
 						!isPrimary && copied
@@ -2101,153 +2210,70 @@ export function Devbar({
 								: undefined
 					}
 				>
-					{copied ? <CheckIcon /> : <SubmitIcon />}
+					{copied ? <CheckIcon /> : effectiveServer ? <SendIcon /> : <SubmitIcon />}
 					{/* Label only — the count lives on the Annotations badge next door,
 					    and repeating it here reads as two separate numbers. The label is
 					    dropped on narrow viewports (see the media query) where the row
 					    cannot afford the width. */}
 					{isPrimary && (
-						<span className="devbar-bar-btn-label">{copied ? "Copied" : "Export"}</span>
+						<span className="devbar-bar-btn-label">{copied ? "Copied" : primaryLabel}</span>
 					)}
-					<span
-						className="devbar-tooltip"
-						style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}
-					>
-						{copied ? "Copied!" : "Export"}
-						{!copied && <span className="devbar-tooltip-key">⌘↵</span>}
+					<span className="devbar-tooltip" style={tooltipStyle}>
+						{copied ? "Copied!" : pending > 0 ? `${primaryLabel} report` : "Export"}
+						{!copied && pending > 0 && <span className="devbar-tooltip-key">⌘↵</span>}
 					</span>
 				</button>
-				{showExportMenu && (
-					<div
-						className={`devbar-export-menu devbar-theme-${resolvedTheme}`}
-						style={
-							tooltipBelow
-								? { bottom: "auto", top: "100%", marginTop: 8 }
-								: isVertical
-									? { left: "100%", marginLeft: 8, bottom: 0 }
-									: drag.offset && drag.offset.y < window.innerHeight / 2
-										? { top: "100%", marginTop: 8 }
-										: { bottom: "100%", marginBottom: 8 }
-						}
+				{pending > 0 && (
+					<button
+						type="button"
+						className={`devbar-bar-btn ${isPrimary ? "devbar-bar-btn-primary" : ""} devbar-bar-btn-split-caret ${showExportMenu ? "devbar-bar-btn-active" : ""}`}
+						onClick={() => {
+							setShowExportMenu((v) => !v);
+							closePanel();
+						}}
+						aria-label="More export options"
+						aria-expanded={showExportMenu}
 					>
-						{renderExportMenuItems(() => setShowExportMenu(false))}
+						{isVertical ? <ChevronDownIcon /> : <ChevronUpIcon />}
+						<span className="devbar-tooltip" style={tooltipStyle}>
+							More formats
+						</span>
+					</button>
+				)}
+				{showExportMenu && (
+					<div className={`devbar-export-menu devbar-theme-${resolvedTheme}`} style={menuStyle}>
+						{renderExportMenuItems(
+							() => setShowExportMenu(false),
+							new Set([effectiveServer ? "submit" : "copy"]),
+						)}
 					</div>
 				)}
 			</div>
 		);
 	};
 
-	// Shared tool buttons
+	// Shared tool buttons. One click enters the tool; Capture starts in region
+	// mode (full page is `F` or Shift+Alt+C) and Record asks the browser for the
+	// current tab, whose own picker still offers a window or the whole screen.
 	const renderToolButtons = (tooltipBelow?: boolean) =>
 		toolDefs.map((tool) => {
 			const Icon = tool.icon;
-			const hasMenu = tool.key === "capture" || tool.key === "record";
-			if (hasMenu) {
-				const isOpen = toolMenu === tool.key;
-				return (
-					<div
-						key={tool.key}
-						className="devbar-bar-export-wrap"
-						ref={isOpen ? toolMenuRef : undefined}
-					>
-						<button
-							type="button"
-							className={`devbar-bar-btn ${isOpen || state.activeMode === tool.key ? "devbar-bar-btn-active" : ""}`}
-							onClick={() => handleToolClick(tool.key)}
-						>
-							<Icon />
-							<span
-								className="devbar-tooltip"
-								style={tooltipBelow ? { bottom: "auto", top: "calc(100% + 10px)" } : undefined}
-							>
-								{tool.label}
-								<span className="devbar-tooltip-key">{tool.shortcut}</span>
-							</span>
-						</button>
-						{isOpen && (
-							<div
-								className={`devbar-export-menu devbar-theme-${resolvedTheme}`}
-								style={
-									tooltipBelow
-										? { bottom: "auto", top: "100%", marginTop: 8 }
-										: isVertical
-											? { left: "100%", marginLeft: 8, bottom: 0 }
-											: drag.offset && drag.offset.y < window.innerHeight / 2
-												? { top: "100%", marginTop: 8 }
-												: { bottom: "100%", marginBottom: 8 }
-								}
-							>
-								{tool.key === "capture" && (
-									<>
-										<button
-											type="button"
-											className="devbar-export-menu-item"
-											onClick={() => {
-												setToolMenu(null);
-												setCaptureSubMode("fullpage");
-												state.activateTool("capture");
-												collab.sendToolChange("capture");
-												closePanel();
-											}}
-										>
-											<CaptureIcon /> Full Page
-										</button>
-										<button
-											type="button"
-											className="devbar-export-menu-item"
-											onClick={() => {
-												setToolMenu(null);
-												setCaptureSubMode("region");
-												state.activateTool("capture");
-												collab.sendToolChange("capture");
-												closePanel();
-											}}
-										>
-											<CaptureIcon /> Select Region
-										</button>
-									</>
-								)}
-								{tool.key === "record" && (
-									<>
-										<button
-											type="button"
-											className="devbar-export-menu-item"
-											onClick={() => {
-												setToolMenu(null);
-												setRecordSubMode("tab");
-												state.activateTool("record");
-												collab.sendToolChange("record");
-												closePanel();
-											}}
-										>
-											<RecordIcon /> Record Tab
-										</button>
-										<button
-											type="button"
-											className="devbar-export-menu-item"
-											onClick={() => {
-												setToolMenu(null);
-												setRecordSubMode("screen");
-												state.activateTool("record");
-												collab.sendToolChange("record");
-												closePanel();
-											}}
-										>
-											<RecordIcon /> Record Screen
-										</button>
-									</>
-								)}
-							</div>
-						)}
-					</div>
-				);
-			}
+			const hint =
+				tool.key === "capture"
+					? "Drag a region · ⇧ for full page"
+					: tool.key === "record"
+						? "Records this tab"
+						: null;
 			return (
 				<button
 					key={tool.key}
 					type="button"
 					className={`devbar-bar-btn ${state.activeMode === tool.key ? "devbar-bar-btn-active" : ""}`}
-					onClick={() => handleToolClick(tool.key)}
+					onClick={(e) =>
+						tool.key === "capture" && e.shiftKey
+							? startTool("capture", "fullpage")
+							: handleToolClick(tool.key)
+					}
 				>
 					<Icon />
 					<span
@@ -2256,6 +2282,7 @@ export function Devbar({
 					>
 						{tool.label}
 						<span className="devbar-tooltip-key">{tool.shortcut}</span>
+						{hint && <span className="devbar-tooltip-hint">{hint}</span>}
 					</span>
 				</button>
 			);
@@ -2742,16 +2769,29 @@ export function Devbar({
 							["↑", "Select parent element"],
 							["↓", "Select child element"],
 							["↵", "Annotate current element"],
+							["⇧ click", "Annotate without a note"],
 							["Esc", "Cancel / finish"],
+						],
+					],
+					[
+						"While in a tool",
+						[
+							["Alt+tool", "Switch tools directly"],
+							["⇧Alt+C", "Full-page screenshot"],
+							["F", "Full page (Capture tool)"],
 						],
 					],
 					[
 						"Anywhere",
 						[
 							["Alt+A", "Toggle annotations"],
+							["Alt+T", "Focus the task field"],
+							["Alt+P", "Preview the report"],
+							["Alt+H", "Hide / show the toolbar"],
+							["Alt+,", "Settings"],
 							["Alt+/", "This help"],
 							["⌘Z", "Undo last annotation"],
-							["⌘↵", "Copy to clipboard"],
+							["⌘↵", effectiveServer ? "Submit the report" : "Copy the report"],
 							["Esc", "Close panel"],
 						],
 					],
@@ -2874,6 +2914,19 @@ export function Devbar({
 									</button>
 									<button
 										type="button"
+										className="devbar-history-action-btn"
+										title="Restore to the current session"
+										aria-label="Restore to the current session"
+										onClick={() => {
+											const restored = restoreExport(exp.id);
+											setExpandedExportId(null);
+											if (restored.length > 0) setPanelTab("annotations");
+										}}
+									>
+										<RestoreIcon />
+									</button>
+									<button
+										type="button"
 										className="devbar-history-action-btn devbar-history-action-danger"
 										title="Delete"
 										onClick={() => {
@@ -2945,12 +2998,29 @@ export function Devbar({
 	const renderTaskInput = () => (
 		<div className="devbar-task">
 			<textarea
+				ref={taskInputRef}
 				className="devbar-task-input"
-				placeholder="What needs to change? (optional)"
+				placeholder="What needs to change? (optional) · Alt+T"
 				value={task}
 				rows={task ? 2 : 1}
 				onChange={(e) => updateTask(e.target.value)}
-				onKeyDown={(e) => e.stopPropagation()}
+				onKeyDown={(e) => {
+					e.stopPropagation();
+					// The two shortcuts you reach for while typing the task: send it,
+					// or get out of the way.
+					if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+						e.preventDefault();
+						if (state.annotations.length === 0) return;
+						if (effectiveServer) handleServerSubmitRef.current();
+						else handleCopyRef.current();
+						return;
+					}
+					if (e.key === "Escape") {
+						e.preventDefault();
+						(e.currentTarget as HTMLTextAreaElement).blur();
+						closePanel();
+					}
+				}}
 			/>
 		</div>
 	);
@@ -3234,7 +3304,7 @@ export function Devbar({
 					type="button"
 					className={`devbar-submit-btn devbar-submit-btn-secondary ${previewMode !== "off" ? "devbar-submit-btn-active" : ""}`}
 					onClick={() => setPreviewMode((m) => (m === "off" ? "md" : "off"))}
-					title={previewMode !== "off" ? "Back to list" : "Preview report"}
+					title={previewMode !== "off" ? "Back to list (Alt+P)" : "Preview report (Alt+P)"}
 				>
 					<PreviewIcon />
 					Preview
@@ -3326,6 +3396,8 @@ export function Devbar({
 			)}
 			{state.activeMode === "capture" && captureSubMode && (
 				<CaptureOverlay
+					// Switching full page ↔ region from the minibar remounts the overlay.
+					key={captureSubMode}
 					onCapture={handleCapture}
 					onDone={() => {
 						setCaptureSubMode(null);
@@ -3410,13 +3482,43 @@ export function Devbar({
 				</div>
 			)}
 
-			{/* Mini bar (visible during tool mode) */}
+			{/* Mini bar (visible during tool mode). Every tool stays one click away
+			    here, so changing tools never means Done → find the bar → pick again. */}
 			{state.activeMode && (
 				<div className={`devbar-minibar devbar-theme-${resolvedTheme}`}>
-					{activeToolDef && (
-						<div className="devbar-minibar-active-icon">{activeToolDef.icon()}</div>
-					)}
+					<div className="devbar-minibar-tools" role="group" aria-label="Switch tool">
+						{toolDefs.map((tool) => {
+							const Icon = tool.icon;
+							const active = tool.key === state.activeMode;
+							return (
+								<button
+									key={tool.key}
+									type="button"
+									className={`devbar-minibar-tool${active ? " devbar-minibar-tool-active" : ""}`}
+									onClick={() => (active ? stopTool() : startTool(tool.key))}
+									title={`${tool.label} (${tool.shortcut})`}
+									aria-label={`${tool.label} tool`}
+									aria-pressed={active}
+								>
+									<Icon />
+								</button>
+							);
+						})}
+					</div>
 					<span className="devbar-minibar-label">{activeToolDef?.label}</span>
+					{state.activeMode === "capture" && captureSubMode === "region" && (
+						<>
+							<div className="devbar-bar-divider" />
+							<button
+								type="button"
+								className="devbar-minibar-action"
+								onClick={() => setCaptureSubMode("fullpage")}
+								title="Capture the whole page (F)"
+							>
+								Full page <kbd>F</kbd>
+							</button>
+						</>
+					)}
 					<div className="devbar-bar-divider" />
 					{state.annotations.length > 0 && (
 						<>
@@ -3429,10 +3531,10 @@ export function Devbar({
 					<button
 						type="button"
 						className="devbar-minibar-btn"
-						onClick={() => state.deactivateTool()}
-						title="Finish using tool"
+						onClick={stopTool}
+						title="Finish using tool (Esc)"
 					>
-						Done
+						Done <kbd>Esc</kbd>
 					</button>
 				</div>
 			)}
@@ -3523,7 +3625,7 @@ export function Devbar({
 						)}
 						<span className="devbar-tooltip">
 							Annotations
-							<span className="devbar-tooltip-key">A</span>
+							<span className="devbar-tooltip-key">Alt+A</span>
 						</span>
 					</button>
 					<div className="devbar-bar-divider" />
@@ -3543,7 +3645,10 @@ export function Devbar({
 						title="Minimize"
 					>
 						<MinimizeIcon />
-						<span className="devbar-tooltip">Minimize</span>
+						<span className="devbar-tooltip">
+							Minimize
+							<span className="devbar-tooltip-key">Alt+H</span>
+						</span>
 					</button>
 				</div>
 			)}
@@ -3879,8 +3984,10 @@ export function Devbar({
 							type="button"
 							className="devbar-toast-action"
 							onClick={() => {
-								toastAction.run();
+								// Dismiss first: the action may raise a toast of its own.
+								const run = toastAction.run;
 								dismissToast();
+								run();
 							}}
 						>
 							{toastAction.label}
@@ -3903,6 +4010,22 @@ function MinimizeIcon(): React.ReactNode {
 			strokeLinejoin="round"
 		>
 			<path d="M5 12h14" />
+		</svg>
+	);
+}
+
+function RestoreIcon(): React.ReactNode {
+	return (
+		<svg
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth={1.5}
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
+			<path d="M3 12a9 9 0 1 0 3-6.7" />
+			<path d="M3 4v5h5" />
 		</svg>
 	);
 }

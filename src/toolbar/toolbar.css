@@ -410,7 +410,9 @@
 	box-shadow: var(--devbar-shadow-lg);
 	overflow: hidden;
 	animation: devbar-panel-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-	z-index: 10;
+	/* Above the persistent pins and element highlights (…642/…644), which used
+	   to draw straight across the task field; below the minibar, dot and toast. */
+	z-index: 2147483645;
 }
 
 .devbar-panel-header {
@@ -3632,4 +3634,163 @@
 	width: 100%;
 	margin-top: 8px;
 	padding: 5px 8px;
+}
+
+/* ─── Minibar tool switcher ─── */
+.devbar-minibar-tools {
+	display: flex;
+	align-items: center;
+	gap: 1px;
+}
+
+.devbar-minibar-tool {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	margin: 0;
+	border-radius: 7px;
+	border: none;
+	background: transparent;
+	color: var(--devbar-icon);
+	cursor: pointer;
+	transition: all 0.12s;
+}
+
+.devbar-minibar-tool:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+}
+
+.devbar-minibar-tool-active,
+.devbar-minibar-tool-active:hover {
+	background: var(--devbar-blue-muted);
+	color: var(--devbar-blue);
+}
+
+.devbar-minibar-tool svg {
+	width: 13px;
+	height: 13px;
+}
+
+.devbar-minibar-action {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	height: 26px;
+	padding: 0 8px;
+	border-radius: 7px;
+	border: none;
+	background: transparent;
+	color: var(--devbar-text-secondary);
+	cursor: pointer;
+	font-size: 11px;
+	font-weight: 500;
+	font-family: inherit;
+	white-space: nowrap;
+	transition: all 0.12s;
+}
+
+.devbar-minibar-action:hover {
+	background: var(--devbar-accent-hover);
+	color: var(--devbar-text);
+}
+
+.devbar-minibar-btn {
+	gap: 5px;
+}
+
+.devbar-minibar kbd {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 14px;
+	height: 15px;
+	padding: 0 4px;
+	border-radius: 4px;
+	background: var(--devbar-accent-glow);
+	border: 1px solid var(--devbar-border);
+	font-size: 9.5px;
+	font-weight: 500;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	color: inherit;
+	opacity: 0.75;
+}
+
+/* ─── Split export button (primary action + caret) ─── */
+.devbar-bar-export-split {
+	gap: 1px;
+}
+
+.devbar-bar-export-split .devbar-bar-btn-primary.devbar-bar-btn-split-main {
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 3px;
+	padding-right: 9px;
+}
+
+.devbar-bar-export-split .devbar-bar-btn-primary.devbar-bar-btn-split-caret {
+	width: 22px;
+	padding: 0;
+	border-top-left-radius: 3px;
+	border-bottom-left-radius: 3px;
+}
+
+.devbar-bar-btn-split-caret svg {
+	width: 12px;
+	height: 12px;
+}
+
+.devbar-bar-vertical .devbar-bar-export-split {
+	flex-direction: column;
+}
+
+.devbar-bar-vertical .devbar-bar-btn-split-caret {
+	height: 18px;
+}
+
+/* Secondary line in a tooltip: what the click actually does */
+.devbar-tooltip-hint {
+	display: block;
+	margin-top: 3px;
+	font-size: 10px;
+	font-weight: 400;
+	color: var(--devbar-text-muted);
+	white-space: nowrap;
+}
+
+/* Key hints inside overlay dialog buttons (capture / record note) */
+.devbar-overlay-btn kbd {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 14px;
+	height: 15px;
+	padding: 0 4px;
+	margin-left: 6px;
+	border-radius: 4px;
+	background: rgba(127, 127, 127, 0.18);
+	border: 1px solid transparent;
+	font-size: 9.5px;
+	font-weight: 500;
+	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+	color: inherit;
+	opacity: 0.8;
+}
+
+/* The pin drawn inside the marker note popover, next to its number */
+.devbar-marker-pin.devbar-marker-pin-inline {
+	position: static;
+	width: 18px;
+	height: 18px;
+	font-size: 10px;
+	box-shadow: none;
+	animation: none;
+	flex-shrink: 0;
+}
+
+/* A caret with its menu open does not also need a tooltip on top of the menu */
+.devbar-bar-btn[aria-expanded="true"]:hover .devbar-tooltip {
+	opacity: 0;
 }

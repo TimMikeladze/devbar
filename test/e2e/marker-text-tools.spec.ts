@@ -69,41 +69,43 @@ test.describe("Capture Tool", () => {
 		await page.waitForSelector(".devbar-bar");
 	});
 
-	test("activating shows the capture mode chooser", async ({ page }) => {
+	// One click, no chooser: the bar button lands straight in region mode.
+	test("activating goes straight to region capture", async ({ page }) => {
 		await page
 			.locator(".devbar-bar")
 			.getByRole("button", { name: /Capture/ })
 			.click();
 
-		const menu = page.locator(".devbar-export-menu");
-		await expect(menu).toBeVisible();
-		await expect(menu.getByRole("button", { name: "Full Page" })).toBeVisible();
-		await expect(menu.getByRole("button", { name: "Select Region" })).toBeVisible();
+		await expect(page.locator(".devbar-export-menu")).not.toBeVisible();
+		await expect(page.locator(".devbar-minibar")).toContainText("Capture");
+		await expect(page.locator(".devbar-instruction")).toContainText(
+			"Click and drag to select a region",
+		);
+		// Full page is offered right there rather than behind a menu.
+		await expect(page.locator(".devbar-minibar-action")).toContainText("Full page");
 	});
 
-	test("Escape dismisses the capture chooser without entering the tool", async ({ page }) => {
-		await page
-			.locator(".devbar-bar")
-			.getByRole("button", { name: /Capture/ })
-			.click();
-		await expect(page.locator(".devbar-export-menu")).toBeVisible();
+	test("Escape leaves the capture tool", async ({ page }) => {
+		await page.keyboard.press("Alt+c");
+		await expect(page.locator(".devbar-minibar")).toContainText("Capture");
 
 		await page.keyboard.press("Escape");
-		await expect(page.locator(".devbar-export-menu")).not.toBeVisible();
 		await expect(page.locator(".devbar-bar")).toBeVisible();
 		await expect(page.locator(".devbar-minibar")).not.toBeVisible();
 	});
 
-	test("select region shows crosshair and instruction", async ({ page }) => {
-		await page
-			.locator(".devbar-bar")
-			.getByRole("button", { name: /Capture/ })
-			.click();
-		await page.waitForSelector(".devbar-export-menu");
+	test("F captures the whole page from region mode", async ({ page }) => {
+		await page.keyboard.press("Alt+c");
+		await expect(page.locator(".devbar-instruction")).toContainText("full page");
 
-		await page.getByRole("button", { name: "Select Region" }).click();
-		await expect(page.locator(".devbar-instruction")).toContainText(
-			"Click and drag to select a region",
-		);
+		await page.keyboard.press("f");
+		await expect(page.locator(".devbar-capture-note")).toContainText("Screenshot captured");
+		await page.keyboard.press("Enter");
+		await expect(page.locator(".devbar-badge")).toHaveText("1");
+	});
+
+	test("Shift+Alt+C captures the whole page directly", async ({ page }) => {
+		await page.keyboard.press("Shift+Alt+c");
+		await expect(page.locator(".devbar-capture-note")).toContainText("Screenshot captured");
 	});
 });

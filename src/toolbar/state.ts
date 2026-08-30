@@ -14,8 +14,11 @@ export type DevbarState = {
 	updateComment: (annotationId: string, commentId: string, text: string, remote?: boolean) => void;
 	removeComment: (annotationId: string, commentId: string, remote?: boolean) => void;
 	clearAnnotations: () => void;
-	archiveAndClear: (method: ExportMethod) => void;
+	/** Archive the current batch under History and start a fresh one. Returns the record id. */
+	archiveAndClear: (method: ExportMethod) => string | null;
 	deleteExport: (id: string) => void;
+	/** Pull an archived batch back into the current session. Returns what came back. */
+	restoreExport: (id: string) => Annotation[];
 	activateTool: (mode: ToolMode) => void;
 	deactivateTool: () => void;
 };
@@ -108,6 +111,22 @@ function dbArchive(record: ExportRecord): Promise<void> {
 				const tx = db.transaction([EXPORTS_STORE, STORE_NAME], "readwrite");
 				tx.objectStore(EXPORTS_STORE).put(clean);
 				tx.objectStore(STORE_NAME).clear();
+				tx.oncomplete = () => resolve();
+				tx.onerror = () => reject(tx.error);
+			}),
+	);
+}
+
+// The inverse of dbArchive: put the batch back and drop the export record.
+function dbRestore(record: ExportRecord): Promise<void> {
+	const clean = structuredClone(record);
+	return getDB().then(
+		(db) =>
+			new Promise((resolve, reject) => {
+				const tx = db.transaction([EXPORTS_STORE, STORE_NAME], "readwrite");
+				const store = tx.objectStore(STORE_NAME);
+				for (const annotation of clean.annotations) store.put(annotation);
+				tx.objectStore(EXPORTS_STORE).delete(clean.id);
 				tx.oncomplete = () => resolve();
 				tx.onerror = () => reject(tx.error);
 			}),
@@ -235,9 +254,12 @@ export function useDevbarState(): DevbarState {
 		dbClearStore(STORE_NAME).catch((e) => console.warn("[devbar] clear error:", e));
 	}, []);
 
-	const archiveAndClear = useCallback((method: ExportMethod): void => {
+	const exportsRef = useRef(exports);
+	exportsRef.current = exports;
+
+	const archiveAndClear = useCallback((method: ExportMethod): string | null => {
 		const current = annotationsRef.current;
-		if (current.length === 0) return;
+		if (current.length === 0) return null;
 		const record: ExportRecord = {
 			id: crypto.randomUUID(),
 			timestamp: Date.now(),
@@ -249,6 +271,7 @@ export function useDevbarState(): DevbarState {
 		setExports((prev) => [record, ...prev]);
 		setAnnotations([]);
 		dbArchive(record).catch((e) => console.warn("[devbar] export/clear error:", e));
+		return record.id;
 	}, []);
 
 	const deleteExportRecord = useCallback((id: string): void => {
@@ -256,6 +279,21 @@ export function useDevbarState(): DevbarState {
 		dbDeleteRecord(EXPORTS_STORE, id).catch((e) =>
 			console.warn("[devbar] export delete error:", e),
 		);
+	}, []);
+
+	const restoreExport = useCallback((id: string): Annotation[] => {
+		const record = exportsRef.current.find((e) => e.id === id);
+		if (!record) return [];
+		// Anything captured since the export stays; the restored batch slots in by time.
+		const restored = record.annotations.filter(
+			(a) => !annotationsRef.current.some((existing) => existing.id === a.id),
+		);
+		setExports((prev) => prev.filter((e) => e.id !== id));
+		setAnnotations((prev) => [...prev, ...restored].sort((a, b) => a.timestamp - b.timestamp));
+		dbRestore({ ...record, annotations: restored }).catch((e) =>
+			console.warn("[devbar] restore error:", e),
+		);
+		return restored;
 	}, []);
 
 	const activateTool = useCallback((mode: ToolMode): void => {
@@ -285,6 +323,7 @@ export function useDevbarState(): DevbarState {
 		clearAnnotations,
 		archiveAndClear,
 		deleteExport: deleteExportRecord,
+		restoreExport,
 		activateTool,
 		deactivateTool,
 	};

@@ -25,29 +25,34 @@ export function CaptureOverlay({
 	const dragging = useRef(false);
 	const fullpageTriggered = useRef(false);
 
+	const captureWholePage = useCallback(async () => {
+		if (fullpageTriggered.current) return;
+		fullpageTriggered.current = true;
+		setCaptureMode("capturing");
+		setRegionStart(null);
+		setRegionEnd(null);
+		try {
+			const imageDataUri = await captureFullPage();
+			const annotation: Annotation = {
+				id: crypto.randomUUID(),
+				type: "screenshot",
+				timestamp: Date.now(),
+				data: { imageDataUri, fullPage: true },
+				comments: [],
+			};
+			setPendingAnnotation(annotation);
+			setNoteText("");
+			setCaptureMode("note");
+		} catch {
+			onDone();
+		}
+	}, [onDone]);
+
 	// Trigger full-page capture immediately on mount
 	useEffect(() => {
-		if (initialMode !== "fullpage" || fullpageTriggered.current) return;
-		fullpageTriggered.current = true;
-
-		(async () => {
-			try {
-				const imageDataUri = await captureFullPage();
-				const annotation: Annotation = {
-					id: crypto.randomUUID(),
-					type: "screenshot",
-					timestamp: Date.now(),
-					data: { imageDataUri, fullPage: true },
-					comments: [],
-				};
-				setPendingAnnotation(annotation);
-				setNoteText("");
-				setCaptureMode("note");
-			} catch {
-				onDone();
-			}
-		})();
-	}, [initialMode, onDone]);
+		if (initialMode !== "fullpage") return;
+		void captureWholePage();
+	}, [initialMode, captureWholePage]);
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
@@ -58,11 +63,24 @@ export function CaptureOverlay({
 				} else {
 					onDone();
 				}
+				return;
+			}
+			// Region mode is the default; the whole page is one key away rather
+			// than a menu away.
+			if (
+				captureMode === "region" &&
+				(e.key === "f" || e.key === "F") &&
+				!e.metaKey &&
+				!e.ctrlKey &&
+				!e.altKey
+			) {
+				e.preventDefault();
+				void captureWholePage();
 			}
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [onDone, captureMode, pendingAnnotation, onCapture]);
+	}, [onDone, captureMode, pendingAnnotation, onCapture, captureWholePage]);
 
 	const submitNote = useCallback(() => {
 		if (!pendingAnnotation) return;
@@ -199,7 +217,7 @@ export function CaptureOverlay({
 							style={{ flex: 1 }}
 							onClick={submitNote}
 						>
-							Save
+							Save <kbd>↵</kbd>
 						</button>
 						<button
 							type="button"
@@ -209,7 +227,7 @@ export function CaptureOverlay({
 								onDone();
 							}}
 						>
-							Skip
+							Skip <kbd>Esc</kbd>
 						</button>
 					</div>
 				</div>
@@ -217,7 +235,8 @@ export function CaptureOverlay({
 
 			{captureMode === "region" && (
 				<div className="devbar-instruction">
-					Click and drag to select a region &middot; <kbd>Esc</kbd> to cancel
+					Click and drag to select a region &middot; <kbd>F</kbd> full page &middot; <kbd>Esc</kbd>{" "}
+					to cancel
 				</div>
 			)}
 		</div>

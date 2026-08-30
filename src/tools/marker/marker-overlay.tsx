@@ -156,27 +156,53 @@ export function MarkerOverlay({
 					data-devbar="note-input"
 					className="devbar-note-input"
 					style={{
-						left: Math.min(commentInput.x + 20, window.innerWidth - 290),
-						top: Math.min(commentInput.y - 16, window.innerHeight - 50),
+						left: Math.min(commentInput.x + 20, window.innerWidth - 308),
+						top: Math.min(commentInput.y - 16, window.innerHeight - 130),
+						width: 300,
 					}}
 				>
+					<div className="devbar-note-input-target">
+						<span
+							className="devbar-marker-pin devbar-marker-pin-inline"
+							style={{ background: commentInput.color }}
+						>
+							{commentInput.number}
+						</span>
+						<span className="devbar-el-label-tag">Marker #{commentInput.number}</span>
+						{commentInput.tagName && (
+							<span className="devbar-el-label-dim">on {commentInput.tagName}</span>
+						)}
+					</div>
 					<input
 						type="text"
 						placeholder="Describe the problem (optional)"
 						value={commentText}
 						onChange={(e) => setCommentText(e.target.value)}
 						onKeyDown={(e) => {
-							if (e.key === "Enter") submitMarker();
+							e.stopPropagation();
+							if (e.key === "Enter") {
+								e.preventDefault();
+								submitMarker();
+							}
 							if (e.key === "Escape") {
-								e.stopPropagation();
+								e.preventDefault();
 								setCommentInput(null);
 							}
 						}}
 						autoFocus
 					/>
-					<button type="button" onClick={submitMarker}>
-						Pin
-					</button>
+					<div className="devbar-note-input-actions">
+						<button
+							type="button"
+							className="devbar-note-input-cancel"
+							onClick={() => setCommentInput(null)}
+						>
+							Cancel <kbd>Esc</kbd>
+						</button>
+						<button type="button" className="devbar-note-input-save" onClick={submitMarker}>
+							Pin <kbd>↵</kbd>
+						</button>
+					</div>
 				</div>
 			)}
 

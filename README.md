@@ -175,13 +175,13 @@ the listing assets, and how updates reach installed browsers.
 
 Pick a tool, mark up the page, then export everything as a single prompt.
 
-| Tool        | What it captures                                                    |
-| ----------- | ------------------------------------------------------------------- |
-| **Select**  | An element plus its selector, React component path, and diagnostics |
-| **Marker**  | A numbered pin at a point on the page                               |
-| **Draw**    | Freehand annotation over a screenshot                               |
-| **Capture** | Full-page or region screenshot                                      |
-| **Record**  | A screen or tab recording                                           |
+| Tool        | What it captures                                                     |
+| ----------- | -------------------------------------------------------------------- |
+| **Select**  | An element plus its selector, React component path, and diagnostics  |
+| **Marker**  | A numbered pin at a point on the page                                |
+| **Draw**    | Freehand annotation over a screenshot                                |
+| **Capture** | A region screenshot — press `F` (or the minibar button) for the page |
+| **Record**  | A recording of this tab; the browser's picker also offers the screen |
 
 While the **Select** tool is active, a badge follows the cursor showing the
 element's tag and pixel size. `↑` widens the selection to the parent element and
@@ -216,26 +216,38 @@ set, it leads the exported prompt as a `## Task` section and the closing
 instruction changes from "analyse these issues" to "carry out this task, using
 the annotations as evidence". It is cleared along with the annotations on export.
 
-**Export** copies the report as a Markdown prompt (or submits it to your server
-when one is configured); the caret next to it holds the other formats. Removing
-an annotation offers an **Undo** for a few seconds. Each row also has a locate
-button that scrolls the annotated element back into view.
+**Copy** (or **Submit**, when a server is configured) sends the report in one
+click, from the panel footer or straight from the bar; the caret next to it
+holds the other formats. Exporting archives the batch under **History** and the
+toast offers **Restore** for a few seconds in case it went to the wrong place —
+History has the same button for later. Removing an annotation offers an
+**Undo** the same way. Each row also has a locate button that scrolls the
+annotated element back into view.
 
 ### Keyboard shortcuts
 
 | Keys                            | Action                                                   |
 | ------------------------------- | -------------------------------------------------------- |
 | `Alt+S` / `M` / `D` / `C` / `R` | Select / Marker / Draw / Capture / Record                |
+| `⇧Alt+C`                        | Full-page screenshot (no region step)                    |
 | `↑` `↓`                         | Widen / narrow the selection (Select tool)               |
 | `↵`                             | Annotate the current element, or save the note           |
+| `⇧ click` / `⇧↵`                | Annotate the element without a note (Select tool)        |
+| `F`                             | Capture the whole page (Capture tool)                    |
 | `Esc`                           | Discard the note, exit the tool, or close the open panel |
 | `Alt+A`                         | Toggle the annotations panel                             |
+| `Alt+T`                         | Focus the task field                                     |
+| `Alt+P`                         | Preview the report                                       |
+| `Alt+H`                         | Hide / show the toolbar                                  |
+| `Alt+,`                         | Settings                                                 |
 | `Alt+/`                         | Keyboard shortcuts                                       |
 | `⌘Z`                            | Undo the last annotation                                 |
-| `⌘↵`                            | Copy the report to the clipboard                         |
+| `⌘↵`                            | Copy the report — or submit it when a server is set      |
 
 An `Alt+<tool>` shortcut works while another tool is active, switching directly
-between tools.
+between tools; the minibar shown during a tool does the same with one click.
+On macOS the shortcuts use the physical key, so `Option+S` works even though the
+key event reports `ß`.
 
 ## Contributing
 

@@ -292,7 +292,7 @@ export function RecordOverlay({
 							style={{ flex: 1 }}
 							onClick={submitNote}
 						>
-							Save
+							Save <kbd>↵</kbd>
 						</button>
 						<button
 							type="button"
@@ -302,7 +302,7 @@ export function RecordOverlay({
 								onDone();
 							}}
 						>
-							Skip
+							Skip <kbd>Esc</kbd>
 						</button>
 					</div>
 				</div>

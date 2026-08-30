@@ -159,3 +159,77 @@ test.describe("Keyboard Shortcuts", () => {
 		await expect(page.locator(".devbar-bar")).toBeVisible();
 	});
 });
+
+test.describe("Flow shortcuts", () => {
+	test.beforeEach(async ({ page }) => {
+		await page.goto("/");
+		await page.waitForSelector(".devbar-bar");
+	});
+
+	test("Alt+H hides and shows the toolbar", async ({ page }) => {
+		await page.keyboard.press("Alt+h");
+		await expect(page.locator(".devbar-bar")).not.toBeVisible();
+		await expect(page.locator(".devbar-dot")).toBeVisible();
+
+		await page.keyboard.press("Alt+h");
+		await expect(page.locator(".devbar-bar")).toBeVisible();
+	});
+
+	test("Alt+T opens the panel with the task field focused", async ({ page }) => {
+		await page.keyboard.press("Alt+t");
+		await expect(page.locator(".devbar-panel")).toBeVisible();
+		await expect(page.locator(".devbar-task-input")).toBeFocused();
+
+		await page.keyboard.type("Make the button blue");
+		await expect(page.locator(".devbar-task-input")).toHaveValue("Make the button blue");
+
+		// Escape from inside the field closes the panel; the task survives.
+		await page.keyboard.press("Escape");
+		await expect(page.locator(".devbar-panel")).not.toBeVisible();
+		await page.keyboard.press("Alt+t");
+		await expect(page.locator(".devbar-task-input")).toHaveValue("Make the button blue");
+	});
+
+	test("Alt+, opens settings", async ({ page }) => {
+		await page.keyboard.press("Alt+,");
+		await expect(page.locator(".devbar-panel-tab-active")).toContainText("Settings");
+	});
+
+	test("the minibar switches tools in one click", async ({ page }) => {
+		await page.keyboard.press("Alt+s");
+		await expect(page.locator(".devbar-minibar")).toContainText("Select");
+
+		await page.locator(".devbar-minibar").getByRole("button", { name: "Marker tool" }).click();
+		await expect(page.locator(".devbar-minibar")).toContainText("Marker");
+		await expect(page.locator(".devbar-minibar-tool-active")).toHaveAttribute(
+			"aria-label",
+			"Marker tool",
+		);
+
+		// Clicking the active tool leaves tool mode, same as Done.
+		await page.locator(".devbar-minibar").getByRole("button", { name: "Marker tool" }).click();
+		await expect(page.locator(".devbar-minibar")).not.toBeVisible();
+		await expect(page.locator(".devbar-bar")).toBeVisible();
+	});
+
+	test("Shift+click annotates an element without the note popover", async ({ page }) => {
+		await page.keyboard.press("Alt+s");
+		await page.locator("h1").click({ modifiers: ["Shift"] });
+		await expect(page.locator("[data-devbar='note-input']")).toHaveCount(0);
+		await expect(page.locator(".devbar-minibar")).toContainText("1 item");
+	});
+
+	test("Alt+P previews the report", async ({ page }) => {
+		await page.keyboard.press("Alt+s");
+		await page.locator("h1").click({ modifiers: ["Shift"] });
+		await expect(page.locator(".devbar-minibar")).toContainText("1 item");
+		await page.keyboard.press("Escape");
+
+		await page.keyboard.press("Alt+p");
+		await expect(page.locator(".devbar-preview-content")).toContainText("h1");
+
+		await page.keyboard.press("Alt+p");
+		await expect(page.locator(".devbar-preview-content")).toHaveCount(0);
+		await expect(page.locator(".devbar-panel")).toBeVisible();
+	});
+});
