@@ -1102,13 +1102,13 @@ function Pricing() {
 }
 
 /* ═══════════════════════════════════════════
-   InstallTabs (npm / pnpm / bun switcher)
+   InstallTabs (bun / npm / pnpm switcher)
    ═══════════════════════════════════════════ */
 
 const pkgManagers = [
-	{ label: "npm", command: "npm install devbar.sh" },
-	{ label: "pnpm", command: "pnpm add devbar.sh" },
-	{ label: "bun", command: "bun add devbar.sh" },
+	{ label: "bun", command: "bunx devbar.sh init\nbunx devbar.sh" },
+	{ label: "npm", command: "npx devbar.sh init\nnpx devbar.sh" },
+	{ label: "pnpm", command: "pnpm dlx devbar.sh init\npnpm dlx devbar.sh" },
 ] as const;
 
 function InstallTabs() {
