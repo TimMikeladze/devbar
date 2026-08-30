@@ -1151,9 +1151,27 @@ export function Devbar({
 	);
 
 	const localClearAnnotations = useCallback(() => {
+		const cleared = state.annotations;
 		state.clearAnnotations();
 		collab.sendClear();
-	}, [state.clearAnnotations, collab.sendClear]);
+		if (cleared.length === 0) return;
+		// "Confirm clear?" is a speed bump, not a safety net. This is the net.
+		showToastRef.current(`Cleared ${cleared.length} annotation${cleared.length === 1 ? "" : "s"}`, {
+			label: "Undo",
+			run: () => {
+				for (const annotation of cleared) {
+					state.addAnnotation(annotation);
+					collab.sendAnnotationAdd(annotation);
+				}
+			},
+		});
+	}, [
+		state.annotations,
+		state.clearAnnotations,
+		state.addAnnotation,
+		collab.sendClear,
+		collab.sendAnnotationAdd,
+	]);
 
 	const localArchiveAndClear = useCallback(
 		(method: ExportMethod): string | null => {
@@ -1783,11 +1801,36 @@ export function Devbar({
 				body,
 			});
 			if (res.ok) {
-				const data = await res.json();
+				const data = (await res.json()) as { id?: string; taskId?: string };
 				console.log("[devbar] submit ok", data);
 				onSubmit?.(payload);
-				exportedToast("Submitted to server!", localArchiveAndClear("server"));
+				const archivedId = localArchiveAndClear("server");
 				setPanelOpen(false);
+				// Submitting to the local server with auto-dispatch off used to leave
+				// the report in "Waiting on you" — three clicks away, in a tab most
+				// people never open. Offer the hand-off right here instead.
+				const isLocal = localAgent.status === "connected" && effectiveServer === localAgent.url;
+				if (isLocal && data.id && !data.taskId) {
+					const reportId = data.id;
+					showToast("Submitted — waiting for you to dispatch", {
+						label: "Dispatch",
+						run: () => {
+							void localAgent.dispatchReports(reportId).then(() => {
+								showToastRef.current("Dispatched to the agent", {
+									label: "Runs",
+									run: () => openPanel("agent"),
+								});
+							});
+						},
+					});
+				} else if (isLocal && data.taskId) {
+					showToast("Submitted — the agent is on it", {
+						label: "Runs",
+						run: () => openPanel("agent"),
+					});
+				} else {
+					exportedToast("Submitted to server!", archivedId);
+				}
 			} else {
 				const text = await res.text();
 				console.error("[devbar] submit failed", res.status, text);
@@ -1812,6 +1855,10 @@ export function Devbar({
 		showToast,
 		exportedToast,
 		localArchiveAndClear,
+		localAgent.status,
+		localAgent.url,
+		localAgent.dispatchReports,
+		openPanel,
 	]);
 	handleServerSubmitRef.current = handleServerSubmit;
 

@@ -51,6 +51,19 @@ function childOf(el: Element): Element | null {
 	return null;
 }
 
+/** Nearest sibling in `dir` that occupies space — the next card, row, or item. */
+function siblingOf(el: Element, dir: "prev" | "next"): Element | null {
+	let cursor = dir === "next" ? el.nextElementSibling : el.previousElementSibling;
+	while (cursor) {
+		if (!cursor.closest("[data-devbar]")) {
+			const r = cursor.getBoundingClientRect();
+			if (r.width > 0 && r.height > 0) return cursor;
+		}
+		cursor = dir === "next" ? cursor.nextElementSibling : cursor.previousElementSibling;
+	}
+	return null;
+}
+
 export function SelectOverlay({
 	onCapture,
 	onDone,
@@ -218,13 +231,23 @@ export function SelectOverlay({
 			if (commentOpenRef.current) return; // the input owns its own keys
 
 			// Widen/narrow the selection — the single most-requested inspector affordance.
-			if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+			if (
+				e.key === "ArrowUp" ||
+				e.key === "ArrowDown" ||
+				e.key === "ArrowLeft" ||
+				e.key === "ArrowRight"
+			) {
 				// Always swallow the key — while picking, arrows belong to the picker,
 				// not to the page's scroll.
 				e.preventDefault();
 				const el = targetRef.current;
 				if (!el) return;
-				const next = e.key === "ArrowUp" ? parentOf(el) : childOf(el);
+				const next =
+					e.key === "ArrowUp"
+						? parentOf(el)
+						: e.key === "ArrowDown"
+							? childOf(el)
+							: siblingOf(el, e.key === "ArrowLeft" ? "prev" : "next");
 				if (!next) return;
 				lastPointer.current = null;
 				retarget(next);
@@ -332,6 +355,8 @@ export function SelectOverlay({
 	const info = target ? describe(target) : null;
 	const canAscend = target ? !!parentOf(target) : false;
 	const canDescend = target ? !!childOf(target) : false;
+	const canPrev = target ? !!siblingOf(target, "prev") : false;
+	const canNext = target ? !!siblingOf(target, "next") : false;
 
 	// Label sits above the element, flipping below when it would clip the viewport top.
 	const labelBelow = rect ? rect.y < LABEL_HEIGHT + LABEL_GAP + 4 : false;
@@ -385,10 +410,12 @@ export function SelectOverlay({
 								{Math.round(rect.width)} × {Math.round(rect.height)}
 							</span>
 							{existing && <span className="devbar-el-label-note">annotated</span>}
-							{(canAscend || canDescend) && (
+							{(canAscend || canDescend || canPrev || canNext) && (
 								<span className="devbar-el-label-keys">
 									{canAscend && <kbd>↑</kbd>}
 									{canDescend && <kbd>↓</kbd>}
+									{canPrev && <kbd>←</kbd>}
+									{canNext && <kbd>→</kbd>}
 								</span>
 							)}
 						</div>
@@ -452,7 +479,8 @@ export function SelectOverlay({
 			)}
 			<div className="devbar-instruction">
 				Click to annotate · <kbd>⇧</kbd>click to skip the note · <kbd>↑</kbd>
-				<kbd>↓</kbd> resize selection · <kbd>Esc</kbd> to finish
+				<kbd>↓</kbd> parent / child · <kbd>←</kbd>
+				<kbd>→</kbd> siblings · <kbd>Esc</kbd> to finish
 			</div>
 		</div>
 	);

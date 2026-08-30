@@ -3794,3 +3794,11 @@
 .devbar-bar-btn[aria-expanded="true"]:hover .devbar-tooltip {
 	opacity: 0;
 }
+
+.devbar-overlay-btn-danger {
+	color: var(--devbar-red);
+}
+
+.devbar-overlay-btn-danger:hover {
+	background: rgba(242, 92, 92, 0.1);
+}

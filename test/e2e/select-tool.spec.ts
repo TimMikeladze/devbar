@@ -198,3 +198,28 @@ test.describe("Select Tool", () => {
 		await expect(page.locator(".devbar-minibar")).not.toBeVisible();
 	});
 });
+
+test.describe("Select Tool: sibling navigation", () => {
+	test.beforeEach(async ({ page }) => {
+		await page.goto("/");
+		await page.waitForSelector(".devbar-bar");
+	});
+
+	test("← and → move the selection between siblings", async ({ page }) => {
+		await page.keyboard.press("Alt+s");
+		// Land on the first card's label, climb to the card, then step sideways.
+		await page.getByText("Feature Card").hover();
+		await page.keyboard.press("ArrowUp");
+		await expect(page.locator(".devbar-el-label-keys")).toContainText("→");
+
+		await page.keyboard.press("ArrowRight");
+		const pricing = await page.getByText("Pricing Card").locator("..").boundingBox();
+		const highlight = await page.locator(".devbar-element-highlight").boundingBox();
+		expect(Math.abs((highlight?.x ?? 0) + 2 - (pricing?.x ?? -99))).toBeLessThan(3);
+
+		await page.keyboard.press("ArrowLeft");
+		const feature = await page.getByText("Feature Card").locator("..").boundingBox();
+		const back = await page.locator(".devbar-element-highlight").boundingBox();
+		expect(Math.abs((back?.x ?? 0) + 2 - (feature?.x ?? -99))).toBeLessThan(3);
+	});
+});

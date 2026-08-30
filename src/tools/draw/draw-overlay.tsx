@@ -116,7 +116,10 @@ export function DrawOverlay({
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (commentMode) return;
-			if (e.key === "Escape") {
+			// Enter and Escape both finish: Enter reads as "done", Escape as "get me
+			// out", and with strokes on the canvas both should land on the note.
+			if (e.key === "Escape" || e.key === "Enter") {
+				e.preventDefault();
 				finishDrawingRef.current();
 			}
 			if ((e.metaKey || e.ctrlKey) && e.key === "z") {
@@ -383,12 +386,20 @@ export function DrawOverlay({
 					>
 						Back
 					</button>
+					<button
+						type="button"
+						onClick={onDone}
+						className="devbar-overlay-btn devbar-overlay-btn-muted devbar-overlay-btn-danger"
+						title="Throw the drawing away"
+					>
+						Discard
+					</button>
 				</div>
 			)}
 			{!commentMode && (
 				<div className="devbar-instruction">
 					Draw on the page &middot; <kbd>1</kbd>-<kbd>4</kbd> tools &middot; <kbd>⌘Z</kbd> undo
-					&middot; <kbd>Esc</kbd> finish
+					&middot; <kbd>↵</kbd> done &middot; <kbd>Esc</kbd> finish
 				</div>
 			)}
 		</div>

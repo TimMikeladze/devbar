@@ -184,9 +184,11 @@ Pick a tool, mark up the page, then export everything as a single prompt.
 | **Record**  | A recording of this tab; the browser's picker also offers the screen |
 
 While the **Select** tool is active, a badge follows the cursor showing the
-element's tag and pixel size. `↑` widens the selection to the parent element and
-`↓` narrows it to the first child, so you can land on the wrapper you actually
-mean instead of whichever node happens to be under the pointer.
+element's tag and pixel size. `↑` widens the selection to the parent element,
+`↓` narrows it to the first child, and `←` / `→` step between siblings, so you
+can land on the wrapper you actually mean — or the next card over — instead of
+whichever node happens to be under the pointer. Hold `⇧` while clicking to
+annotate without the note popover.
 
 Everything you capture collects in the dedicated **Annotations** panel, alongside
 **History** for past exports. **Agent**, **Settings** and **Shortcuts** live in a
@@ -204,6 +206,8 @@ means before you ask for it and what happened after:
 - **Waiting on you** — reports you have submitted that no agent has been given.
   With `autoDispatch` off (the default) Submit stores a report and stops, so
   each one gets a **Dispatch** button rather than sitting there looking ignored.
+  The toast shown right after Submit carries the same **Dispatch** button, so
+  the common case never needs this tab at all.
 - **Runs** — queued, running and finished dispatches, with elapsed time, model
   and cost. **Stop** cancels one still in flight. Opening a run shows the exact
   prompt the agent was handed, its output, and the files it touched.
@@ -221,8 +225,8 @@ click, from the panel footer or straight from the bar; the caret next to it
 holds the other formats. Exporting archives the batch under **History** and the
 toast offers **Restore** for a few seconds in case it went to the wrong place —
 History has the same button for later. Removing an annotation offers an
-**Undo** the same way. Each row also has a locate button that scrolls the
-annotated element back into view.
+**Undo** the same way, and so does **Clear all**. Each row also has a locate
+button that scrolls the annotated element back into view.
 
 ### Keyboard shortcuts
 
@@ -231,9 +235,11 @@ annotated element back into view.
 | `Alt+S` / `M` / `D` / `C` / `R` | Select / Marker / Draw / Capture / Record                |
 | `⇧Alt+C`                        | Full-page screenshot (no region step)                    |
 | `↑` `↓`                         | Widen / narrow the selection (Select tool)               |
+| `←` `→`                         | Previous / next sibling (Select tool)                    |
 | `↵`                             | Annotate the current element, or save the note           |
 | `⇧ click` / `⇧↵`                | Annotate the element without a note (Select tool)        |
 | `F`                             | Capture the whole page (Capture tool)                    |
+| `↵`                             | Finish the drawing (Draw tool)                           |
 | `Esc`                           | Discard the note, exit the tool, or close the open panel |
 | `Alt+A`                         | Toggle the annotations panel                             |
 | `Alt+T`                         | Focus the task field                                     |

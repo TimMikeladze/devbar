@@ -311,3 +311,32 @@ test.describe("Undo", () => {
 		await expect(page.locator(".devbar-badge")).not.toBeVisible();
 	});
 });
+
+test.describe("Clear all", () => {
+	test.beforeEach(async ({ page }) => {
+		await page.goto("/");
+		await page.waitForSelector(".devbar-bar");
+	});
+
+	test("clearing every annotation offers an undo", async ({ page }) => {
+		await page.keyboard.press("Alt+s");
+		await page.locator("h1").click({ modifiers: ["Shift"] });
+		await page
+			.locator("h2")
+			.first()
+			.click({ modifiers: ["Shift"] });
+		await expect(page.locator(".devbar-minibar")).toContainText("2 items");
+		await page.keyboard.press("Escape");
+
+		await page.locator(".devbar-bar").getByRole("button", { name: "More export options" }).click();
+		const clear = page.locator(".devbar-export-menu-item-danger");
+		await clear.click();
+		await expect(clear).toContainText("Confirm clear?");
+		await clear.click();
+		await expect(page.locator(".devbar-badge")).toHaveCount(0);
+		await expect(page.locator(".devbar-toast")).toContainText("Cleared 2 annotations");
+
+		await page.locator(".devbar-toast-action", { hasText: "Undo" }).click();
+		await expect(page.locator(".devbar-badge")).toHaveText("2");
+	});
+});

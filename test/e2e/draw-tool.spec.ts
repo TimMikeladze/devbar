@@ -92,3 +92,28 @@ test.describe("Draw Tool", () => {
 		await expect(page.locator("[data-devbar-draw-toolbar]")).not.toBeVisible();
 	});
 });
+
+test.describe("Draw Tool: finishing", () => {
+	test.beforeEach(async ({ page }) => {
+		await page.goto("/");
+		await page.waitForSelector(".devbar-bar");
+	});
+
+	test("Enter finishes a drawing and Discard throws it away", async ({ page }) => {
+		await page.keyboard.press("Alt+d");
+		await page.mouse.move(300, 300);
+		await page.mouse.down();
+		await page.mouse.move(400, 380, { steps: 5 });
+		await page.mouse.up();
+
+		await page.keyboard.press("Enter");
+		await expect(page.locator("[data-devbar-draw-comment]")).toBeVisible();
+
+		await page
+			.locator("[data-devbar-draw-comment]")
+			.getByRole("button", { name: "Discard" })
+			.click();
+		await expect(page.locator(".devbar-bar")).toBeVisible();
+		await expect(page.locator(".devbar-badge")).toHaveCount(0);
+	});
+});

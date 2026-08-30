@@ -16,6 +16,9 @@ import { createLocalServer, type LocalServer } from "../../src/server/local";
 let server: LocalServer | undefined;
 let dirs: string[] = [];
 let unavailable = false;
+// Discovery probes 3100 then 3101, so either will do; the assertions read the
+// port back from here rather than assuming.
+let port = 3100;
 
 test.beforeAll(async () => {
 	dirs = await Promise.all(
@@ -24,30 +27,35 @@ test.beforeAll(async () => {
 		),
 	);
 
-	try {
-		server = await createLocalServer({
-			port: 3100,
-			host: "127.0.0.1",
-			dir: dirs[0],
-			resultsDir: dirs[1],
-			tasksDir: dirs[2],
-			projectsFile: join(dirs[3] as string, "projects.json"),
-			dispatchCommand: "echo",
-		});
-		await server.registry.register({
-			slug: "e2e",
-			dir: process.cwd(),
-			model: "sonnet",
-			effort: "medium",
-			concurrency: 1,
-			permission: "plan",
-			autoDispatch: false,
-			origins: ["http://localhost:3847"],
-		});
-		await server.start();
-	} catch {
-		unavailable = true;
-		server = undefined;
+	for (const candidate of [3100, 3101]) {
+		try {
+			server = await createLocalServer({
+				port: candidate,
+				host: "127.0.0.1",
+				dir: dirs[0],
+				resultsDir: dirs[1],
+				tasksDir: dirs[2],
+				projectsFile: join(dirs[3] as string, "projects.json"),
+				dispatchCommand: "echo",
+			});
+			await server.registry.register({
+				slug: "e2e",
+				dir: process.cwd(),
+				model: "sonnet",
+				effort: "medium",
+				concurrency: 1,
+				permission: "plan",
+				autoDispatch: false,
+				origins: ["http://localhost:3847"],
+			});
+			await server.start();
+			port = candidate;
+			unavailable = false;
+			break;
+		} catch {
+			unavailable = true;
+			server = undefined;
+		}
 	}
 });
 
@@ -58,7 +66,7 @@ test.afterAll(async () => {
 
 test.describe("local agent", () => {
 	test.beforeEach(async ({ page }) => {
-		test.skip(unavailable, "port 3100 is already in use");
+		test.skip(unavailable, "ports 3100 and 3101 are already in use");
 		await page.goto("/local-agent");
 		await page.waitForSelector(".devbar-bar");
 	});
@@ -67,7 +75,7 @@ test.describe("local agent", () => {
 		await page.locator(".devbar-bar").getByRole("button", { name: "Settings" }).click();
 
 		const row = page.locator(".devbar-settings-row", { hasText: "Local agent" });
-		await expect(row).toContainText("127.0.0.1:3100");
+		await expect(row).toContainText(`127.0.0.1:${port}`);
 		await expect(row).toContainText("e2e");
 		await expect(page.locator(".devbar-live-dot-on")).toBeVisible();
 	});
@@ -133,5 +141,33 @@ test.describe("local agent", () => {
 		await expect(
 			server?.pages.call(pageId, "navigate", { url: "http://localhost:3847/" }),
 		).rejects.toThrow(/not allowed/);
+	});
+
+	test("Submit offers Dispatch right in the toast when auto-dispatch is off", async ({ page }) => {
+		// Wait for discovery so Submit goes to the local server.
+		await page.locator(".devbar-bar").getByRole("button", { name: "Settings" }).click();
+		await expect(page.locator(".devbar-live-dot-on")).toBeVisible();
+		await page.keyboard.press("Escape");
+
+		await page.keyboard.press("Alt+s");
+		await page.locator("#agent-target").click({ modifiers: ["Shift"] });
+		await expect(page.locator(".devbar-minibar")).toContainText("1 item");
+		await page.keyboard.press("Escape");
+
+		await page
+			.locator(".devbar-bar")
+			.getByRole("button", { name: /Submit report/ })
+			.click();
+		await expect(page.locator(".devbar-toast")).toContainText("waiting for you to dispatch");
+		await expect.poll(async () => (await server?.store.list({ project: "e2e" }))?.length).toBe(1);
+
+		await page.locator(".devbar-toast-action", { hasText: "Dispatch" }).click();
+		await expect(page.locator(".devbar-toast")).toContainText("Dispatched");
+		// The report is no longer waiting on anyone.
+		await page.locator(".devbar-bar").getByRole("button", { name: "Settings" }).click();
+		await page.locator(".devbar-panel-tab", { hasText: "Agent" }).click();
+		await expect(page.locator(".devbar-agent-section", { hasText: "Waiting on you" })).toHaveCount(
+			0,
+		);
 	});
 });
