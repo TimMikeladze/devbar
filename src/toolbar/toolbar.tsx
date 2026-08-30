@@ -240,6 +240,22 @@ function ReadoutRow({
 	);
 }
 
+/**
+ * What was actually captured, small. A screenshot row that only reports
+ * "Region · 320×180" asks you to export to find out whether it framed the
+ * right thing; `under` layers a page capture beneath transparent strokes.
+ */
+function ReadoutThumb({ src, alt, under }: { src: string; alt: string; under?: string }) {
+	return (
+		<div className="devbar-readout-section">
+			<div className="devbar-readout-thumb">
+				{under && <img src={under} alt="" className="devbar-readout-thumb-under" />}
+				<img src={src} alt={alt} />
+			</div>
+		</div>
+	);
+}
+
 function ReactTreeReadout({ ctx }: { ctx: ReactComponentContext }) {
 	const leaf = ctx.components.length > 0 ? ctx.components[ctx.components.length - 1] : null;
 	const leafProps = leaf?.props ? Object.entries(leaf.props).filter(([k]) => k !== "children") : [];
@@ -400,6 +416,7 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 							value={`${Math.round(rect.width)}×${Math.round(rect.height)} @ (${Math.round(rect.x)}, ${Math.round(rect.y)})`}
 						/>
 					</div>
+					{d.elementScreenshot && <ReadoutThumb src={d.elementScreenshot} alt="Element" />}
 					{d.pseudoContent && (
 						<div className="devbar-readout-section">
 							<div className="devbar-readout-heading">Pseudo elements</div>
@@ -463,6 +480,13 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 							value={`(${Math.round(d.viewportOffset.x)}, ${Math.round(d.viewportOffset.y)})`}
 						/>
 					</div>
+					{/* Strokes over the page they were drawn on; the strokes alone on a
+					    transparent canvas are unreadable in a thumbnail. */}
+					<ReadoutThumb
+						src={d.imageDataUri}
+						alt="Drawing"
+						under={d.screenshotDataUri || undefined}
+					/>
 				</div>
 			);
 		}
@@ -483,6 +507,7 @@ function AnnotationReadout({ annotation }: { annotation: Annotation }) {
 							/>
 						)}
 					</div>
+					{d.imageDataUri && <ReadoutThumb src={d.imageDataUri} alt="Screenshot" />}
 				</div>
 			);
 		}
@@ -2366,10 +2391,14 @@ export function Devbar({
 	const getPreviewContent = useCallback(
 		(format: "md" | "json"): string => {
 			const payload = buildPayload(state.annotations, promptTemplate, settings, task);
-			if (format === "json") {
-				return JSON.stringify(payload, null, 2);
-			}
-			return payload.prompt;
+			const text = format === "json" ? JSON.stringify(payload, null, 2) : payload.prompt;
+			// The preview is for reading. A screenshot inlines as tens of thousands
+			// of base64 characters, which buried every line worth checking — the
+			// export itself is untouched.
+			return text.replace(
+				/data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]+/g,
+				(match) => `data:image… (${Math.round((match.length * 3) / 4 / 1024)} KB)`,
+			);
 		},
 		[state.annotations, promptTemplate, settings, task],
 	);

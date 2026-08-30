@@ -102,7 +102,11 @@ export function CaptureOverlay({
 	const onMouseDown = useCallback(
 		(e: React.MouseEvent) => {
 			if (captureMode !== "region") return;
-			if ((e.target as HTMLElement).closest("[data-devbar]")) return;
+			// The overlay is itself a [data-devbar] element, so "ignore devbar UI"
+			// has to mean its children (the note box), not the overlay — the old
+			// check bailed on every drag and region capture never started.
+			const devbarUi = (e.target as HTMLElement).closest("[data-devbar]");
+			if (devbarUi && devbarUi !== e.currentTarget) return;
 			dragging.current = true;
 			setRegionStart({ x: e.clientX, y: e.clientY });
 			setRegionEnd({ x: e.clientX, y: e.clientY });

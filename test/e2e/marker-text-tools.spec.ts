@@ -104,6 +104,23 @@ test.describe("Capture Tool", () => {
 		await expect(page.locator(".devbar-badge")).toHaveText("1");
 	});
 
+	test("dragging a region takes a screenshot of it", async ({ page }) => {
+		await page.keyboard.press("Alt+c");
+		await expect(page.locator(".devbar-instruction")).toContainText("drag");
+
+		await page.mouse.move(340, 330);
+		await page.mouse.down();
+		await page.mouse.move(600, 470, { steps: 5 });
+		await expect(page.locator(".devbar-region-dimensions")).toContainText("260");
+		await page.mouse.up();
+
+		await expect(page.locator(".devbar-capture-note")).toContainText("Screenshot captured", {
+			timeout: 15000,
+		});
+		await page.keyboard.press("Enter");
+		await expect(page.locator(".devbar-badge")).toHaveText("1");
+	});
+
 	test("Shift+Alt+C captures the whole page directly", async ({ page }) => {
 		await page.keyboard.press("Shift+Alt+c");
 		await expect(page.locator(".devbar-capture-note")).toContainText("Screenshot captured");

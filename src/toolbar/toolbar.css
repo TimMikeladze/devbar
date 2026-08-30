@@ -3802,3 +3802,36 @@
 .devbar-overlay-btn-danger:hover {
 	background: rgba(242, 92, 92, 0.1);
 }
+
+/* ─── Readout thumbnails ─── */
+.devbar-readout-thumb {
+	position: relative;
+	max-height: 140px;
+	overflow: hidden;
+	border-radius: 6px;
+	border: 1px solid var(--devbar-border);
+	background:
+		linear-gradient(45deg, rgba(127, 127, 127, 0.12) 25%, transparent 25%) 0 0 / 12px 12px,
+		linear-gradient(-45deg, rgba(127, 127, 127, 0.12) 25%, transparent 25%) 0 6px / 12px 12px,
+		linear-gradient(45deg, transparent 75%, rgba(127, 127, 127, 0.12) 75%) 6px -6px / 12px 12px,
+		linear-gradient(-45deg, transparent 75%, rgba(127, 127, 127, 0.12) 75%) -6px 0 / 12px 12px;
+}
+
+.devbar-readout-thumb img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.devbar-readout-thumb .devbar-readout-thumb-under {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: top left;
+}
+
+.devbar-readout-thumb img:not(.devbar-readout-thumb-under) {
+	position: relative;
+}

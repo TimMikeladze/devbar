@@ -239,8 +239,10 @@ Dispatch means a web page can cause code to run on your machine. The rules:
 `127.0.0.1:3100` and `:3101` only, and only from a `localhost` page — pass
 `local={{ ports: [4000] }}` or `server="…"` for anything else.
 
-**Reports save but nothing runs.** `autoDispatch` is off by default. Turn it on,
-or use `devbar dispatch`, or let an agent pull with `claim_report`.
+**Reports save but nothing runs.** `autoDispatch` is off by default. The toast
+after Submit offers **Dispatch** for that one report; otherwise turn it on, use
+`devbar dispatch`, open the toolbar's Agent tab, or let an agent pull with
+`claim_report`.
 
 **"No project matched this report".** The page's origin is not in any project's
 `origins`, and more than one project is registered. Add the origin, or pass

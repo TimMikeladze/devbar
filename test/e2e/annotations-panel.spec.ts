@@ -340,3 +340,25 @@ test.describe("Clear all", () => {
 		await expect(page.locator(".devbar-badge")).toHaveText("2");
 	});
 });
+
+test.describe("Preview readability", () => {
+	test("inline images are folded to their size in the preview", async ({ page }) => {
+		await page.goto("/");
+		await page.waitForSelector(".devbar-bar");
+		await page.keyboard.press("Alt+s");
+		await page.locator("h1").click({ modifiers: ["Shift"] });
+		await expect(page.locator(".devbar-minibar")).toContainText("1 item");
+		await page.keyboard.press("Escape");
+
+		await page.keyboard.press("Alt+p");
+		const preview = page.locator(".devbar-preview-content");
+		await expect(preview).toContainText("data:image… (");
+		const text = await preview.innerText();
+		expect(/base64,[A-Za-z0-9+/=]{200}/.test(text)).toBe(false);
+
+		// The readout carries the real thumbnail.
+		await page.keyboard.press("Alt+p");
+		await page.locator(".devbar-annotation-label").first().click();
+		await expect(page.locator(".devbar-readout-thumb img").first()).toBeVisible();
+	});
+});
