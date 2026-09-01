@@ -107,6 +107,40 @@ cannot see. On disk, the agent reads the PNG.
 
 The agent is then run in the project directory with the prompt on stdin.
 
+### What a finished run does to the report
+
+The report moves to `dispatched` when the run starts, and the run's outcome
+decides where it lands:
+
+| Outcome                                    | Report     |
+| ------------------------------------------ | ---------- |
+| Exited 0 and the working tree changed      | `resolved` |
+| Exited 0 and the working tree is unchanged | `new`      |
+| Failed, cancelled or timed out             | `new`      |
+
+A clean exit is not the same as the work being done. Under the default
+`permission: "plan"` the agent can only propose: it writes a plan, asks whether
+to proceed, and exits 0 having touched nothing — with no one there to answer.
+That used to be recorded as a plain success on a report stuck at `dispatched`,
+which reads as devbar ignoring the report while the run still costs money. Now
+the run carries a `note` saying what happened, and the report goes back to
+`new`, where it is visibly still waiting:
+
+```
+[devbar] the agent changed nothing: this project dispatches with permission
+"plan", which can only propose. Set `permission: "auto"` in devbar.config.ts to
+let a dispatch apply its own fix.
+```
+
+The no-op is only claimed when git says so — a working tree naming exactly the
+files it named before the run. An agent that commits its work leaves a tree that
+differs, and a project directory that is not a git repository cannot be judged
+at all; neither is reported as a no-op.
+
+Reopening is not a retry. The finished task still guards its report, so
+`dispatchAll` will not pick it up again on its own — `devbar dispatch <id>`
+still will.
+
 ### Supported agents
 
 |                   | `claude`                              | `codex`                                      | `opencode`            |
@@ -243,6 +277,11 @@ Dispatch means a web page can cause code to run on your machine. The rules:
 after Submit offers **Dispatch** for that one report; otherwise turn it on, use
 `devbar dispatch`, open the toolbar's Agent tab, or let an agent pull with
 `claim_report`.
+
+**The run went green but nothing changed.** `permission` is `plan`, the
+default, which lets the agent propose but not edit. The run's `note` says so and
+the report returns to `new`. Set `permission: "auto"` to let a dispatch apply its
+own fix — that lets an agent write to the project directory unattended.
 
 **"No project matched this report".** The page's origin is not in any project's
 `origins`, and more than one project is registered. Add the origin, or pass

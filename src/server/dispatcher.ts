@@ -20,6 +20,17 @@ export type Task = {
 	result?: DispatchResult;
 };
 
+/**
+ * The dirty paths in a working tree, each mapped to a stamp that moves when the
+ * file's content does.
+ *
+ * A bare path list cannot answer the only question that matters here. Porcelain
+ * names *which* files are dirty, so a file already modified before a run and
+ * edited again during it produces byte-identical output — the run reads as
+ * having touched nothing.
+ */
+export type GitSnapshot = Record<string, string>;
+
 export type DispatchResult = {
 	taskId: string;
 	exitCode: number;
@@ -31,6 +42,12 @@ export type DispatchResult = {
 	/** Files the agent changed, when the project directory is a git repo. */
 	changedFiles?: string[];
 	interrupted?: boolean;
+	/**
+	 * Why a run that exited cleanly still left the report open — almost always
+	 * plan mode, where the agent proposes and waits for an answer nobody is
+	 * there to give. Absent when the run changed something.
+	 */
+	note?: string;
 };
 
 /** What subscribers (the SSE bus, the CLI) see as a run unfolds. */
@@ -47,7 +64,7 @@ export type DispatcherOptions = {
 	/** Overrides every project's agent command. Tests pass "echo". */
 	command?: string;
 	/** Captures git state around a run. Injectable for tests. */
-	gitSnapshot?: (dir: string) => Promise<string[] | undefined>;
+	gitSnapshot?: (dir: string) => Promise<GitSnapshot | undefined>;
 	now?: () => number;
 };
 
@@ -74,6 +91,19 @@ function formatDuration(ms: number): string {
 	const s = Math.floor(ms / 1000);
 	if (s < 60) return `${s}s`;
 	return `${Math.floor(s / 60)}m${s % 60}s`;
+}
+
+/** Paths whose stamp moved between two snapshots, plus any that went clean. */
+function changedBetween(before: GitSnapshot, after: GitSnapshot): string[] {
+	const changed = new Set<string>();
+	for (const [path, stamp] of Object.entries(after)) {
+		if (before[path] !== stamp) changed.add(path);
+	}
+	// A file the agent reverted leaves the dirty set; that is a change too.
+	for (const path of Object.keys(before)) {
+		if (!(path in after)) changed.add(path);
+	}
+	return [...changed].sort();
 }
 
 function normalizePermission(project: ProjectConfig): AgentPermission {
@@ -330,7 +360,9 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 
 		const afterGit = options.gitSnapshot ? await options.gitSnapshot(project.dir) : undefined;
 		const changedFiles =
-			beforeGit && afterGit ? afterGit.filter((f) => !beforeGit.includes(f)) : afterGit;
+			beforeGit && afterGit
+				? changedBetween(beforeGit, afterGit)
+				: afterGit && Object.keys(afterGit).sort();
 
 		const completedAt = now();
 		let output = chunks.join("");
@@ -347,6 +379,30 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 						? "completed"
 						: "failed";
 
+		// A clean exit is not the same as the work being done. In plan mode the
+		// agent can only propose — it writes a plan, asks "shall I proceed?", and
+		// exits 0 having touched nothing. That was reported as a plain success,
+		// which reads as devbar ignoring the report, and the run still costs money.
+		//
+		// Only claim a no-op when git actually said so: not one dirty file's
+		// content moved. Without git we cannot tell, and that is not a no-op
+		// either — it is an unknown, and the report should not be reopened on it.
+		const touchedNothing =
+			beforeGit !== undefined && afterGit !== undefined && changedFiles?.length === 0;
+		const applied = status === "completed" && !touchedNothing;
+		const note =
+			status === "completed" && touchedNothing
+				? normalizePermission(project) === "plan"
+					? 'the agent changed nothing: this project dispatches with permission "plan", which can only propose. Set `permission: "auto"` in devbar.config.ts to let a dispatch apply its own fix.'
+					: "the agent changed nothing."
+				: undefined;
+
+		if (note) {
+			console.log(`[dispatch]   ${note}`);
+			recordEvent(task.id, { type: "stdout", text: `[devbar] ${note}\n` });
+			output = `${output}[devbar] ${note}\n`;
+		}
+
 		const result: DispatchResult = {
 			taskId: task.id,
 			exitCode,
@@ -356,9 +412,30 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 			...(costUsd !== undefined ? { costUsd } : {}),
 			...(sessionId ? { sessionId } : {}),
 			...(changedFiles && changedFiles.length > 0 ? { changedFiles } : {}),
+			...(note ? { note } : {}),
 		};
 
 		update(task, { status, completedAt, result, ...(sessionId ? { sessionId } : {}) });
+
+		// Close the report out on the way past. It was moved to "dispatched" when
+		// the run started; leaving it there forever claims someone dealt with it
+		// and hides it from `dispatchAll`, so only a run that actually changed
+		// files resolves it. Everything else goes back to "new", where it is
+		// visibly still waiting and a later dispatch will pick it up again.
+		if (applied) {
+			const changed = changedFiles?.length
+				? `Changed ${changedFiles.length} file(s): ${changedFiles.join(", ")}`
+				: "The project directory is not a git repository, so what it changed is unverified";
+			await options.store
+				.resolve(report.id, {
+					summary: `Dispatched to ${preset.name} (${project.model}). ${changed}.`,
+					resolvedAt: completedAt,
+					by: `dispatch:${task.id}`,
+				})
+				.catch(() => undefined);
+		} else {
+			await options.store.setStatus(report.id, "new").catch(() => undefined);
+		}
 
 		console.log(
 			`[dispatch] task ${task.id.slice(0, 8)} ${status} in ${formatDuration(result.durationMs)}` +

@@ -3,7 +3,7 @@ import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { createRegistry, type Registry, type ProjectConfig } from "./registry";
-import { createDispatcher, type Dispatcher } from "./dispatcher";
+import { createDispatcher, type Dispatcher, type GitSnapshot } from "./dispatcher";
 import { createReportStore, type ReportStore } from "./report-store";
 import { createPageBus, PageRpcError, type PageBus } from "./page-bus";
 import { createMcpSessions, type McpSessions } from "./mcp-sessions";
@@ -777,10 +777,17 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 	};
 }
 
-/** Files with uncommitted changes, so a run can report what it touched. */
-async function gitSnapshot(dir: string): Promise<string[] | undefined> {
+/**
+ * Files with uncommitted changes, each stamped with size and mtime, so a run
+ * can report what it touched.
+ *
+ * The stamp is what makes an already-dirty file legible: porcelain names the
+ * same path before and after a run that edited it again, so comparing path
+ * lists alone would call that run a no-op.
+ */
+async function gitSnapshot(dir: string): Promise<GitSnapshot | undefined> {
 	const { spawn } = await import("node:child_process");
-	return new Promise((resolve) => {
+	const paths = await new Promise<string[] | undefined>((resolve) => {
 		try {
 			const child = spawn("git", ["status", "--porcelain"], {
 				cwd: dir,
@@ -804,4 +811,22 @@ async function gitSnapshot(dir: string): Promise<string[] | undefined> {
 			resolve(undefined);
 		}
 	});
+	if (!paths) return undefined;
+
+	const { stat } = await import("node:fs/promises");
+	const { join } = await import("node:path");
+	const snapshot: GitSnapshot = {};
+	await Promise.all(
+		paths.map(async (path) => {
+			try {
+				const info = await stat(join(dir, path));
+				snapshot[path] = `${info.size}:${info.mtimeMs}`;
+			} catch {
+				// Deleted, or a path porcelain rendered in a form we cannot stat
+				// (a rename arrow, a quoted name). Its presence is still the signal.
+				snapshot[path] = "absent";
+			}
+		}),
+	);
+	return snapshot;
 }
