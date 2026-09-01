@@ -4,6 +4,7 @@ import {
 	buildPrompt,
 	adoptPersistedTask,
 	type Dispatcher,
+	type GitSnapshot,
 	type Task,
 } from "../src/server/dispatcher";
 import { createReportStore, type ReportStore } from "../src/server/report-store";
@@ -196,6 +197,148 @@ describe("dispatcher", () => {
 
 	test("enqueue returns empty string for unknown project", () => {
 		expect(dispatcher.enqueue("whatever", "unknown")).toBe("");
+	});
+});
+
+describe("dispatcher closes the report out", () => {
+	let resultsDir: string;
+	let tasksDir: string;
+	let reportsDir: string;
+	let store: ReportStore;
+
+	/** A working tree where each named file carries a content stamp. */
+	function tree(...entries: [string, string][]): GitSnapshot {
+		return Object.fromEntries(entries);
+	}
+
+	/** A dispatcher whose git snapshots are scripted, one call per invocation. */
+	function withGit(snapshots: (GitSnapshot | undefined)[], project = PROJECT): Dispatcher {
+		let call = 0;
+		return createDispatcher({
+			store,
+			resultsDir,
+			tasksDir,
+			getProject: (slug) => (slug === "test-app" ? project : undefined),
+			command: "echo",
+			gitSnapshot: async () => snapshots[call++],
+		});
+	}
+
+	beforeEach(async () => {
+		resultsDir = tmpDir();
+		tasksDir = tmpDir();
+		reportsDir = tmpDir();
+		await mkdir(resultsDir, { recursive: true });
+		await mkdir(tasksDir, { recursive: true });
+		await mkdir(reportsDir, { recursive: true });
+		store = createReportStore(reportsDir);
+	});
+
+	afterEach(async () => {
+		await Promise.all(
+			[resultsDir, tasksDir, reportsDir].map((d) => rm(d, { recursive: true, force: true })),
+		);
+	});
+
+	test("a run that changed files resolves it, with what changed", async () => {
+		const dispatcher = withGit([tree(), tree(["src/hero.tsx", "12:100"])]);
+		const reportId = (await store.save({ prompt: "fix it" }, "test-app")).id;
+
+		dispatcher.enqueue(reportId, "test-app");
+		await dispatcher.process();
+		await dispatcher.drain();
+
+		expect((await store.get(reportId))?.status).toBe("resolved");
+		const resolution = JSON.parse(
+			await readFile(join((await store.get(reportId))!.dir, "resolution.json"), "utf-8"),
+		);
+		expect(resolution.summary).toContain("src/hero.tsx");
+	});
+
+	test("a plan-mode run that changed nothing reopens it and says why", async () => {
+		// Identical snapshots: the agent proposed and waited for an answer.
+		const dispatcher = withGit([
+			tree(["src/other.tsx", "40:100"]),
+			tree(["src/other.tsx", "40:100"]),
+		]);
+		const reportId = (await store.save({ prompt: "fix it" }, "test-app")).id;
+
+		const taskId = dispatcher.enqueue(reportId, "test-app");
+		await dispatcher.process();
+		await dispatcher.drain();
+
+		expect(dispatcher.getTask(taskId)?.status).toBe("completed");
+		expect(dispatcher.getTask(taskId)?.result?.note).toContain('permission: "auto"');
+		// Back to "new", not left claiming someone dealt with it.
+		expect((await store.get(reportId))?.status).toBe("new");
+	});
+
+	test("an auto-permission run that changed nothing says so without blaming plan mode", async () => {
+		const dispatcher = withGit([tree(), tree()], { ...PROJECT, permission: "auto" });
+		const reportId = (await store.save({ prompt: "fix it" }, "test-app")).id;
+
+		const taskId = dispatcher.enqueue(reportId, "test-app");
+		await dispatcher.process();
+		await dispatcher.drain();
+
+		expect(dispatcher.getTask(taskId)?.result?.note).toBe("the agent changed nothing.");
+		expect((await store.get(reportId))?.status).toBe("new");
+	});
+
+	test("editing an already-dirty file counts as a change", async () => {
+		// Porcelain names the same path before and after, so a path-list
+		// comparison calls this a no-op and reopens a report that was handled.
+		const dispatcher = withGit([
+			tree(["src/hero.tsx", "40:100"]),
+			tree(["src/hero.tsx", "62:900"]),
+		]);
+		const reportId = (await store.save({ prompt: "fix it" }, "test-app")).id;
+
+		const taskId = dispatcher.enqueue(reportId, "test-app");
+		await dispatcher.process();
+		await dispatcher.drain();
+
+		expect(dispatcher.getTask(taskId)?.result?.note).toBeUndefined();
+		expect(dispatcher.getTask(taskId)?.result?.changedFiles).toEqual(["src/hero.tsx"]);
+		expect((await store.get(reportId))?.status).toBe("resolved");
+	});
+
+	test("a file the agent reverted to clean counts as a change", async () => {
+		const dispatcher = withGit([tree(["src/hero.tsx", "40:100"]), tree()]);
+		const reportId = (await store.save({ prompt: "revert it" }, "test-app")).id;
+
+		const taskId = dispatcher.enqueue(reportId, "test-app");
+		await dispatcher.process();
+		await dispatcher.drain();
+
+		expect(dispatcher.getTask(taskId)?.result?.changedFiles).toEqual(["src/hero.tsx"]);
+		expect((await store.get(reportId))?.status).toBe("resolved");
+	});
+
+	test("without git it resolves rather than stranding the report", async () => {
+		const dispatcher = withGit([undefined, undefined]);
+		const reportId = (await store.save({ prompt: "fix it" }, "test-app")).id;
+
+		const taskId = dispatcher.enqueue(reportId, "test-app");
+		await dispatcher.process();
+		await dispatcher.drain();
+
+		expect(dispatcher.getTask(taskId)?.result?.note).toBeUndefined();
+		expect((await store.get(reportId))?.status).toBe("resolved");
+	});
+
+	test("reopening does not re-run the report on its own", async () => {
+		// Reopening is so the report is visibly still waiting, not a retry loop:
+		// the completed task still guards it against another automatic dispatch.
+		const dispatcher = withGit([tree(["a", "1:1"]), tree(["a", "1:1"])]);
+		const reportId = (await store.save({ prompt: "fix it" }, "test-app")).id;
+
+		dispatcher.enqueue(reportId, "test-app");
+		await dispatcher.process();
+		await dispatcher.drain();
+
+		expect((await store.get(reportId))?.status).toBe("new");
+		expect(await dispatcher.dispatchAll("test-app")).toHaveLength(0);
 	});
 });
 
