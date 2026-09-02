@@ -3,7 +3,19 @@
 	"buildCommand": "bun install --frozen-lockfile && bun run build && cd app && bun install --frozen-lockfile && bunx vite build",
 	"outputDirectory": "app/dist",
 	"framework": null,
-	"redirects": [{ "source": "/og.png", "destination": "/og-v2.png", "permanent": true }],
+	"redirects": [
+		{ "source": "/og.png", "destination": "/og-v3.png", "permanent": true },
+		{ "source": "/og-v2.png", "destination": "/og-v3.png", "permanent": true }
+	],
+	"headers": [
+		{
+			"source": "/og-v3.png",
+			"headers": [
+				{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+				{ "key": "Content-Type", "value": "image/png" }
+			]
+		}
+	],
 	"rewrites": [
 		{ "source": "/api/(.*)", "destination": "/api/serverless" },
 		{ "source": "/mcp", "destination": "/api/serverless" },
