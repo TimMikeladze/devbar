@@ -1576,7 +1576,7 @@ const footerLinks = [
 
 function Footer() {
 	return (
-		<footer className="border-t border-border pt-8 mt-4 pb-8">
+		<footer className="site-footer border-t border-border pt-8 mt-4 pb-8">
 			<div className="flex flex-wrap items-center gap-1 text-[13px]">
 				<span className="flex items-center gap-2 text-fg font-semibold tracking-tight mr-3">
 					<Wordmark />

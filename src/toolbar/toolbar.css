@@ -3197,7 +3197,14 @@
 		/* 10 controls at touch size exceed a phone's width — scroll rather than
 		   letting anything become unreachable. */
 		overflow-x: auto;
+		overscroll-behavior-x: contain;
 		scrollbar-width: none;
+		/* The row is ~60px wider than a 390px phone, so the trailing controls sit
+		   past the edge. Fade them instead of hard-clipping: a half-drawn icon
+		   under a hard edge reads as a broken bar, under a fade it reads as more
+		   to scroll to. */
+		-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+		mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 	}
 
 	.devbar-bar::-webkit-scrollbar {
@@ -3211,6 +3218,10 @@
 		bottom: auto;
 		overflow-x: visible;
 		justify-content: flex-start;
+		/* Column layout is content-height and never overflows sideways — the
+		   horizontal fade would just dim its right edge. */
+		-webkit-mask-image: none;
+		mask-image: none;
 	}
 
 	.devbar-bar-btn {

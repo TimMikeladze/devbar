@@ -1744,11 +1744,15 @@ html.dark .page-grid::before {
 	}
 }
 
-/* ──────── Landing: hide the dogfooded toolbar on mobile ────────
-   Its default fixed position overlaps hero/pricing content below sm.
-   Docks cleanly on desktop, so only hide on narrow screens. */
+/* ──────── Landing: dogfooded toolbar on mobile ────────
+   This used to be `display: none` below sm, back when the toolbar had no
+   responsive rules and its centred 32px bar overlapped the hero. The toolbar
+   now edge-anchors itself under 640px (touch-sized targets, safe-area inset),
+   so it stays visible here — hiding the product on the page selling it was the
+   worse trade. It floats over the last ~56px of the page, so the footer buys
+   back that height rather than sitting under the bar. */
 @media (max-width: 640px) {
-	.devbar-toolbar {
-		display: none !important;
+	.site-footer {
+		padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 	}
 }
