@@ -3,6 +3,7 @@ import "./styles.css";
 import { useState, useEffect } from "react";
 import { DefaultPage } from "./pages/default";
 import { ServerNoAuthPage } from "./pages/server-no-auth";
+import { ServerArchivesPage } from "./pages/server-archives";
 import { ServerInjectedUserPage } from "./pages/server-injected-user";
 import { ServerAuthProxyPage } from "./pages/server-auth-proxy";
 import { ServerUserAndAuthProxyPage } from "./pages/server-user-and-auth-proxy";
@@ -40,6 +41,11 @@ const routes: Record<string, { label: string; group: string; component: () => Re
 		label: "Local agent (auto-discovery)",
 		group: "Auth Variations",
 		component: LocalAgentPage,
+	},
+	"/server-archives": {
+		label: "Server (archives to History)",
+		group: "Output Modes",
+		component: ServerArchivesPage,
 	},
 	"/clipboard-only": {
 		label: "Clipboard Only",

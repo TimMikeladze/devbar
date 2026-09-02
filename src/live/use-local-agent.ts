@@ -65,6 +65,20 @@ export type LocalRunDetail = {
 	error?: string;
 };
 
+/**
+ * One thing an agent did, as it does it.
+ *
+ * Mirrors the server's `AgentEvent` (`src/server/agents/types.ts`), which is
+ * what `GET /api/tasks/:id/events` replays and then streams.
+ */
+export type LocalRunEvent =
+	| { type: "start"; command: string; cwd: string }
+	| { type: "stdout"; text: string }
+	| { type: "tool"; name: string; detail?: string }
+	| { type: "session"; sessionId: string }
+	| { type: "done"; exitCode: number; costUsd?: number }
+	| { type: "error"; message: string };
+
 /** An agent session attached over MCP. */
 export type LocalMcpSession = {
 	id: string;
@@ -119,12 +133,36 @@ export type LocalAgent = {
 	 * opening the tab cost more than reading it.
 	 */
 	getRunDetail: (task: LocalTask) => Promise<LocalRunDetail>;
+	/**
+	 * Attaches to a run that is already going.
+	 *
+	 * The server replays everything the run has emitted so far and then keeps
+	 * the stream open, so a run started anywhere — the CLI, auto-dispatch,
+	 * another tab — can be followed from the moment you look at it. Returns the
+	 * unsubscribe; nothing streams for a run nobody has open.
+	 */
+	watchRun: (taskId: string, onEvent: (event: LocalRunEvent) => void) => () => void;
 	/** Hands one report — or every pending one — to the agent. */
 	dispatchReports: (reportId?: string) => Promise<void>;
 	cancelTask: (id: string) => Promise<void>;
 	setLiveEnabled: (value: boolean) => void;
 	setAllowMutating: (value: boolean) => void;
 	setProject: (slug: string) => void;
+	updateAgentSettings: (settings: LocalAgentSettings) => Promise<LocalProject>;
+	resetAgentSettings: () => Promise<LocalProject>;
+};
+
+export type LocalAgentSettings = {
+	command: string;
+	model: string;
+	effort: string;
+	permission: "plan" | "auto" | "full";
+	permissionMode: string | null;
+	concurrency: number;
+	autoDispatch: boolean;
+	maxBudgetUsd: number | null;
+	timeoutMs: number | null;
+	resumeSession: boolean;
 };
 
 type Consent = { enabled: boolean; allowMutating: boolean };
@@ -320,6 +358,30 @@ export function useLocalAgent(options: LocalAgentOptions): LocalAgent {
 		[url, authHeaders],
 	);
 
+	const watchRun = useCallback(
+		(taskId: string, onEvent: (event: LocalRunEvent) => void) => {
+			if (!url || typeof EventSource === "undefined") return () => {};
+			// Same reason as the activity feed: EventSource cannot set headers, so
+			// the token rides in the query string.
+			const streamUrl = `${url}/api/tasks/${encodeURIComponent(taskId)}/events${
+				token ? `?token=${encodeURIComponent(token)}` : ""
+			}`;
+			const source = new EventSource(streamUrl);
+			const onAgent = (message: MessageEvent) => {
+				try {
+					const { event } = JSON.parse(message.data) as { event?: LocalRunEvent };
+					if (event) onEvent(event);
+				} catch {}
+			};
+			source.addEventListener("agent", onAgent as EventListener);
+			return () => {
+				source.removeEventListener("agent", onAgent as EventListener);
+				source.close();
+			};
+		},
+		[url, token],
+	);
+
 	const dispatchReports = useCallback(
 		async (reportId?: string) => {
 			if (!url) return;
@@ -415,6 +477,53 @@ export function useLocalAgent(options: LocalAgentOptions): LocalAgent {
 		} catch {}
 	}, []);
 
+	const replaceProject = useCallback((updated: LocalProject) => {
+		setProjects((prev) => {
+			const found = prev.some((candidate) => candidate.slug === updated.slug);
+			return found
+				? prev.map((candidate) => (candidate.slug === updated.slug ? updated : candidate))
+				: [...prev, updated];
+		});
+	}, []);
+
+	const updateAgentSettings = useCallback(
+		async (settings: LocalAgentSettings): Promise<LocalProject> => {
+			if (!url || !project) throw new Error("No local project is selected");
+			const response = await fetch(`${url}/api/projects/${encodeURIComponent(project)}/settings`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json", ...authHeaders },
+				body: JSON.stringify(settings),
+			});
+			const body = (await response.json().catch(() => ({}))) as {
+				project?: LocalProject;
+				error?: string;
+			};
+			if (!response.ok || !body.project) {
+				throw new Error(body.error ?? `Could not save agent settings (${response.status})`);
+			}
+			replaceProject(body.project);
+			return body.project;
+		},
+		[url, project, authHeaders, replaceProject],
+	);
+
+	const resetAgentSettings = useCallback(async (): Promise<LocalProject> => {
+		if (!url || !project) throw new Error("No local project is selected");
+		const response = await fetch(`${url}/api/projects/${encodeURIComponent(project)}/settings`, {
+			method: "DELETE",
+			headers: authHeaders,
+		});
+		const body = (await response.json().catch(() => ({}))) as {
+			project?: LocalProject;
+			error?: string;
+		};
+		if (!response.ok || !body.project) {
+			throw new Error(body.error ?? `Could not reset agent settings (${response.status})`);
+		}
+		replaceProject(body.project);
+		return body.project;
+	}, [url, project, authHeaders, replaceProject]);
+
 	return useMemo(
 		() => ({
 			status,
@@ -432,11 +541,14 @@ export function useLocalAgent(options: LocalAgentOptions): LocalAgent {
 			activityError,
 			watchActivity,
 			getRunDetail,
+			watchRun,
 			dispatchReports,
 			cancelTask,
 			setLiveEnabled,
 			setAllowMutating,
 			setProject,
+			updateAgentSettings,
+			resetAgentSettings,
 		}),
 		[
 			status,
@@ -454,11 +566,14 @@ export function useLocalAgent(options: LocalAgentOptions): LocalAgent {
 			activityError,
 			watchActivity,
 			getRunDetail,
+			watchRun,
 			dispatchReports,
 			cancelTask,
 			setLiveEnabled,
 			setAllowMutating,
 			setProject,
+			updateAgentSettings,
+			resetAgentSettings,
 		],
 	);
 }

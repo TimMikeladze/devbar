@@ -25,6 +25,8 @@ export type LocalProject = {
 	resumeSession?: boolean;
 	/** Destination kinds every report for this project is routed to. */
 	routes?: string[];
+	/** True when toolbar-authored settings currently override devbar.config.ts. */
+	hasAgentOverrides?: boolean;
 };
 
 export type LocalHandshake = {

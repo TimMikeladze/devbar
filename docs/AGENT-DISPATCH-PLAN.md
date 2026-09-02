@@ -20,6 +20,7 @@ Most of this plan is built. What shipped, and where:
 | P3 SSE task events, cancel, assets route                   | done      | `GET /api/events`, `/api/tasks/:id/events`                               |
 | P4 local MCP (queue tools)                                 | done      | `src/server/mcp/local.ts`, `src/server/mcp/stdio.ts`                     |
 | P4b live page bridge                                       | done      | `src/server/page-bus.ts`, `src/live/bridge.ts`                           |
+| P4c attach to a run in flight                              | done      | `src/live/use-local-agent.ts`, `src/toolbar/toolbar.tsx`                 |
 | P5 CLI subcommands + doctor                                | done      | `src/server/local-cli.ts`                                                |
 | P2.5 Agent SDK runner                                      | not built | —                                                                        |
 | P3 toolbar task tray                                       | not built | —                                                                        |
@@ -468,6 +469,37 @@ report does — so the agent's live view and the report speak one vocabulary.
 client, timeout → 504, permission gate rejects when the toggle is off, image
 content encoding.
 **Docs:** `docs/LOCAL-DISPATCH.md` "Live page tools" + the consent model.
+
+### P4c — Attach to a run in flight
+
+`GET /api/tasks/:id/events` has replayed-then-live agent events since P3, and
+nothing consumed it. The toolbar only ever read a run _after_ it finished
+(`GET /api/tasks/:id` for the stored result), so a dispatch that takes two
+minutes looked identical to a hung one, and a run started elsewhere — the CLI,
+`autoDispatch`, another tab — could not be followed at all.
+
+**Shape.** Opening a run row that is queued or running attaches to that run's
+stream. The endpoint replays everything recorded so far and then streams, so
+attaching late still shows the whole run — this is the "connect to an ongoing
+run" case, and it is the same code path whoever started it.
+
+| Piece                       | Where                                                                      |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `watchRun(taskId, onEvent)` | `src/live/use-local-agent.ts` — one `EventSource`, token in query          |
+| live log in the run detail  | `src/toolbar/toolbar.tsx` `AgentRun` — `stdout`/`tool`/`start`/`error`     |
+| close on collapse or `done` | the same effect's teardown; a finished run falls back to its stored result |
+
+**Events rendered:** `start` as the command line, `stdout` verbatim, `tool` as
+`name · detail`, `error` and `done` as the closing line. `session` is dropped —
+it is bookkeeping, not something anyone reads mid-run.
+
+**Bounds:** the log keeps the last 300 lines (the server already caps at 1000
+events per task), the pane pins to the bottom as lines arrive unless the reader
+has scrolled up, and only an open, in-flight row holds a stream — collapsing it
+closes the connection, like `watchActivity` does for the feed.
+
+**Tests:** e2e — dispatch, open the running row, assert the streamed output
+appears and that the stream closes when the row collapses.
 
 ### P5 — CLI ergonomics
 

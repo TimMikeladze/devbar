@@ -15,10 +15,10 @@ export type DevbarState = {
 	removeComment: (annotationId: string, commentId: string, remote?: boolean) => void;
 	clearAnnotations: () => void;
 	/** Archive the current batch under History and start a fresh one. Returns the record id. */
-	archiveAndClear: (method: ExportMethod) => string | null;
+	archiveAndClear: (method: ExportMethod, task?: string) => string | null;
 	deleteExport: (id: string) => void;
 	/** Pull an archived batch back into the current session. Returns what came back. */
-	restoreExport: (id: string) => Annotation[];
+	restoreExport: (id: string) => { annotations: Annotation[]; task?: string };
 	activateTool: (mode: ToolMode) => void;
 	deactivateTool: () => void;
 };
@@ -257,7 +257,7 @@ export function useDevbarState(): DevbarState {
 	const exportsRef = useRef(exports);
 	exportsRef.current = exports;
 
-	const archiveAndClear = useCallback((method: ExportMethod): string | null => {
+	const archiveAndClear = useCallback((method: ExportMethod, task?: string): string | null => {
 		const current = annotationsRef.current;
 		if (current.length === 0) return null;
 		const record: ExportRecord = {
@@ -267,6 +267,9 @@ export function useDevbarState(): DevbarState {
 			title: document.title,
 			annotations: [...current],
 			method,
+			// The task says what the batch was for; without it a later re-export
+			// is evidence with no intent.
+			task: task?.trim() || undefined,
 		};
 		setExports((prev) => [record, ...prev]);
 		setAnnotations([]);
@@ -281,9 +284,9 @@ export function useDevbarState(): DevbarState {
 		);
 	}, []);
 
-	const restoreExport = useCallback((id: string): Annotation[] => {
+	const restoreExport = useCallback((id: string): { annotations: Annotation[]; task?: string } => {
 		const record = exportsRef.current.find((e) => e.id === id);
-		if (!record) return [];
+		if (!record) return { annotations: [] };
 		// Anything captured since the export stays; the restored batch slots in by time.
 		const restored = record.annotations.filter(
 			(a) => !annotationsRef.current.some((existing) => existing.id === a.id),
@@ -293,7 +296,7 @@ export function useDevbarState(): DevbarState {
 		dbRestore({ ...record, annotations: restored }).catch((e) =>
 			console.warn("[devbar] restore error:", e),
 		);
-		return restored;
+		return { annotations: restored, task: record.task };
 	}, []);
 
 	const activateTool = useCallback((mode: ToolMode): void => {

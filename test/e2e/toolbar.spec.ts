@@ -17,10 +17,16 @@ test.describe("Toolbar", () => {
 
 	test("renders settings, minimize, annotations, and export buttons", async ({ page }) => {
 		const bar = page.locator(".devbar-bar");
+		await expect(bar.getByRole("button", { name: "Agent" })).toBeVisible();
 		await expect(bar.getByRole("button", { name: "Settings" })).toBeVisible();
 		await expect(bar.getByRole("button", { name: "Minimize" })).toBeVisible();
 		await expect(bar.getByRole("button", { name: /Annotations/ })).toBeVisible();
 		await expect(bar.getByRole("button", { name: /Export/ })).toBeVisible();
+	});
+
+	test("the Agent button opens the agent dashboard directly", async ({ page }) => {
+		await page.locator(".devbar-bar").getByRole("button", { name: "Agent" }).click();
+		await expect(page.locator(".devbar-panel-tab-active")).toContainText("Agent");
 	});
 
 	test("has a drag handle", async ({ page }) => {

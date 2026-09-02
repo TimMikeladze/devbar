@@ -347,6 +347,25 @@
 	box-shadow: 0 0 6px var(--devbar-blue-muted);
 }
 
+/* A status pip on a bar button — smaller and quieter than the count badge,
+   because it reports a state rather than a number. */
+.devbar-bar-dot {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--devbar-text-secondary);
+	opacity: 0.45;
+}
+
+.devbar-bar-dot-on {
+	background: #22c55e;
+	opacity: 1;
+	box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.22);
+}
+
 /* ─── Tooltip ─── */
 .devbar-tooltip {
 	position: absolute;
@@ -886,8 +905,18 @@
 	font-family: inherit;
 }
 
-.devbar-export-menu-item:hover {
+.devbar-export-menu-item:hover:not(:disabled) {
 	background: var(--devbar-accent-hover);
+}
+
+/* Kept in the menu rather than hidden: the title says what is missing. */
+.devbar-export-menu-item:disabled {
+	color: var(--devbar-text-muted);
+	cursor: default;
+}
+
+.devbar-export-menu-item:disabled svg {
+	opacity: 0.35;
 }
 
 .devbar-export-menu-item svg {
@@ -1467,6 +1496,7 @@
 	border-radius: 6px;
 	margin-top: 2px;
 	word-break: break-word;
+	white-space: pre-wrap;
 }
 
 /* Input area */
@@ -1529,6 +1559,10 @@
 	outline: none;
 	font-family: inherit;
 	min-width: 0;
+	min-height: 30px;
+	max-height: 120px;
+	line-height: 1.4;
+	resize: vertical;
 	transition:
 		border-color 0.15s,
 		box-shadow 0.15s;
@@ -3046,9 +3080,52 @@
 	font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
 }
 
+.devbar-history-item-title {
+	font-size: 11px;
+	color: var(--devbar-text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	margin-bottom: 2px;
+}
+
+/* What the batch was for, kept with it and shown before the actions. */
+.devbar-history-item-task {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--devbar-text);
+	margin-bottom: 8px;
+	line-height: 1.4;
+}
+
+.devbar-history-item-task span {
+	flex-shrink: 0;
+	font-size: 9px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--devbar-text-muted);
+}
+
+.devbar-history-chip-task {
+	max-width: 140px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	background: none;
+	border-color: transparent;
+	color: var(--devbar-text-muted);
+	font-weight: 400;
+	font-size: 9.5px;
+	font-style: italic;
+}
+
 /* Action buttons row */
 .devbar-history-item-actions {
 	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
 	gap: 4px;
 }
 
@@ -3068,10 +3145,25 @@
 	transition: all 0.12s;
 }
 
-.devbar-history-action-btn:hover {
+/* Four save buttons in a row are not tellable apart as glyphs, so every
+   action that has a name wears it. */
+.devbar-history-action-btn-labeled {
+	width: auto;
+	gap: 4px;
+	padding: 0 7px;
+	font-size: 10.5px;
+	white-space: nowrap;
+}
+
+.devbar-history-action-btn:hover:not(:disabled) {
 	background: var(--devbar-accent-hover);
 	color: var(--devbar-text);
 	border-color: var(--devbar-border-hover);
+}
+
+.devbar-history-action-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
 }
 
 .devbar-history-action-btn svg {
@@ -3332,6 +3424,130 @@
 }
 
 /* ─── Agent tab ─── */
+.devbar-agent-settings-form {
+	display: grid;
+	gap: 10px;
+	margin-bottom: 12px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-agent-settings-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.devbar-agent-setting-field {
+	display: grid;
+	gap: 4px;
+	min-width: 0;
+	font-size: 10px;
+	font-weight: 600;
+	color: var(--devbar-text-muted);
+}
+
+.devbar-agent-setting-field input,
+.devbar-agent-setting-field select {
+	width: 100%;
+	height: 29px;
+	padding: 0 7px;
+	border: 1px solid var(--devbar-border);
+	border-radius: 6px;
+	background: var(--devbar-bg-surface);
+	color: var(--devbar-text);
+	font-size: 11px;
+	font-weight: 400;
+	outline: none;
+}
+
+.devbar-agent-setting-field input:focus,
+.devbar-agent-setting-field select:focus {
+	border-color: var(--devbar-blue);
+	box-shadow: 0 0 0 2px var(--devbar-blue-muted);
+}
+
+.devbar-agent-setting-field input::placeholder {
+	color: var(--devbar-text-muted);
+}
+
+.devbar-agent-setting-switches {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 6px 10px;
+}
+
+.devbar-agent-setting-check {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 10.5px;
+	color: var(--devbar-text-secondary);
+	cursor: pointer;
+}
+
+.devbar-agent-setting-check input {
+	width: 13px;
+	height: 13px;
+	border: 1px solid var(--devbar-border-hover);
+	border-radius: 4px;
+	background: var(--devbar-bg-surface);
+	flex: none;
+}
+
+.devbar-agent-setting-check input:checked {
+	border-color: var(--devbar-blue);
+	background: var(--devbar-blue);
+	box-shadow: inset 0 0 0 3px var(--devbar-bg);
+}
+
+.devbar-agent-override-note {
+	margin-top: 0;
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: var(--devbar-blue-muted);
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-agent-settings-error {
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: rgba(239, 68, 68, 0.1);
+	color: #ef4444;
+	font-size: 10.5px;
+}
+
+.devbar-agent-settings-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+.devbar-agent-settings-save,
+.devbar-agent-settings-reset {
+	padding: 5px 8px;
+	border-radius: 6px;
+	font-size: 10.5px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.devbar-agent-settings-save {
+	background: var(--devbar-blue);
+	color: #fff;
+}
+
+.devbar-agent-settings-reset {
+	border: 1px solid var(--devbar-border);
+	color: var(--devbar-text-secondary);
+}
+
+.devbar-agent-settings-save:disabled,
+.devbar-agent-settings-reset:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
 .devbar-agent-section {
 	padding-bottom: 12px;
 	margin-bottom: 12px;
@@ -3369,6 +3585,75 @@
 	font-size: 9.5px;
 	font-weight: 600;
 	letter-spacing: 0;
+}
+
+/* ─── Agent status strip ─── */
+/* Which server, which project, and whether the page is exposed — the three
+   facts you check first, so they sit above everything that scrolls. */
+.devbar-agent-strip {
+	padding-bottom: 8px;
+	margin-bottom: 12px;
+	border-bottom: 1px solid var(--devbar-border);
+}
+
+.devbar-agent-strip-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.devbar-agent-strip-name {
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--devbar-text);
+	white-space: nowrap;
+}
+
+.devbar-agent-strip-url {
+	flex: 1;
+	min-width: 0;
+	text-align: right;
+	font-family: var(--devbar-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+	font-size: 10.5px;
+	color: var(--devbar-text-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.devbar-agent-strip .devbar-settings-row {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.devbar-agent-strip-select {
+	width: 100%;
+	max-width: none;
+	margin-top: 8px;
+}
+
+.devbar-agent-strip .devbar-agent-empty {
+	margin-top: 6px;
+}
+
+/* Eight fields set once, folded away under the live sections. */
+.devbar-agent-group {
+	margin-top: 0;
+	border-top: none;
+}
+
+.devbar-agent-summary {
+	padding: 0;
+}
+
+.devbar-agent-summary-title {
+	margin-bottom: 0;
+}
+
+.devbar-agent-group-body {
+	padding-top: 10px;
 }
 
 .devbar-agent-facts {
@@ -3429,6 +3714,33 @@
 	font-family: var(--devbar-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 	font-size: 10px;
 	color: var(--devbar-text);
+}
+
+/* A run you are attached to: the log tails inside its own box so the panel
+   does not grow a screenful every time the agent prints. */
+.devbar-agent-live-body {
+	max-height: 140px;
+}
+
+.devbar-agent-live-pulse {
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-left: 6px;
+	border-radius: 50%;
+	background: #22c55e;
+	vertical-align: middle;
+	animation: devbar-agent-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes devbar-agent-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.25;
+	}
 }
 
 .devbar-agent-run-item {

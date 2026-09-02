@@ -104,6 +104,7 @@
 		"og": "bun run scripts/generate-og.ts",
 		"prepare": "bun simple-git-hooks",
 		"release": "bumpp --commit --push --tag",
+		"screenshots": "bun run scripts/screenshots.ts",
 		"test": "bun test test/*.test.ts",
 		"test:e2e": "bunx playwright test",
 		"test:coverage": "bun test --coverage",

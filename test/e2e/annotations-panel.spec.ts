@@ -61,6 +61,36 @@ test.describe("Annotations Panel", () => {
 		await expect(toggle).toContainText("This heading is wrong");
 	});
 
+	test("comments and double-click editing preserve new lines", async ({ page }) => {
+		await addAnnotation(page, "h1", "Original comment");
+
+		await page.getByRole("button", { name: /Annotations/ }).click();
+		await page.locator(".devbar-annotation-thread-toggle").click();
+
+		const composer = page.getByPlaceholder("Write a comment…");
+		await expect(composer).toHaveJSProperty("tagName", "TEXTAREA");
+		await composer.fill("First line");
+		await composer.press("Enter");
+		await composer.pressSequentially("Second line");
+		await expect(composer).toHaveValue("First line\nSecond line");
+		await expect(page.locator(".devbar-thread-comment")).toHaveCount(1);
+		await page.getByRole("button", { name: "Send comment" }).click();
+		await expect(page.locator(".devbar-thread-comment")).toHaveCount(2);
+
+		const added = page.locator(".devbar-thread-comment-text").last();
+		await expect(added).toHaveText("First line\nSecond line");
+		await added.dblclick();
+
+		const editor = page.locator(".devbar-thread-edit-wrap textarea.devbar-thread-input");
+		await expect(editor).toHaveValue("First line\nSecond line");
+		await editor.fill("Edited first line");
+		await editor.press("Enter");
+		await editor.pressSequentially("Edited second line");
+		await expect(editor).toHaveValue("Edited first line\nEdited second line");
+		await editor.press("Control+Enter");
+		await expect(added).toHaveText("Edited first line\nEdited second line");
+	});
+
 	test("can remove annotation with × button", async ({ page }) => {
 		await addAnnotation(page, "h1");
 

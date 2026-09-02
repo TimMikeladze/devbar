@@ -37,6 +37,12 @@ The Open Graph image at `app/public/og-v2.png` is generated from the HTML templa
 
 Social crawlers cache the image by URL and rarely re-fetch it, so a redesign that keeps the same filename will keep showing the old preview. When the artwork changes meaningfully, bump the version suffix (`og-v2.png` → `og-v3.png`) in `scripts/generate-og.ts` and in the `og:image`, `twitter:image`, and JSON-LD `image` tags in `app/index.html`.
 
+### README screenshots
+
+The screenshots in `docs/images/` are generated, not hand-taken. Start the landing page (`bun run --cwd app dev --port 5178`, after a `bun run build` so it picks up the current toolbar) and run `bun run screenshots`. The script drives the real toolbar over that page with Playwright and starts its own throwaway devbar server on port 3190, so the Agent tab shows a project claiming the page rather than whatever server happens to be running on the machine. Set `PW_CHROMIUM` if Playwright's own Chromium download is missing, and commit the regenerated PNGs alongside the change that made them stale.
+
+The README links the images by their raw.githubusercontent URL rather than a relative path, because npm renders the same file and does not resolve relative image paths — `docs/` is not in the published `files` list either way.
+
 ## Commit Message Conventions
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/) for clear and structured commit messages:

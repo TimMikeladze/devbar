@@ -1073,48 +1073,320 @@ html.dark .page-grid::before {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
-	gap: 10px 22px;
+	gap: 8px;
 	padding-top: 6px;
 }
 .trust-chip {
 	display: inline-flex;
 	align-items: center;
-	gap: 8px;
+	gap: 7px;
+	padding: 5px 11px;
+	border: 1px solid var(--color-border);
+	border-radius: 999px;
+	background: var(--color-bg-card);
 	font-family: var(--font-mono);
-	font-size: 12px;
-	color: var(--color-muted);
+	font-size: 11.5px;
+	color: var(--color-dim);
+}
+.trust-chip .dl-dot {
+	width: 5px;
+	height: 5px;
+	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.14);
 }
 
 /* Before / After comparison */
 .cmp {
+	display: flex;
+	flex-direction: column;
 	border: 1px solid var(--color-border);
-	border-radius: 12px;
+	border-radius: 14px;
 	overflow: hidden;
+	background: var(--color-bg-card);
 	font-size: 13px;
 }
 .cmp-head {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 10px 16px;
+	padding: 11px 16px;
 	border-bottom: 1px solid var(--color-border);
 	font-size: 12px;
 	font-weight: 600;
 }
+.cmp-head-meta {
+	margin-left: auto;
+	font-family: var(--font-mono);
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--color-muted);
+}
 .cmp-body {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 14px;
 	padding: 16px;
+}
+.cmp-foot {
+	margin-top: auto;
+	padding-top: 13px;
+	border-top: 1px solid var(--color-border);
+	font-size: 11.5px;
+	font-weight: 500;
+	line-height: 1.5;
 }
 .cmp-bad .cmp-head {
 	color: var(--color-rose);
 	background: rgba(225, 29, 72, 0.06);
 }
+.cmp-bad .cmp-foot {
+	color: var(--color-rose);
+}
 .cmp-good {
-	border-color: rgba(59, 130, 246, 0.32);
-	box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.06);
+	border-color: rgba(5, 150, 105, 0.34);
+	box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.05);
 }
 .cmp-good .cmp-head {
 	color: var(--color-emerald);
-	background: rgba(5, 150, 105, 0.06);
+	background: rgba(5, 150, 105, 0.07);
+}
+.cmp-good .cmp-foot {
+	color: var(--color-emerald);
+}
+
+/* Chat message mock (the old way) */
+.msg {
+	padding: 12px;
+	border: 1px solid var(--color-border);
+	border-radius: 10px;
+	background: var(--color-bg-code);
+}
+.msg-head {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	margin-bottom: 8px;
+}
+.msg-avatar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 5px;
+	background: rgba(225, 29, 72, 0.14);
+	color: var(--color-rose);
+	font-size: 9px;
+	font-weight: 700;
+}
+.msg-name {
+	font-size: 11.5px;
+	font-weight: 600;
+	color: var(--color-dim);
+}
+.msg-chan,
+.msg-time {
+	font-family: var(--font-mono);
+	font-size: 10px;
+	color: var(--color-muted);
+}
+.msg-time {
+	margin-left: auto;
+}
+.msg-text {
+	font-size: 13px;
+	font-style: italic;
+	line-height: 1.55;
+	color: var(--color-muted);
+}
+
+/* Thread replies */
+.thread {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	padding-left: 12px;
+	border-left: 2px solid var(--color-border);
+}
+.thread-row {
+	display: flex;
+	gap: 9px;
+	align-items: baseline;
+	font-size: 12px;
+}
+.thread-time {
+	flex-shrink: 0;
+	width: 32px;
+	font-family: var(--font-mono);
+	font-size: 10px;
+	color: var(--color-muted);
+}
+.thread-who {
+	flex-shrink: 0;
+	font-weight: 600;
+	color: var(--color-dim);
+}
+.thread-msg {
+	font-style: italic;
+	color: var(--color-muted);
+}
+
+/* Thread still-typing indicator */
+.thread-typing {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding-top: 1px;
+	font-family: var(--font-mono);
+	font-size: 10px;
+	color: var(--color-muted);
+}
+.thread-typing i {
+	display: inline-block;
+	width: 3px;
+	height: 3px;
+	border-radius: 50%;
+	background: currentColor;
+	animation: typing-blink 1.3s infinite;
+}
+.thread-typing i:nth-child(2) {
+	animation-delay: 0.18s;
+}
+.thread-typing i:nth-child(3) {
+	animation-delay: 0.36s;
+}
+@keyframes typing-blink {
+	0%,
+	70%,
+	100% {
+		opacity: 0.25;
+	}
+	35% {
+		opacity: 1;
+	}
+}
+
+/* Mini screenshot mock */
+.shot {
+	position: relative;
+	padding: 12px;
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	background: var(--color-bg);
+	overflow: hidden;
+}
+.shot-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+}
+.shot-line {
+	height: 6px;
+	border-radius: 999px;
+	background: var(--color-fg);
+	opacity: 0.11;
+}
+.shot-btn {
+	height: 15px;
+	width: 62px;
+	border-radius: 5px;
+	background: var(--color-accent);
+	opacity: 0.5;
+}
+.shot-vague .shot-stack {
+	filter: blur(1.4px);
+	opacity: 0.8;
+}
+.shot-cap {
+	position: absolute;
+	right: 8px;
+	bottom: 6px;
+	font-family: var(--font-mono);
+	font-size: 9px;
+	color: var(--color-muted);
+	opacity: 0.75;
+}
+.shot-annotated {
+	padding-top: 24px;
+}
+.shot-sel {
+	position: relative;
+	align-self: flex-start;
+	margin-top: 3px;
+	padding: 4px;
+	border: 1px solid var(--color-accent);
+	border-radius: 6px;
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+.shot-tag {
+	position: absolute;
+	top: -17px;
+	left: -1px;
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: var(--color-accent);
+	color: #fff;
+	font-family: var(--font-mono);
+	font-size: 8.5px;
+	white-space: nowrap;
+}
+
+/* Captured payload rows */
+.pl {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	font-family: var(--font-mono);
+	font-size: 11px;
+}
+.pl-row {
+	display: flex;
+	gap: 10px;
+	align-items: baseline;
+}
+.pl-k {
+	flex-shrink: 0;
+	width: 46px;
+	font-size: 10px;
+	color: var(--color-muted);
+}
+.pl-v {
+	color: var(--color-fg);
+	word-break: break-all;
+}
+.pl-v-accent {
+	color: var(--color-accent);
+}
+.pl-v-note {
+	font-family: var(--font-sans);
+	font-size: 12.5px;
+	line-height: 1.5;
+	word-break: normal;
+}
+.pl-sep {
+	padding-top: 10px;
+	border-top: 1px solid var(--color-border);
+}
+
+/* Dispatch destinations */
+.dests {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.dest {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 8px;
+	border: 1px solid var(--color-border);
+	border-radius: 6px;
+	background: var(--color-bg-code);
+	font-family: var(--font-mono);
+	font-size: 10.5px;
+	color: var(--color-dim);
 }
 
 /* How it works steps */

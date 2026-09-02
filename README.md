@@ -6,6 +6,12 @@ styles, React component trees, and screenshots as an agent-ready prompt.
 [![npm](https://img.shields.io/npm/v/devbar.sh.svg)](https://www.npmjs.com/package/devbar.sh)
 [![license](https://img.shields.io/npm/l/devbar.sh.svg)](./LICENSE)
 
+![The devbar toolbar](https://raw.githubusercontent.com/TimMikeladze/devbar/main/docs/images/toolbar.png)
+
+It follows the host page's theme, so it does not look pasted onto a light app:
+
+![The same toolbar on a light page](https://raw.githubusercontent.com/TimMikeladze/devbar/main/docs/images/toolbar-light.png)
+
 ## Installation
 
 ```bash
@@ -130,8 +136,8 @@ Discovery only runs on `localhost` pages and only probes `127.0.0.1:3100` and
 `:3101`. Pass `local={false}` to switch it off, `local={{ ports: [4000] }}` to
 point it elsewhere, or `live={false}` to hide the live page tools entirely.
 
-Live page tools stay off until you switch on **Agent live** in the toolbar's
-settings, per origin. Dispatch runs an agent in your repository, so the defaults
+Live page tools stay off until you switch on **Agent live** — at the top of the
+toolbar's Agent tab, or in Settings — per origin. Dispatch runs an agent in your repository, so the defaults
 are conservative: loopback only, `permission: "plan"`, no auto-dispatch. See
 [docs/LOCAL-AGENT.md](./docs/LOCAL-AGENT.md) for the config reference, the
 supported agent CLIs, the MCP tool list, and the security model.
@@ -190,19 +196,25 @@ can land on the wrapper you actually mean — or the next card over — instead 
 whichever node happens to be under the pointer. Hold `⇧` while clicking to
 annotate without the note popover.
 
+![The Select tool over a page: the hovered element outlined, a badge showing its tag, class and pixel size, and the tool's minibar along the bottom](https://raw.githubusercontent.com/TimMikeladze/devbar/main/docs/images/select.png)
+
 Everything you capture collects in the dedicated **Annotations** panel, alongside
 **History** for past exports. **Agent**, **Settings** and **Shortcuts** live in a
 separate preferences panel opened from the toolbar's gear button.
+
+![The Annotations panel with a task typed into the field at the top and two captured elements listed below it, each with its comment](https://raw.githubusercontent.com/TimMikeladze/devbar/main/docs/images/annotations.png)
 
 ### The Agent tab
 
 Dispatch runs an agent inside your repository, so the toolbar says what that
 means before you ask for it and what happened after:
 
-- **Configuration** — the agent command, model, effort, permission level,
-  auto-dispatch, concurrency, budget and working directory for the project that
-  claims this page, read live from the running server. Auto-dispatch is called
-  out when it is on: that is the setting that runs an agent without asking.
+![The Agent tab: the discovered server and the project claiming this page, the Agent live switch turned on, and a submitted report under Waiting on you with a Dispatch button](https://raw.githubusercontent.com/TimMikeladze/devbar/main/docs/images/agent.png)
+
+- **The status line** — which server was found, which project claims this page,
+  and the **Agent live** switch that decides whether an agent may inspect and
+  screenshot it. When nothing claims the page, the picker to choose a project is
+  right there rather than a tab away.
 - **Waiting on you** — reports you have submitted that no agent has been given.
   With `autoDispatch` off (the default) Submit stores a report and stops, so
   each one gets a **Dispatch** button rather than sitting there looking ignored.
@@ -210,9 +222,18 @@ means before you ask for it and what happened after:
   the common case never needs this tab at all.
 - **Runs** — queued, running and finished dispatches, with elapsed time, model
   and cost. **Stop** cancels one still in flight. Opening a run shows the exact
-  prompt the agent was handed, its output, and the files it touched.
+  prompt the agent was handed, its output, and the files it touched. Opening one
+  that is still going attaches to it: the server replays what the agent has said
+  so far and then streams the rest, so a run started by the CLI, by
+  auto-dispatch, or in another tab can be followed from whenever you look.
 - **MCP** — which agent sessions are attached over MCP right now, what they can
   call, and the last tool they used.
+- **Configuration** — folded shut below the rest, since it is set once: the agent
+  command, model, effort, permission level, auto-dispatch, concurrency, budget
+  and working directory for the project that claims this page, read live from
+  the running server. The summary line carries model and permission without
+  opening it, and auto-dispatch is called out when it is on — that is the
+  setting that runs an agent without asking.
 
 At the top of the Annotations tab is a **task field**: one line saying what you
 actually want changed. Annotations are evidence; the task is the intent. When
@@ -222,11 +243,47 @@ the annotations as evidence". It is cleared along with the annotations on export
 
 **Copy** (or **Submit**, when a server is configured) sends the report in one
 click, from the panel footer or straight from the bar; the caret next to it
-holds the other formats. Exporting archives the batch under **History** and the
+holds the other formats, plus **Send to agent** — submit and dispatch in one
+step, so the run starts without a second click. That one is greyed out, with the
+reason on it, whenever there is no agent to take the report: no local server
+running, or no project claiming this page. The bar's agent button carries the
+same fact as a dot. Exporting archives the batch under **History** and the
 toast offers **Restore** for a few seconds in case it went to the wrong place —
 History has the same button for later. Removing an annotation offers an
 **Undo** the same way, and so does **Clear all**. Each row also has a locate
 button that scrolls the annotated element back into view.
+
+**Preview** (`Alt+P`) shows the exact prompt before it goes anywhere — the
+markdown an agent reads, or the raw JSON payload behind it:
+
+![The report preview open over the page, showing the generated markdown prompt with its Task and Page information sections, and a JSON tab beside it](https://raw.githubusercontent.com/TimMikeladze/devbar/main/docs/images/preview.png)
+
+#### Export formats
+
+| Format  | What you get                                                              |
+| ------- | ------------------------------------------------------------------------- |
+| `.md`   | The prompt as markdown — what an agent reads                              |
+| `.json` | The whole payload, every captured field                                   |
+| `.html` | A standalone report: styles inline, images embedded, one file             |
+| `.pdf`  | The same report through the browser's print dialog — choose _Save as PDF_ |
+
+`.html` and `.pdf` are for people rather than models: the report you attach to
+a ticket or mail to a designer. Both are a single self-contained document, so
+images stay embedded even with **Image export format** set to _Files_, and
+both are laid out for paper — cards never split across a page break. See
+[docs/HTML-PDF-EXPORT.md](./docs/HTML-PDF-EXPORT.md) for what the document
+contains and why PDF goes through the print dialog.
+
+#### History
+
+Every export is archived under **History**, and an archived batch can do
+everything the live one could: copy the prompt or the whole payload, save all
+four file formats, **Submit** to the server, **Agent** to submit and dispatch
+in one step, **Restore** it into the session, or delete it. The batch keeps the
+**task** it was exported under — the line saying what it was for — so a
+re-export a day later still leads with `## Task`, and restoring brings the task
+back unless you have already typed a new one. See
+[docs/HISTORY.md](./docs/HISTORY.md).
 
 ### Keyboard shortcuts
 

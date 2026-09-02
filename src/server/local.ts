@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { createRegistry, type Registry, type ProjectConfig } from "./registry";
 import { createDispatcher, type Dispatcher, type GitSnapshot } from "./dispatcher";
@@ -8,12 +8,18 @@ import { createReportStore, type ReportStore } from "./report-store";
 import { createPageBus, PageRpcError, type PageBus } from "./page-bus";
 import { createMcpSessions, type McpSessions } from "./mcp-sessions";
 import { fanOut } from "./destinations";
+import {
+	createProjectOverrides,
+	validateAgentSettingsOverrides,
+	type EffectiveProjectConfig,
+} from "./project-overrides";
 
 const DEVBAR_DIR = join(homedir(), ".devbar");
 const REPORTS_DIR = join(DEVBAR_DIR, "reports");
 const RESULTS_DIR = join(DEVBAR_DIR, "results");
 const TASKS_DIR = join(DEVBAR_DIR, "tasks");
 const PROJECTS_FILE = join(DEVBAR_DIR, "projects.json");
+const PROJECT_OVERRIDES_FILE = join(DEVBAR_DIR, "project-overrides.json");
 
 /** Refuse bodies bigger than this. A report with screenshots is ~1-5 MB. */
 const DEFAULT_MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -63,6 +69,8 @@ export type LocalServerOptions = {
 	tasksDir?: string;
 	/** Path to the projects registry JSON file (default: ~/.devbar/projects.json) */
 	projectsFile?: string;
+	/** Path to toolbar-authored agent overrides (default: ~/.devbar/project-overrides.json) */
+	projectOverridesFile?: string;
 	/** Command used by the dispatcher to run tasks. Overrides per-project config. */
 	dispatchCommand?: string;
 	/** Bearer token required from clients that are not a trusted local origin. */
@@ -111,6 +119,11 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 	const resultsDir = options.resultsDir ?? RESULTS_DIR;
 	const tasksDir = options.tasksDir ?? TASKS_DIR;
 	const projectsFile = options.projectsFile ?? PROJECTS_FILE;
+	const projectOverridesFile =
+		options.projectOverridesFile ??
+		(options.projectsFile
+			? join(dirname(options.projectsFile), "project-overrides.json")
+			: PROJECT_OVERRIDES_FILE);
 	const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
 
 	await mkdir(reportsDir, { recursive: true });
@@ -119,6 +132,13 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 
 	const openStreams = new Set<ServerResponse>();
 	const registry = await createRegistry(projectsFile);
+	const projectOverrides = await createProjectOverrides(projectOverridesFile);
+	const effectiveProject = (slug: string): EffectiveProjectConfig | undefined => {
+		const project = registry.get(slug);
+		return project ? projectOverrides.apply(project) : undefined;
+	};
+	const effectiveProjects = (): EffectiveProjectConfig[] =>
+		registry.list().map((project) => projectOverrides.apply(project));
 	const store = createReportStore(reportsDir);
 	const pages = createPageBus();
 	const mcpSessions = createMcpSessions();
@@ -127,7 +147,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		store,
 		resultsDir,
 		tasksDir,
-		getProject: (slug) => registry.get(slug),
+		getProject: effectiveProject,
 		command: options.dispatchCommand,
 		gitSnapshot,
 	});
@@ -158,7 +178,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 
 	function corsHeaders(origin: string): Record<string, string> {
 		const headers: Record<string, string> = {
-			"Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+			"Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 			"Access-Control-Allow-Headers":
 				"Content-Type, Authorization, X-Devbar-Author, X-Devbar-Email, X-Devbar-Avatar, X-Devbar-Token",
 			Vary: "Origin",
@@ -281,7 +301,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 				// whether it fires without asking are the facts they need in front
 				// of them before they press Submit — not ones to go read a config
 				// file for.
-				projects: registry.list().map((p) => ({
+				projects: effectiveProjects().map((p) => ({
 					slug: p.slug,
 					dir: p.dir,
 					origins: p.origins ?? [],
@@ -297,6 +317,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 					resumeSession: p.resumeSession,
 					routes: (p.routes ?? []).map((r) => (typeof r === "string" ? r : "webhook")),
 					live: p.live ?? { enabled: true, allowMutating: false },
+					hasAgentOverrides: p.hasAgentOverrides,
 				})),
 				mcpSessions: mcpSessions.list().length,
 			});
@@ -336,7 +357,33 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		}
 
 		if (method === "GET" && path === "/api/projects") {
-			respond(ctx, 200, { projects: registry.list() });
+			respond(ctx, 200, { projects: effectiveProjects() });
+			return;
+		}
+
+		const settingsMatch = path.match(/^\/api\/projects\/([^/]+)\/settings$/);
+		if (settingsMatch && (method === "PATCH" || method === "DELETE")) {
+			const slug = decodeURIComponent(settingsMatch[1] as string);
+			const base = registry.get(slug);
+			if (!base) {
+				respond(ctx, 404, { error: "Project not found" });
+				return;
+			}
+
+			if (method === "PATCH") {
+				const body = await readJson<unknown>(ctx);
+				if (body === undefined) return;
+				const parsed = validateAgentSettingsOverrides(body);
+				if ("error" in parsed) {
+					respond(ctx, 400, { error: parsed.error });
+					return;
+				}
+				await projectOverrides.set(slug, parsed.value);
+			} else {
+				await projectOverrides.clear(slug);
+			}
+
+			respond(ctx, 200, { ok: true, project: effectiveProject(slug) });
 			return;
 		}
 
@@ -347,6 +394,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 				return;
 			}
 			await registry.unregister(slug);
+			await projectOverrides.clear(slug);
 			respond(ctx, 200, { ok: true });
 			return;
 		}
@@ -755,8 +803,10 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		pages,
 		mcpSessions,
 		start: () =>
-			new Promise((resolve) => {
+			new Promise((resolve, reject) => {
+				server.once("error", reject);
 				server.listen(port, host, () => {
+					server.removeListener("error", reject);
 					const addr = server.address();
 					const actualPort = addr && typeof addr === "object" ? addr.port : port;
 					resolve({ port: actualPort, host });

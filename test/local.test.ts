@@ -73,6 +73,41 @@ describe("local server API", () => {
 		expect(res.headers.get("access-control-allow-credentials")).toBe("true");
 	});
 
+	test("start rejects when its port is already in use", async () => {
+		const { createServer } = await import("node:http");
+		const blocker = createServer();
+		await new Promise<void>((resolve) => blocker.listen(0, "127.0.0.1", resolve));
+		const address = blocker.address();
+		const occupiedPort = address && typeof address === "object" ? address.port : 0;
+		const temp = tmpDir();
+		const candidate = await createLocalServer({
+			port: occupiedPort,
+			host: "127.0.0.1",
+			dir: join(temp, "reports"),
+			resultsDir: join(temp, "results"),
+			tasksDir: join(temp, "tasks"),
+			projectsFile: join(temp, "projects.json"),
+			projectOverridesFile: join(temp, "project-overrides.json"),
+		});
+		// Keep this deliberate bind error from becoming a process-level failure if
+		// start() ever regresses; the behavior under test is whether it settles.
+		candidate.server.once("error", () => undefined);
+
+		try {
+			const outcome = await Promise.race([
+				candidate.start().then(
+					() => "started",
+					() => "rejected",
+				),
+				new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 100)),
+			]);
+			expect(outcome).toBe("rejected");
+		} finally {
+			await new Promise<void>((resolve) => blocker.close(() => resolve()));
+			await rm(temp, { recursive: true, force: true });
+		}
+	});
+
 	test("POST /api/projects registers a project", async () => {
 		const res = await fetch(`${baseUrl}/api/projects`, {
 			method: "POST",
@@ -247,6 +282,139 @@ describe("local server API", () => {
 	test("health leaks nothing about the machine", async () => {
 		const res = await fetch(`${baseUrl}/health`);
 		expect(await res.json()).toEqual({ ok: true });
+	});
+});
+
+describe("persistent agent setting overrides", () => {
+	test("toolbar overrides survive a restart and can be reset to config values", async () => {
+		const tmpBase = tmpDir();
+		const reportsDir = join(tmpBase, "reports");
+		const resultsDir = join(tmpBase, "results");
+		const tasksDir = join(tmpBase, "tasks");
+		const projectsFile = join(tmpBase, "projects.json");
+		const projectOverridesFile = join(tmpBase, "project-overrides.json");
+		const token = "override-token";
+		const headers = {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${token}`,
+		};
+		const baseProject = {
+			slug: "override-project",
+			dir: "/tmp/override-project",
+			model: "sonnet",
+			effort: "medium",
+			command: "claude",
+			concurrency: 1,
+			permission: "plan" as const,
+			autoDispatch: false,
+			timeoutMs: 600_000,
+			resumeSession: false,
+		};
+
+		await mkdir(tmpBase, { recursive: true });
+		let first = await createLocalServer({
+			port: 0,
+			host: "127.0.0.1",
+			token,
+			dir: reportsDir,
+			resultsDir,
+			tasksDir,
+			projectsFile,
+			projectOverridesFile,
+			dispatchCommand: "echo",
+		});
+		await first.registry.register(baseProject);
+		let address = await first.start();
+		let baseUrl = `http://${address.host}:${address.port}`;
+
+		try {
+			const saved = await fetch(`${baseUrl}/api/projects/override-project/settings`, {
+				method: "PATCH",
+				headers,
+				body: JSON.stringify({
+					command: "codex",
+					model: "gpt-5.4",
+					effort: "high",
+					permission: "auto",
+					permissionMode: "workspace-write",
+					concurrency: 2,
+					maxBudgetUsd: 8,
+					timeoutMs: 900_000,
+					autoDispatch: true,
+					resumeSession: true,
+				}),
+			});
+			expect(saved.status).toBe(200);
+			const savedBody = await saved.json();
+			expect(savedBody.project.model).toBe("gpt-5.4");
+			expect(savedBody.project.permission).toBe("auto");
+			expect(savedBody.project.hasAgentOverrides).toBe(true);
+
+			await first.stop();
+
+			const second = await createLocalServer({
+				port: 0,
+				host: "127.0.0.1",
+				token,
+				dir: reportsDir,
+				resultsDir,
+				tasksDir,
+				projectsFile,
+				projectOverridesFile,
+				dispatchCommand: "echo",
+			});
+			first = second;
+			// Starting `devbar` re-registers values loaded from devbar.config.ts.
+			// The toolbar override layer must remain on top of that base config.
+			await second.registry.register(baseProject);
+			address = await second.start();
+			baseUrl = `http://${address.host}:${address.port}`;
+
+			const hello = await fetch(`${baseUrl}/api/hello`, { headers });
+			const helloBody = await hello.json();
+			const effective = helloBody.projects.find(
+				(project: { slug: string }) => project.slug === "override-project",
+			);
+			expect(effective).toMatchObject({
+				command: "codex",
+				model: "gpt-5.4",
+				effort: "high",
+				permission: "auto",
+				permissionMode: "workspace-write",
+				concurrency: 2,
+				maxBudgetUsd: 8,
+				timeoutMs: 900_000,
+				autoDispatch: true,
+				resumeSession: true,
+				hasAgentOverrides: true,
+			});
+
+			const invalid = await fetch(`${baseUrl}/api/projects/override-project/settings`, {
+				method: "PATCH",
+				headers,
+				body: JSON.stringify({ concurrency: 0 }),
+			});
+			expect(invalid.status).toBe(400);
+
+			const reset = await fetch(`${baseUrl}/api/projects/override-project/settings`, {
+				method: "DELETE",
+				headers,
+			});
+			expect(reset.status).toBe(200);
+			const resetBody = await reset.json();
+			expect(resetBody.project).toMatchObject({
+				model: "sonnet",
+				effort: "medium",
+				permission: "plan",
+				concurrency: 1,
+				autoDispatch: false,
+				resumeSession: false,
+				hasAgentOverrides: false,
+			});
+		} finally {
+			await first.stop().catch(() => undefined);
+			await rm(tmpBase, { recursive: true, force: true });
+		}
 	});
 });
 

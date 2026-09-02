@@ -220,8 +220,9 @@ with a reason. No WebSocket, and no dependencies — SSE plus POST is enough.
 
 ### Consent
 
-Live tools do nothing until someone turns on **Agent live** in the toolbar's
-settings panel, per origin, remembered locally. Read-only tools then work;
+Live tools do nothing until someone turns on **Agent live** — the switch at the
+top of the toolbar's Agent tab, also mirrored in Settings — per origin,
+remembered locally. Read-only tools then work;
 `navigate` and `reload` need the separate **Allow navigation** switch. Every
 call is visible in the toolbar.
 
@@ -272,6 +273,12 @@ Dispatch means a web page can cause code to run on your machine. The rules:
 **The toolbar says "No server found".** Run `devbar` in the project. It probes
 `127.0.0.1:3100` and `:3101` only, and only from a `localhost` page — pass
 `local={{ ports: [4000] }}` or `server="…"` for anything else.
+
+**A run is taking a while and I cannot tell what it is doing.** Open it in the
+toolbar's **Runs** list. A queued or running row attaches to
+`GET /api/tasks/:id/events`, which replays everything the run has emitted and
+then streams the rest — whoever started it. Collapsing the row closes the
+stream.
 
 **Reports save but nothing runs.** `autoDispatch` is off by default. The toast
 after Submit offers **Dispatch** for that one report; otherwise turn it on, use

@@ -20,8 +20,8 @@ import type {
 import { DEFAULT_CAPTURE_CONFIG } from "@/session/types";
 import type { ReactComponentContext } from "@/tools/select/react-fiber";
 import { buildPayload } from "@/output/payload";
-import { copyToClipboard } from "@/output/clipboard";
-import { exportToFile } from "@/output/file-export";
+import { copyPayloadJson, copyToClipboard } from "@/output/clipboard";
+import { type ExportFormat, exportToFile } from "@/output/file-export";
 import { SelectOverlay } from "@/tools/select/select-overlay";
 import { AnnotationHighlights } from "@/tools/select/annotation-highlights";
 import { DrawOverlay } from "@/tools/draw/draw-overlay";
@@ -29,7 +29,14 @@ import { CaptureOverlay } from "@/tools/capture/capture-overlay";
 import { RecordOverlay } from "@/tools/record/record-overlay";
 import { MarkerOverlay } from "@/tools/marker/marker-overlay";
 import { AuthModal } from "@/server/auth-modal";
-import { useLocalAgent, type LocalRunDetail, type LocalTask } from "@/live/use-local-agent";
+import {
+	useLocalAgent,
+	type LocalAgentSettings,
+	type LocalRunDetail,
+	type LocalRunEvent,
+	type LocalTask,
+} from "@/live/use-local-agent";
+import type { LocalProject } from "@/live/discovery";
 import { useCollaboration, type CollaborationCallbacks } from "@/collaboration/use-collaboration";
 import {
 	PeerCursors,
@@ -55,10 +62,13 @@ import {
 	MonitorIcon,
 	CopyIcon,
 	SaveFileIcon,
+	HtmlFileIcon,
+	PrintIcon,
 	ChevronDownIcon,
 	ChevronUpIcon,
 	PreviewIcon,
 	SettingsIcon,
+	AgentIcon,
 	UserIcon,
 	SendIcon,
 	KeyIcon,
@@ -558,6 +568,8 @@ const METHOD_ICONS: Record<ExportMethod, () => React.ReactNode> = {
 	json: CopyIcon,
 	"file-md": SaveFileIcon,
 	"file-json": SaveFileIcon,
+	"file-html": HtmlFileIcon,
+	"file-pdf": PrintIcon,
 	server: SendIcon,
 };
 
@@ -566,7 +578,23 @@ const METHOD_TIPS: Record<ExportMethod, string> = {
 	json: "JSON clipboard",
 	"file-md": "Markdown file",
 	"file-json": "JSON file",
+	"file-html": "HTML file",
+	"file-pdf": "PDF",
 	server: "Server",
+};
+
+const EXPORT_MESSAGES: Record<ExportFormat, string> = {
+	md: "Saved markdown!",
+	json: "Saved JSON!",
+	html: "Saved HTML!",
+	pdf: "Opening print dialog…",
+};
+
+const EXPORT_METHODS: Record<ExportFormat, ExportMethod> = {
+	md: "file-md",
+	json: "file-json",
+	html: "file-html",
+	pdf: "file-pdf",
 };
 
 function timeAgo(ts: number): string {
@@ -635,12 +663,6 @@ const THEME_LABELS: Record<DevbarTheme, string> = {
 	auto: "System",
 };
 
-const PERMISSION_HINTS: Record<string, string> = {
-	plan: "Read-only — the agent may look, not edit",
-	auto: "May edit files inside the project directory",
-	full: "No sandbox and no prompts",
-};
-
 /** One label/value line in the agent configuration list. */
 function AgentFact({
 	label,
@@ -675,6 +697,26 @@ function formatDuration(ms: number): string {
 	return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
+/** One streamed agent event as a log line. Bookkeeping events are dropped. */
+function formatRunEvent(event: LocalRunEvent): string | undefined {
+	switch (event.type) {
+		case "start":
+			return `$ ${event.command}`;
+		case "stdout":
+			return event.text.replace(/\n+$/, "");
+		case "tool":
+			return `· ${event.name}${event.detail ? ` ${event.detail}` : ""}`;
+		case "error":
+			return `! ${event.message}`;
+		case "done":
+			return `exit ${event.exitCode}${
+				typeof event.costUsd === "number" ? ` · $${event.costUsd.toFixed(2)}` : ""
+			}`;
+		default:
+			return undefined;
+	}
+}
+
 /**
  * One dispatch run, openable.
  *
@@ -683,21 +725,31 @@ function formatDuration(ms: number): string {
  * shows the prompt the agent was handed and, once it has finished, what it
  * said back: a list that only reports status asks you to take on faith what
  * was sent on your behalf.
+ *
+ * Opening a run that is still going attaches to it. The server replays what
+ * the run has already emitted before streaming the rest, so a dispatch started
+ * from the CLI, by auto-dispatch, or in another tab can be followed from
+ * whenever you happen to look at it — not only read once it is over.
  */
 function AgentRun({
 	task,
 	onCancel,
 	getDetail,
+	watchRun,
 }: {
 	task: LocalTask;
 	onCancel: (id: string) => Promise<void>;
 	getDetail: (task: LocalTask) => Promise<LocalRunDetail>;
+	watchRun: (taskId: string, onEvent: (event: LocalRunEvent) => void) => () => void;
 }): React.ReactNode {
 	const inFlight = task.status === "queued" || task.status === "running";
 	const [, tick] = useState(0);
 	const [open, setOpen] = useState(false);
 	const [detail, setDetail] = useState<LocalRunDetail | undefined>(undefined);
 	const [loading, setLoading] = useState(false);
+	const [liveLines, setLiveLines] = useState<string[]>([]);
+	const liveRef = useRef<HTMLPreElement | null>(null);
+	const pinnedRef = useRef(true);
 
 	useEffect(() => {
 		if (!inFlight) return;
@@ -720,6 +772,28 @@ function AgentRun({
 			cancelled = true;
 		};
 	}, [open, task.status, task.id, getDetail, task]);
+
+	// Attach only while the row is open and the run is going: a stream per run
+	// per tab, held open for something nobody is reading, is the cost the
+	// activity feed already refuses to pay.
+	useEffect(() => {
+		if (!open || !inFlight) return;
+		setLiveLines([]);
+		return watchRun(task.id, (event) => {
+			const line = formatRunEvent(event);
+			if (line === undefined) return;
+			// The server caps at 1000 events per task; this caps what a single
+			// pane has to lay out.
+			setLiveLines((prev) => [...prev, line].slice(-300));
+		});
+	}, [open, inFlight, task.id, watchRun]);
+
+	// Pinned to the bottom, unless the reader has scrolled up to read something.
+	useEffect(() => {
+		const pane = liveRef.current;
+		if (!pane || !pinnedRef.current) return;
+		pane.scrollTop = pane.scrollHeight;
+	}, [liveLines]);
 
 	const started = task.startedAt ?? task.createdAt;
 	const elapsed = inFlight ? Date.now() - started : (task.completedAt ?? started) - started;
@@ -768,6 +842,32 @@ function AgentRun({
 			</div>
 			{open && (
 				<div className="devbar-agent-run-detail">
+					{/* Attached to a run in flight: what it has already said, then the
+					    rest as it says it. Dropped once the stored output lands, which
+					    is the same text without the wait. */}
+					{liveLines.length > 0 && (inFlight || !detail?.output) && (
+						<>
+							<div className="devbar-agent-detail-label">
+								{inFlight ? "Live output" : "Streamed output"}
+								{inFlight && <span className="devbar-agent-live-pulse" />}
+							</div>
+							<pre
+								ref={liveRef}
+								className="devbar-agent-detail-body devbar-agent-live-body"
+								onScroll={(event) => {
+									const pane = event.currentTarget;
+									pinnedRef.current = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 24;
+								}}
+							>
+								{liveLines.join("\n")}
+							</pre>
+						</>
+					)}
+					{inFlight && liveLines.length === 0 && (
+						<div className="devbar-agent-empty">
+							Attached — waiting for the agent's first output…
+						</div>
+					)}
 					{loading && !detail && <div className="devbar-agent-empty">Loading…</div>}
 					{detail?.error && <div className="devbar-agent-empty">{detail.error}</div>}
 					{detail?.prompt && (
@@ -793,12 +893,233 @@ function AgentRun({
 							<pre className="devbar-agent-detail-body">{detail.changedFiles.join("\n")}</pre>
 						</>
 					)}
-					{!loading && detail && !detail.prompt && !detail.output && !detail.error && (
-						<div className="devbar-agent-empty">Nothing recorded for this run.</div>
-					)}
+					{!loading &&
+						detail &&
+						!detail.prompt &&
+						!detail.output &&
+						!detail.error &&
+						liveLines.length === 0 &&
+						!inFlight && <div className="devbar-agent-empty">Nothing recorded for this run.</div>}
 				</div>
 			)}
 		</div>
+	);
+}
+
+type AgentSettingsFormState = {
+	command: string;
+	model: string;
+	effort: string;
+	permission: "plan" | "auto" | "full";
+	permissionMode: string;
+	concurrency: string;
+	maxBudgetUsd: string;
+	timeoutSeconds: string;
+	autoDispatch: boolean;
+	resumeSession: boolean;
+};
+
+function agentSettingsFormState(project: LocalProject): AgentSettingsFormState {
+	return {
+		command: project.command || "claude",
+		model: project.model,
+		effort: project.effort || "medium",
+		permission: project.permission || "plan",
+		permissionMode: project.permissionMode || "",
+		concurrency: String(project.concurrency ?? 1),
+		maxBudgetUsd: project.maxBudgetUsd === undefined ? "" : String(project.maxBudgetUsd),
+		timeoutSeconds: project.timeoutMs === undefined ? "" : String(project.timeoutMs / 1000),
+		autoDispatch: project.autoDispatch,
+		resumeSession: project.resumeSession ?? false,
+	};
+}
+
+function AgentSettingsForm({
+	project,
+	onSave,
+	onReset,
+}: {
+	project: LocalProject;
+	onSave: (settings: LocalAgentSettings) => Promise<LocalProject>;
+	onReset: () => Promise<LocalProject>;
+}): React.ReactNode {
+	const [form, setForm] = useState<AgentSettingsFormState>(() => agentSettingsFormState(project));
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		setForm(agentSettingsFormState(project));
+	}, [project]);
+
+	const setField = <K extends keyof AgentSettingsFormState>(
+		key: K,
+		value: AgentSettingsFormState[K],
+	) => setForm((current) => ({ ...current, [key]: value }));
+
+	const save = async () => {
+		setSaving(true);
+		setError(null);
+		try {
+			await onSave({
+				command: form.command.trim(),
+				model: form.model.trim(),
+				effort: form.effort.trim(),
+				permission: form.permission,
+				permissionMode: form.permissionMode.trim() || null,
+				concurrency: Number(form.concurrency),
+				maxBudgetUsd: form.maxBudgetUsd ? Number(form.maxBudgetUsd) : null,
+				timeoutMs: form.timeoutSeconds ? Number(form.timeoutSeconds) * 1000 : null,
+				autoDispatch: form.autoDispatch,
+				resumeSession: form.resumeSession,
+			});
+		} catch (cause) {
+			setError(cause instanceof Error ? cause.message : String(cause));
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const reset = async () => {
+		setSaving(true);
+		setError(null);
+		try {
+			await onReset();
+		} catch (cause) {
+			setError(cause instanceof Error ? cause.message : String(cause));
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	return (
+		<form
+			className="devbar-agent-settings-form"
+			onSubmit={(event) => {
+				event.preventDefault();
+				void save();
+			}}
+		>
+			<div className="devbar-agent-settings-grid">
+				<label className="devbar-agent-setting-field">
+					<span>Command</span>
+					<input
+						value={form.command}
+						onChange={(event) => setField("command", event.target.value)}
+						required
+					/>
+				</label>
+				<label className="devbar-agent-setting-field">
+					<span>Model</span>
+					<input
+						value={form.model}
+						onChange={(event) => setField("model", event.target.value)}
+						required
+					/>
+				</label>
+				<label className="devbar-agent-setting-field">
+					<span>Effort</span>
+					<input
+						value={form.effort}
+						onChange={(event) => setField("effort", event.target.value)}
+						required
+					/>
+				</label>
+				<label className="devbar-agent-setting-field">
+					<span>Permission</span>
+					<select
+						aria-label="Permission"
+						value={form.permission}
+						onChange={(event) =>
+							setField("permission", event.target.value as AgentSettingsFormState["permission"])
+						}
+					>
+						<option value="plan">Plan · read only</option>
+						<option value="auto">Auto · edit workspace</option>
+						<option value="full">Full · unrestricted</option>
+					</select>
+				</label>
+				<label className="devbar-agent-setting-field">
+					<span>Raw permission mode</span>
+					<input
+						value={form.permissionMode}
+						onChange={(event) => setField("permissionMode", event.target.value)}
+						placeholder="Use mapped mode"
+					/>
+				</label>
+				<label className="devbar-agent-setting-field">
+					<span>Concurrency</span>
+					<input
+						type="number"
+						min="1"
+						step="1"
+						value={form.concurrency}
+						onChange={(event) => setField("concurrency", event.target.value)}
+						required
+					/>
+				</label>
+				<label className="devbar-agent-setting-field">
+					<span>Budget (USD)</span>
+					<input
+						type="number"
+						min="0.01"
+						step="0.01"
+						value={form.maxBudgetUsd}
+						onChange={(event) => setField("maxBudgetUsd", event.target.value)}
+						placeholder="No limit"
+					/>
+				</label>
+				<label className="devbar-agent-setting-field">
+					<span>Timeout (seconds)</span>
+					<input
+						type="number"
+						min="1"
+						step="1"
+						value={form.timeoutSeconds}
+						onChange={(event) => setField("timeoutSeconds", event.target.value)}
+						placeholder="600 default"
+					/>
+				</label>
+			</div>
+
+			<div className="devbar-agent-setting-switches">
+				<label className="devbar-agent-setting-check">
+					<input
+						type="checkbox"
+						checked={form.autoDispatch}
+						onChange={(event) => setField("autoDispatch", event.target.checked)}
+					/>
+					<span>Auto-dispatch reports</span>
+				</label>
+				<label className="devbar-agent-setting-check">
+					<input
+						type="checkbox"
+						checked={form.resumeSession}
+						onChange={(event) => setField("resumeSession", event.target.checked)}
+					/>
+					<span>Reuse project session</span>
+				</label>
+			</div>
+
+			{project.hasAgentOverrides && (
+				<div className="devbar-agent-note devbar-agent-override-note">
+					Toolbar overrides active. These values take precedence over devbar.config.ts.
+				</div>
+			)}
+			{error && <div className="devbar-agent-settings-error">{error}</div>}
+			<div className="devbar-agent-settings-actions">
+				<button
+					type="button"
+					className="devbar-agent-settings-reset"
+					onClick={() => void reset()}
+					disabled={!project.hasAgentOverrides || saving}
+				>
+					Reset to devbar.config.ts
+				</button>
+				<button type="submit" className="devbar-agent-settings-save" disabled={saving}>
+					{saving ? "Saving…" : "Save agent settings"}
+				</button>
+			</div>
+		</form>
 	);
 }
 
@@ -1209,9 +1530,25 @@ export function Devbar({
 		collab.sendAnnotationAdd,
 	]);
 
+	// The one thing the exported prompt was missing: what the user actually wants
+	// done. Without it the LLM gets evidence with no intent.
+	const [task, setTask] = useState<string>(() => {
+		try {
+			return localStorage.getItem("devbar-task") ?? "";
+		} catch {
+			return "";
+		}
+	});
+	const updateTask = useCallback((value: string) => {
+		setTask(value);
+		try {
+			localStorage.setItem("devbar-task", value);
+		} catch {}
+	}, []);
+
 	const localArchiveAndClear = useCallback(
 		(method: ExportMethod): string | null => {
-			const id = state.archiveAndClear(method);
+			const id = state.archiveAndClear(method, task);
 			collab.sendClear();
 			// The task describes the batch that was just exported, so it goes with it.
 			setTask("");
@@ -1220,7 +1557,7 @@ export function Devbar({
 			} catch {}
 			return id;
 		},
-		[state.archiveAndClear, collab.sendClear],
+		[state.archiveAndClear, collab.sendClear, task],
 	);
 
 	// Exporting clears the batch. That is right most of the time and wrong just
@@ -1229,8 +1566,19 @@ export function Devbar({
 	// History.
 	const restoreExport = useCallback(
 		(id: string): Annotation[] => {
-			const restored = state.restoreExport(id);
+			const { annotations: restored, task: restoredTask } = state.restoreExport(id);
 			for (const annotation of restored) collab.sendAnnotationAdd(annotation);
+			// The batch comes back with what it was for — unless a new task has
+			// been typed since, which is the live intent and outranks the old one.
+			if (restoredTask) {
+				setTask((current) => {
+					if (current.trim()) return current;
+					try {
+						localStorage.setItem("devbar-task", restoredTask);
+					} catch {}
+					return restoredTask;
+				});
+			}
 			if (restored.length > 0) {
 				showToastRef.current(
 					`Restored ${restored.length} annotation${restored.length === 1 ? "" : "s"}`,
@@ -1255,21 +1603,6 @@ export function Devbar({
 	const [uiMode] = useState<"toolbar" | "panel">("toolbar");
 	const [panelOpen, setPanelOpen] = useState(false);
 	const [panelTab, setPanelTab] = useState<PanelTab>("annotations");
-	// The one thing the exported prompt was missing: what the user actually wants
-	// done. Without it the LLM gets evidence with no intent.
-	const [task, setTask] = useState<string>(() => {
-		try {
-			return localStorage.getItem("devbar-task") ?? "";
-		} catch {
-			return "";
-		}
-	});
-	const updateTask = useCallback((value: string) => {
-		setTask(value);
-		try {
-			localStorage.setItem("devbar-task", value);
-		} catch {}
-	}, []);
 	const [toast, setToast] = useState<string | null>(null);
 	const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null);
 	const [theme, setTheme] = useState<DevbarTheme>(initialTheme);
@@ -1382,6 +1715,8 @@ export function Devbar({
 	const annotationPanelOpen = panelOpen && (panelTab === "annotations" || panelTab === "history");
 	const preferencePanelOpen =
 		panelOpen && (panelTab === "agent" || panelTab === "settings" || panelTab === "shortcuts");
+	const agentPanelOpen = panelOpen && panelTab === "agent";
+	const settingsPanelOpen = panelOpen && (panelTab === "settings" || panelTab === "shortcuts");
 	const visiblePanelTabs = annotationPanelOpen ? ANNOTATION_TABS : PREFERENCE_TABS;
 
 	const closePanel = useCallback(() => {
@@ -1783,13 +2118,15 @@ export function Devbar({
 	]);
 
 	const handleExport = useCallback(
-		(format: "json" | "md" = "md") => {
+		(format: ExportFormat = "md") => {
 			const payload = buildPayload(state.annotations, promptTemplate, settings, task);
-			exportToFile(payload, format, settings);
-			const message = format === "md" ? "Saved markdown!" : "Saved JSON!";
+			const ok = exportToFile(payload, format, settings);
+			// A PDF that could not reach the print dialog was saved as .html
+			// instead; say which file actually landed.
+			const message = !ok ? "Printing blocked — saved HTML instead" : EXPORT_MESSAGES[format];
 			onSubmit?.(payload);
 			if (!onSubmit) {
-				exportedToast(message, localArchiveAndClear(format === "md" ? "file-md" : "file-json"));
+				exportedToast(message, localArchiveAndClear(EXPORT_METHODS[format]));
 				setPanelOpen(false);
 			} else {
 				showToast(message);
@@ -1807,111 +2144,144 @@ export function Devbar({
 		],
 	);
 
-	const handleServerSubmit = useCallback(async () => {
-		if (!effectiveServer) return;
-		const payload = buildPayload(state.annotations, promptTemplate, settings, task);
-		const headers: Record<string, string> = { "Content-Type": "application/json" };
+	/**
+	 * Posts one report to the server. The payload is a parameter rather than
+	 * "whatever is on screen", so History can resend an archived batch with the
+	 * task it was captured under. `archive` is what turns the live batch into a
+	 * History record — a resend from History passes nothing, since the record
+	 * already exists and the live batch is somebody else's work in progress.
+	 */
+	const submitReport = useCallback(
+		async (
+			payload: DevbarPayload,
+			options?: { dispatch?: boolean; archive?: () => string | null },
+		) => {
+			if (!effectiveServer) return;
+			const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-		if (effectiveToken) {
-			// Mode D: static bearer token (e.g. local server)
-			headers["Authorization"] = `Bearer ${effectiveToken}`;
-		} else if (authProxy && auth.authUser) {
-			// Mode C: get signed token from auth proxy
-			try {
-				const res = await fetch(authProxy, { method: "POST", credentials: "include" });
-				if (res.ok) {
-					const data = await res.json();
-					if (data.token) headers["X-Devbar-Token"] = data.token;
-				}
-			} catch {}
-		} else if (user) {
-			// Mode A: injected identity headers
-			headers["X-Devbar-Author"] = user.name;
-			if (user.email) headers["X-Devbar-Email"] = user.email;
-			if (user.avatar) headers["X-Devbar-Avatar"] = user.avatar;
-		}
-		// Mode B: session cookie sent automatically via credentials: "include"
-
-		try {
-			const url = `${effectiveServer}/api/reports`;
-			const body = JSON.stringify({
-				payload,
-				url: payload.url,
-				title: payload.title,
-				project: effectiveProject,
-			});
-			console.log("[devbar] submitting to", url, {
-				hasToken: !!effectiveToken,
-				project: effectiveProject,
-			});
-			const res = await fetch(url, {
-				method: "POST",
-				headers,
-				// Only send cookies when not using bearer token auth —
-				// credentials: "include" with Access-Control-Allow-Origin: * is blocked by browsers
-				...(effectiveToken ? {} : { credentials: "include" as const }),
-				body,
-			});
-			if (res.ok) {
-				const data = (await res.json()) as { id?: string; taskId?: string };
-				console.log("[devbar] submit ok", data);
-				onSubmit?.(payload);
-				const archivedId = localArchiveAndClear("server");
-				setPanelOpen(false);
-				// Submitting to the local server with auto-dispatch off used to leave
-				// the report in "Waiting on you" — three clicks away, in a tab most
-				// people never open. Offer the hand-off right here instead.
-				const isLocal = localAgent.status === "connected" && effectiveServer === localAgent.url;
-				if (isLocal && data.id && !data.taskId) {
-					const reportId = data.id;
-					showToast("Submitted — waiting for you to dispatch", {
-						label: "Dispatch",
-						run: () => {
-							void localAgent.dispatchReports(reportId).then(() => {
-								showToastRef.current("Dispatched to the agent", {
-									label: "Runs",
-									run: () => openPanel("agent"),
-								});
-							});
-						},
-					});
-				} else if (isLocal && data.taskId) {
-					showToast("Submitted — the agent is on it", {
-						label: "Runs",
-						run: () => openPanel("agent"),
-					});
-				} else {
-					exportedToast("Submitted to server!", archivedId);
-				}
-			} else {
-				const text = await res.text();
-				console.error("[devbar] submit failed", res.status, text);
-				showToast(`Submit failed (${res.status})`);
+			if (effectiveToken) {
+				// Mode D: static bearer token (e.g. local server)
+				headers["Authorization"] = `Bearer ${effectiveToken}`;
+			} else if (authProxy && auth.authUser) {
+				// Mode C: get signed token from auth proxy
+				try {
+					const res = await fetch(authProxy, { method: "POST", credentials: "include" });
+					if (res.ok) {
+						const data = await res.json();
+						if (data.token) headers["X-Devbar-Token"] = data.token;
+					}
+				} catch {}
+			} else if (user) {
+				// Mode A: injected identity headers
+				headers["X-Devbar-Author"] = user.name;
+				if (user.email) headers["X-Devbar-Email"] = user.email;
+				if (user.avatar) headers["X-Devbar-Avatar"] = user.avatar;
 			}
-		} catch (err) {
-			console.error("[devbar] submit error", err);
-			showToast("Submit failed (network error)");
-		}
-	}, [
-		effectiveServer,
-		effectiveToken,
-		effectiveProject,
-		state.annotations,
-		promptTemplate,
-		settings,
-		task,
-		authProxy,
-		auth.authUser,
-		user,
-		onSubmit,
-		showToast,
-		exportedToast,
-		localArchiveAndClear,
-		localAgent.status,
-		localAgent.url,
-		localAgent.dispatchReports,
-		openPanel,
-	]);
+			// Mode B: session cookie sent automatically via credentials: "include"
+
+			try {
+				const url = `${effectiveServer}/api/reports`;
+				const body = JSON.stringify({
+					payload,
+					url: payload.url,
+					title: payload.title,
+					project: effectiveProject,
+				});
+				console.log("[devbar] submitting to", url, {
+					hasToken: !!effectiveToken,
+					project: effectiveProject,
+				});
+				const res = await fetch(url, {
+					method: "POST",
+					headers,
+					// Only send cookies when not using bearer token auth —
+					// credentials: "include" with Access-Control-Allow-Origin: * is blocked by browsers
+					...(effectiveToken ? {} : { credentials: "include" as const }),
+					body,
+				});
+				if (res.ok) {
+					const data = (await res.json()) as { id?: string; taskId?: string };
+					console.log("[devbar] submit ok", data);
+					onSubmit?.(payload);
+					const archivedId = options?.archive?.() ?? null;
+					// Only the live batch leaving closes the panel; a resend from
+					// History should leave you looking at History.
+					if (options?.archive) setPanelOpen(false);
+					// Submitting to the local server with auto-dispatch off used to leave
+					// the report in "Waiting on you" — three clicks away, in a tab most
+					// people never open. Offer the hand-off right here instead.
+					const isLocal = localAgent.status === "connected" && effectiveServer === localAgent.url;
+					// "Send to agent" is submit and hand-off in one go: the report is
+					// stored the same way, and the run starts without a second click.
+					if (options?.dispatch && isLocal && data.id && !data.taskId) {
+						await localAgent.dispatchReports(data.id);
+						showToast("Sent to the agent", { label: "Runs", run: () => openPanel("agent") });
+					} else if (isLocal && data.id && !data.taskId) {
+						const reportId = data.id;
+						showToast("Submitted — waiting for you to dispatch", {
+							label: "Dispatch",
+							run: () => {
+								void localAgent.dispatchReports(reportId).then(() => {
+									showToastRef.current("Dispatched to the agent", {
+										label: "Runs",
+										run: () => openPanel("agent"),
+									});
+								});
+							},
+						});
+					} else if (isLocal && data.taskId) {
+						showToast("Submitted — the agent is on it", {
+							label: "Runs",
+							run: () => openPanel("agent"),
+						});
+					} else {
+						exportedToast("Submitted to server!", archivedId);
+					}
+				} else {
+					const text = await res.text();
+					console.error("[devbar] submit failed", res.status, text);
+					showToast(`Submit failed (${res.status})`);
+				}
+			} catch (err) {
+				console.error("[devbar] submit error", err);
+				showToast("Submit failed (network error)");
+			}
+		},
+		[
+			effectiveServer,
+			effectiveToken,
+			effectiveProject,
+			authProxy,
+			auth.authUser,
+			user,
+			onSubmit,
+			showToast,
+			exportedToast,
+			localAgent.status,
+			localAgent.url,
+			localAgent.dispatchReports,
+			openPanel,
+		],
+	);
+
+	const handleServerSubmit = useCallback(
+		async (options?: { dispatch?: boolean }) => {
+			if (!effectiveServer) return;
+			await submitReport(buildPayload(state.annotations, promptTemplate, settings, task), {
+				dispatch: options?.dispatch,
+				archive: () => localArchiveAndClear("server"),
+			});
+		},
+		[
+			effectiveServer,
+			submitReport,
+			state.annotations,
+			promptTemplate,
+			settings,
+			task,
+			localArchiveAndClear,
+		],
+	);
 	handleServerSubmitRef.current = handleServerSubmit;
 
 	const handleToolClick = useCallback(
@@ -2160,7 +2530,36 @@ export function Devbar({
 		</>
 	);
 
-	// Shared settings button
+	// Shared agent button.
+	//
+	// It sits with the send actions rather than with settings, and carries a dot
+	// for the one fact the send actions depend on: whether a run has anywhere to
+	// go. Without it "Send to agent" is greyed out with no clue why, from a bar
+	// that looked identical either way.
+	const renderAgentButton = (btnClass: string, activeClass: string, withTooltip: boolean) => (
+		<button
+			type="button"
+			className={`${btnClass} ${agentPanelOpen ? activeClass : ""}`}
+			onClick={() => togglePanelTab("agent")}
+			title={agentReason ?? `Agent · ${localAgent.project ?? "connected"}`}
+		>
+			<AgentIcon />
+			{localAgent.status === "connected" && (
+				<span className={`devbar-bar-dot ${agentReady ? "devbar-bar-dot-on" : ""}`} />
+			)}
+			{withTooltip && (
+				<span className="devbar-tooltip">
+					Agent
+					{agentReason ? (
+						<span className="devbar-tooltip-hint">{agentReason}</span>
+					) : (
+						<span className="devbar-tooltip-hint">Ready · {localAgent.project}</span>
+					)}
+				</span>
+			)}
+		</button>
+	);
+
 	const renderSettingsButton = (
 		btnClass: string,
 		activeClass: string,
@@ -2169,7 +2568,7 @@ export function Devbar({
 	) => (
 		<button
 			type="button"
-			className={`${btnClass} ${preferencePanelOpen ? activeClass : ""}`}
+			className={`${btnClass} ${settingsPanelOpen ? activeClass : ""}`}
 			onClick={() => togglePanelTab("settings")}
 			title="Settings"
 		>
@@ -2232,18 +2631,58 @@ export function Devbar({
 			>
 				<SaveFileIcon /> .json
 			</button>
+			<button
+				type="button"
+				className="devbar-export-menu-item"
+				title="Save a standalone HTML report — images and all"
+				onClick={() => {
+					handleExport("html");
+					close();
+				}}
+			>
+				<HtmlFileIcon /> .html
+			</button>
+			{/* The browser's print dialog is where "Save as PDF" lives, so that is
+			    where this goes rather than into a bundled PDF renderer. */}
+			<button
+				type="button"
+				className="devbar-export-menu-item"
+				title="Print the report — choose Save as PDF"
+				onClick={() => {
+					handleExport("pdf");
+					close();
+				}}
+			>
+				<PrintIcon /> .pdf
+			</button>
 			{effectiveServer && !omit?.has("submit") && (
 				<button
 					type="button"
 					className="devbar-export-menu-item"
 					onClick={() => {
-						handleServerSubmit();
+						void handleServerSubmit();
 						close();
 					}}
 				>
 					<SendIcon /> Submit
 				</button>
 			)}
+			{/* Submit stores a report; this one also starts the run. Shown even
+			    when there is no agent to take it, because "why is this greyed out"
+			    is answerable and "where did that option go" is not. */}
+			<button
+				type="button"
+				className="devbar-export-menu-item"
+				disabled={!agentReady}
+				title={agentReason ?? "Submit the report and run the agent on it"}
+				onClick={() => {
+					if (!agentReady) return;
+					void handleServerSubmit({ dispatch: true });
+					close();
+				}}
+			>
+				<AgentIcon /> Send to agent
+			</button>
 			<div className="devbar-export-menu-divider" />
 			<button
 				type="button"
@@ -2476,6 +2915,19 @@ export function Devbar({
 
 	const activeProject = localAgent.projects.find((p) => p.slug === localAgent.project);
 
+	// Whether there is somewhere for a report to be *run*, not just stored. Both
+	// halves matter: a server with no project claiming this page has nothing to
+	// dispatch into, and saying so beats a button that fails on click.
+	const agentReason =
+		localAgent.status !== "connected"
+			? localAgent.status === "searching"
+				? "Looking for a local devbar server…"
+				: "No devbar server — run `devbar` in your project"
+			: !activeProject
+				? "No project claims this page — pick one in the Agent tab"
+				: undefined;
+	const agentReady = agentReason === undefined;
+
 	/**
 	 * What the agent side of devbar is actually doing, in one place.
 	 *
@@ -2508,59 +2960,69 @@ export function Devbar({
 			(task) => task.status !== "queued" && task.status !== "running",
 		);
 
+		// The three facts that answer "is this hooked up?" — which server, which
+		// project, whether the page is exposed — used to be spread across a
+		// section header, a fact list and the Settings tab. They lead now.
+		const liveDescription = localAgent.liveEnabled
+			? localAgent.liveState.status === "connected"
+				? "Connected — the agent can inspect and screenshot this page"
+				: localAgent.liveState.status === "error"
+					? `Not connected: ${localAgent.liveState.message}`
+					: "Connecting…"
+			: "Let an agent inspect and screenshot this page";
+
 		return (
 			<div className="devbar-panel-body" style={{ padding: 12 }}>
-				<div className="devbar-agent-section">
-					<div className="devbar-agent-section-title">Configuration</div>
-					{activeProject ? (
-						<>
-							<dl className="devbar-agent-facts">
-								<AgentFact label="Project" value={activeProject.slug} />
-								<AgentFact label="Command" value={activeProject.command} />
-								<AgentFact label="Model" value={activeProject.model} />
-								{activeProject.effort && <AgentFact label="Effort" value={activeProject.effort} />}
-								<AgentFact
-									label="Permission"
-									value={activeProject.permissionMode ?? activeProject.permission ?? "plan"}
-									hint={PERMISSION_HINTS[activeProject.permission ?? "plan"]}
-								/>
-								<AgentFact
-									label="Auto-dispatch"
-									value={activeProject.autoDispatch ? "on" : "off"}
-									tone={activeProject.autoDispatch ? "warn" : undefined}
-									hint={
-										activeProject.autoDispatch
-											? "Reports run an agent as soon as they are submitted"
-											: "Reports queue until you dispatch them"
-									}
-								/>
-								{typeof activeProject.concurrency === "number" && (
-									<AgentFact label="Concurrency" value={String(activeProject.concurrency)} />
-								)}
-								{typeof activeProject.maxBudgetUsd === "number" && (
-									<AgentFact label="Budget" value={`$${activeProject.maxBudgetUsd}`} />
-								)}
-								{typeof activeProject.timeoutMs === "number" && (
-									<AgentFact
-										label="Timeout"
-										value={`${Math.round(activeProject.timeoutMs / 1000)}s`}
-									/>
-								)}
-								{activeProject.routes && activeProject.routes.length > 0 && (
-									<AgentFact label="Routes" value={activeProject.routes.join(", ")} />
-								)}
-								{activeProject.dir && <AgentFact label="Directory" value={activeProject.dir} />}
-							</dl>
-							<div className="devbar-agent-note">
-								Edit these in <code>devbar.config.ts</code>, then restart <code>devbar</code>.
-							</div>
-						</>
-					) : (
-						<div className="devbar-agent-empty">
-							No project claims{" "}
-							<code>{typeof window === "undefined" ? "" : window.location.origin}</code>. Add it to{" "}
-							<code>origins</code> in <code>devbar.config.ts</code>, or pick a project in Settings.
+				<div className="devbar-agent-strip">
+					<div className="devbar-agent-strip-head">
+						<div className="devbar-live-dot devbar-live-dot-on" title="Local devbar server found" />
+						<div className="devbar-agent-strip-name">{activeProject?.slug ?? "No project"}</div>
+						<div className="devbar-agent-strip-url" title={localAgent.url ?? ""}>
+							{(localAgent.url ?? "").replace(/^https?:\/\//, "")}
 						</div>
+					</div>
+					{/* The same switch as in Settings. People looking for "let the agent
+					    see my page" look here first, and used to find only a hint that
+					    it existed somewhere else. */}
+					<div className="devbar-settings-row devbar-settings-row-compact">
+						<div className="devbar-settings-label">
+							<div className="devbar-settings-title">Agent live</div>
+							<div className="devbar-settings-desc">{liveDescription}</div>
+						</div>
+						<button
+							type="button"
+							className={`devbar-toggle ${localAgent.liveEnabled ? "devbar-toggle-on" : ""}`}
+							onClick={() => localAgent.setLiveEnabled(!localAgent.liveEnabled)}
+							aria-pressed={localAgent.liveEnabled}
+							aria-label="Agent live"
+							title={localAgent.liveEnabled ? "Disconnect the agent" : "Allow agent access"}
+						>
+							<div className="devbar-toggle-thumb" />
+						</button>
+					</div>
+					{!activeProject && (
+						<>
+							<div className="devbar-agent-empty">
+								No project claims{" "}
+								<code>{typeof window === "undefined" ? "" : window.location.origin}</code>. Add it
+								to <code>origins</code> in <code>devbar.config.ts</code>, or pick one here.
+							</div>
+							{localAgent.projects.length > 0 && (
+								<select
+									className="devbar-settings-select devbar-agent-strip-select"
+									value=""
+									aria-label="Project"
+									onChange={(e) => localAgent.setProject(e.target.value)}
+								>
+									<option value="">Pick a project…</option>
+									{localAgent.projects.map((p) => (
+										<option key={p.slug} value={p.slug}>
+											{p.slug}
+										</option>
+									))}
+								</select>
+							)}
+						</>
 					)}
 				</div>
 
@@ -2630,37 +3092,9 @@ export function Devbar({
 							task={task}
 							onCancel={localAgent.cancelTask}
 							getDetail={localAgent.getRunDetail}
+							watchRun={localAgent.watchRun}
 						/>
 					))}
-				</div>
-
-				<div className="devbar-agent-section">
-					<div className="devbar-agent-section-title">Live page</div>
-					{/* The same switch as in Settings. People looking for "let the agent
-					    see my page" look here first, and used to find only a hint that
-					    it existed somewhere else. */}
-					<div className="devbar-settings-row devbar-settings-row-compact">
-						<div className="devbar-settings-label">
-							<div className="devbar-settings-title">Agent live</div>
-							<div className="devbar-settings-desc">
-								{localAgent.liveEnabled
-									? localAgent.liveState.status === "connected"
-										? "Connected — the agent can inspect and screenshot this page"
-										: localAgent.liveState.status === "error"
-											? `Not connected: ${localAgent.liveState.message}`
-											: "Connecting…"
-									: "Let an agent inspect and screenshot this page"}
-							</div>
-						</div>
-						<button
-							type="button"
-							className={`devbar-toggle ${localAgent.liveEnabled ? "devbar-toggle-on" : ""}`}
-							onClick={() => localAgent.setLiveEnabled(!localAgent.liveEnabled)}
-							title={localAgent.liveEnabled ? "Disconnect the agent" : "Allow agent access"}
-						>
-							<div className="devbar-toggle-thumb" />
-						</button>
-					</div>
 				</div>
 
 				<div className="devbar-agent-section">
@@ -2672,9 +3106,8 @@ export function Devbar({
 					</div>
 					{localAgent.mcpSessions.length === 0 ? (
 						<div className="devbar-agent-empty">
-							No agent session is attached. Register the server once with
-							<code>claude mcp add devbar -- bunx devbar.sh mcp</code>, then an open session can
-							pull reports and inspect this page.
+							No session attached. Register once with
+							<code>claude mcp add devbar -- bunx devbar.sh mcp</code>.
 						</div>
 					) : (
 						localAgent.mcpSessions.map((session) => (
@@ -2695,6 +3128,47 @@ export function Devbar({
 						))
 					)}
 				</div>
+
+				{/* Eight fields you set once, below the things that change every
+				    minute. Open it and the summary already says what it would show. */}
+				{activeProject && (
+					<details
+						className="devbar-settings-group devbar-agent-group"
+						// The panel body scrolls; opening the last section otherwise
+						// unfolds a form entirely below the fold.
+						onToggle={(event) => {
+							if (event.currentTarget.open)
+								event.currentTarget.scrollIntoView({ block: "start", behavior: "smooth" });
+						}}
+					>
+						<summary className="devbar-settings-summary devbar-agent-summary">
+							<span className="devbar-settings-summary-main">
+								<ChevronDownIcon />
+								<span className="devbar-agent-section-title devbar-agent-summary-title">
+									Configuration
+								</span>
+							</span>
+							<span className="devbar-settings-summary-meta">
+								{activeProject.model} · {activeProject.permission || "plan"}
+								{activeProject.autoDispatch ? " · auto" : ""}
+							</span>
+						</summary>
+						<div className="devbar-settings-group-body devbar-agent-group-body">
+							<AgentSettingsForm
+								project={activeProject}
+								onSave={localAgent.updateAgentSettings}
+								onReset={localAgent.resetAgentSettings}
+							/>
+							<dl className="devbar-agent-facts">
+								<AgentFact label="Project" value={activeProject.slug} />
+								{activeProject.routes && activeProject.routes.length > 0 && (
+									<AgentFact label="Routes" value={activeProject.routes.join(", ")} />
+								)}
+								{activeProject.dir && <AgentFact label="Directory" value={activeProject.dir} />}
+							</dl>
+						</div>
+					</details>
+				)}
 			</div>
 		);
 	};
@@ -2967,7 +3441,20 @@ export function Devbar({
 					totalComments += ann.comments.length;
 				}
 
-				const getPayload = () => buildPayload(exp.annotations, promptTemplate, settings);
+				// Built with the task the batch was archived under, so a re-export
+				// says what it was for rather than shipping evidence alone.
+				const getPayload = () => buildPayload(exp.annotations, promptTemplate, settings, exp.task);
+
+				const saveAs = (format: ExportFormat) => {
+					const ok = exportToFile(getPayload(), format, settings);
+					showToast(
+						format === "pdf"
+							? ok
+								? "Opening print dialog…"
+								: "Printing blocked — saved HTML instead"
+							: `Saved .${format}!`,
+					);
+				};
 
 				return (
 					<div
@@ -2998,6 +3485,13 @@ export function Devbar({
 											{totalComments} comment{totalComments !== 1 ? "s" : ""}
 										</span>
 									)}
+									{/* The task is the one thing that says why the batch exists,
+									    so it reads on the collapsed row too. */}
+									{exp.task && (
+										<span className="devbar-history-chip devbar-history-chip-task" title={exp.task}>
+											{exp.task}
+										</span>
+									)}
 								</div>
 							</div>
 							<span
@@ -3009,44 +3503,101 @@ export function Devbar({
 						</button>
 						{isExpanded && (
 							<div className="devbar-history-item-details">
+								{exp.title && <div className="devbar-history-item-title">{exp.title}</div>}
 								<div className="devbar-history-item-url">{exp.url}</div>
+								{exp.task && (
+									<div className="devbar-history-item-task">
+										<span>Task</span>
+										{exp.task}
+									</div>
+								)}
+								{/* Everything the export menu offers, against the archived
+								    batch. Labelled, because four save buttons in a row are
+								    not tellable apart as glyphs. */}
 								<div className="devbar-history-item-actions">
 									<button
 										type="button"
-										className="devbar-history-action-btn"
-										title="Copy to clipboard"
+										className="devbar-history-action-btn devbar-history-action-btn-labeled"
+										title="Copy the prompt to the clipboard"
 										onClick={async () => {
 											await copyToClipboard(getPayload());
 											showToast("Copied!");
 										}}
 									>
-										<CopyIcon />
+										<CopyIcon /> Copy
 									</button>
 									<button
 										type="button"
-										className="devbar-history-action-btn"
+										className="devbar-history-action-btn devbar-history-action-btn-labeled"
+										title="Copy the whole payload as JSON"
+										onClick={async () => {
+											await copyPayloadJson(getPayload());
+											showToast("Copied JSON!");
+										}}
+									>
+										<CopyIcon /> JSON
+									</button>
+									<button
+										type="button"
+										className="devbar-history-action-btn devbar-history-action-btn-labeled"
 										title="Save as Markdown"
-										onClick={() => {
-											exportToFile(getPayload(), "md", settings);
-											showToast("Saved .md!");
-										}}
+										onClick={() => saveAs("md")}
 									>
-										<SaveFileIcon />
+										<SaveFileIcon /> .md
 									</button>
 									<button
 										type="button"
-										className="devbar-history-action-btn"
+										className="devbar-history-action-btn devbar-history-action-btn-labeled"
 										title="Save as JSON"
-										onClick={() => {
-											exportToFile(getPayload(), "json", settings);
-											showToast("Saved .json!");
-										}}
+										onClick={() => saveAs("json")}
 									>
-										<SaveFileIcon />
+										<SaveFileIcon /> .json
 									</button>
 									<button
 										type="button"
-										className="devbar-history-action-btn"
+										className="devbar-history-action-btn devbar-history-action-btn-labeled"
+										title="Save a standalone HTML report"
+										onClick={() => saveAs("html")}
+									>
+										<HtmlFileIcon /> .html
+									</button>
+									<button
+										type="button"
+										className="devbar-history-action-btn devbar-history-action-btn-labeled"
+										title="Print the report — choose Save as PDF"
+										onClick={() => saveAs("pdf")}
+									>
+										<PrintIcon /> .pdf
+									</button>
+									{effectiveServer && (
+										<>
+											<button
+												type="button"
+												className="devbar-history-action-btn devbar-history-action-btn-labeled"
+												title="Submit this report to the server again"
+												onClick={() => {
+													void submitReport(getPayload());
+												}}
+											>
+												<SendIcon /> Submit
+											</button>
+											<button
+												type="button"
+												className="devbar-history-action-btn devbar-history-action-btn-labeled"
+												disabled={!agentReady}
+												title={agentReason ?? "Submit this report and run the agent on it"}
+												onClick={() => {
+													if (!agentReady) return;
+													void submitReport(getPayload(), { dispatch: true });
+												}}
+											>
+												<AgentIcon /> Agent
+											</button>
+										</>
+									)}
+									<button
+										type="button"
+										className="devbar-history-action-btn devbar-history-action-btn-labeled"
 										title="Restore to the current session"
 										aria-label="Restore to the current session"
 										onClick={() => {
@@ -3055,12 +3606,13 @@ export function Devbar({
 											if (restored.length > 0) setPanelTab("annotations");
 										}}
 									>
-										<RestoreIcon />
+										<RestoreIcon /> Restore
 									</button>
 									<button
 										type="button"
 										className="devbar-history-action-btn devbar-history-action-danger"
 										title="Delete"
+										aria-label="Delete"
 										onClick={() => {
 											state.deleteExport(exp.id);
 											setExpandedExportId(null);
@@ -3316,13 +3868,16 @@ export function Devbar({
 													{editingComment?.annotationId === a.id &&
 													editingComment?.commentId === c.id ? (
 														<div className="devbar-thread-edit-wrap">
-															<input
+															<textarea
 																className="devbar-thread-input"
-																type="text"
 																value={editText}
+																rows={2}
 																onChange={(e) => setEditText(e.target.value)}
 																onKeyDown={(e) => {
-																	if (e.key === "Enter") saveEditComment();
+																	if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+																		e.preventDefault();
+																		saveEditComment();
+																	}
 																	if (e.key === "Escape") cancelEditComment();
 																}}
 																autoFocus
@@ -3383,14 +3938,17 @@ export function Devbar({
 												/>
 											)}
 											<div className="devbar-thread-input-wrap">
-												<input
+												<textarea
 													className="devbar-thread-input"
-													type="text"
 													placeholder="Write a comment…"
 													value={getCommentText(a.id)}
+													rows={2}
 													onChange={(e) => setCommentText(a.id, e.target.value)}
 													onKeyDown={(e) => {
-														if (e.key === "Enter") submitComment(a.id);
+														if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+															e.preventDefault();
+															submitComment(a.id);
+														}
 													}}
 												/>
 												<button
@@ -3447,7 +4005,7 @@ export function Devbar({
 						<button
 							type="button"
 							className="devbar-submit-btn"
-							onClick={handleServerSubmit}
+							onClick={() => void handleServerSubmit()}
 							title="Submit to server"
 						>
 							<SendIcon />
@@ -3765,14 +4323,13 @@ export function Devbar({
 							<span className="devbar-tooltip-key">Alt+A</span>
 						</span>
 					</button>
+					{collab.peers.length > 0 && <PeerAvatars peers={collab.peers} />}
 					<div className="devbar-bar-divider" />
+					{/* Everything that sends the report, together: the primary action,
+					    the formats behind its caret, and where a run ends up. */}
+					{renderAgentButton("devbar-bar-btn", "devbar-bar-btn-active", true)}
 					{renderExportButton()}
-					{collab.peers.length > 0 && (
-						<>
-							<div className="devbar-bar-divider" />
-							<PeerAvatars peers={collab.peers} />
-						</>
-					)}
+					<div className="devbar-bar-divider" />
 					{renderSettingsButton("devbar-bar-btn", "devbar-bar-btn-active", true)}
 					{renderAuthButtons("devbar-bar-btn", true)}
 					<button
@@ -3867,13 +4424,16 @@ export function Devbar({
 												{editingComment?.annotationId === a.id &&
 												editingComment?.commentId === c.id ? (
 													<div className="devbar-thread-edit-wrap">
-														<input
+														<textarea
 															className="devbar-thread-input"
-															type="text"
 															value={editText}
+															rows={2}
 															onChange={(e) => setEditText(e.target.value)}
 															onKeyDown={(e) => {
-																if (e.key === "Enter") saveEditComment();
+																if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+																	e.preventDefault();
+																	saveEditComment();
+																}
 																if (e.key === "Escape") cancelEditComment();
 															}}
 															autoFocus
@@ -3935,14 +4495,17 @@ export function Devbar({
 										/>
 									)}
 									<div className="devbar-thread-input-wrap">
-										<input
+										<textarea
 											className="devbar-thread-input"
-											type="text"
 											placeholder="Write a comment…"
 											value={getCommentText(a.id)}
+											rows={2}
 											onChange={(e) => setCommentText(a.id, e.target.value)}
 											onKeyDown={(e) => {
-												if (e.key === "Enter") submitComment(a.id);
+												if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+													e.preventDefault();
+													submitComment(a.id);
+												}
 												if (e.key === "Escape") setFocusedAnnotation(null);
 											}}
 											autoFocus

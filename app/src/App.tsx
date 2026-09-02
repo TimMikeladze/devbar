@@ -221,10 +221,6 @@ function Hero() {
 			<div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-12 items-center">
 				{/* Left: copy */}
 				<div className="hero-stagger text-center lg:text-left">
-					<Eyebrow>
-						<span className="dl-dot" />
-						Open source · MIT licensed
-					</Eyebrow>
 					<h1 className="headline text-[2.6rem] sm:text-[3.4rem] lg:text-[3.6rem] font-bold tracking-[-0.035em] leading-[1.04] mb-5">
 						Point at what to change.
 						<br />
@@ -265,9 +261,12 @@ function Hero() {
 				</div>
 			</div>
 
-			{/* Real Devbar toolbar — dogfooded, floats freely via position:fixed */}
+			{/* Real Devbar toolbar — dogfooded, floats freely via position:fixed.
+			    An unset server stays undefined rather than "": the empty string is a
+			    server, so it would beat the discovered local one and leave Submit
+			    off while running this page from a checkout. */}
 			<Devbar
-				server={import.meta.env.VITE_DEVBAR_SERVER || ""}
+				server={import.meta.env.VITE_DEVBAR_SERVER || undefined}
 				wsServer={import.meta.env.VITE_DEVBAR_WS_SERVER}
 				project="devbar"
 			/>
@@ -400,7 +399,7 @@ function TrustStrip() {
 		"Self-hostable",
 	];
 	return (
-		<div className="trust-strip mb-24 sm:mb-32">
+		<div className="trust-strip mb-16 sm:mb-24">
 			{items.map((t) => (
 				<span key={t} className="trust-chip">
 					<span className="dl-dot" />
@@ -411,12 +410,40 @@ function TrustStrip() {
 	);
 }
 
+/* A blurred wireframe standing in for a screenshot nobody can act on. */
+function ShotMock({ annotated }: { annotated?: boolean }) {
+	return (
+		<div className={`shot ${annotated ? "shot-annotated" : "shot-vague"}`}>
+			<div className="shot-stack">
+				<span className="shot-line" style={{ width: "62%" }} />
+				<span className="shot-line" style={{ width: "88%" }} />
+				<span className="shot-line" style={{ width: "74%" }} />
+				{annotated ? (
+					<span className="shot-sel">
+						<span className="shot-tag">button#submit-btn · 120 × 40</span>
+						<span className="shot-btn block" />
+					</span>
+				) : (
+					<span className="shot-btn" />
+				)}
+			</div>
+			<span className="shot-cap">{annotated ? "annotated capture" : "screenshot.png"}</span>
+		</div>
+	);
+}
+
 /* ═══════════════════════════════════════════
    Before vs After
    ═══════════════════════════════════════════ */
 
 function BeforeAfter() {
 	const ref = useReveal();
+	const thread = [
+		["10:09", "Dev", "Which section?"],
+		["10:14", "Design", "the top one on the landing page"],
+		["10:18", "Dev", "The heading, or the whole block?"],
+		["10:22", "Design", "…the block with the button"],
+	];
 	return (
 		<section ref={ref} className="mb-24 sm:mb-32 reveal">
 			<div className="text-center mb-10 sm:mb-14">
@@ -428,43 +455,52 @@ function BeforeAfter() {
 				</p>
 			</div>
 
-			<div className="grid sm:grid-cols-2 gap-4">
+			<div className="grid sm:grid-cols-2 gap-4 sm:gap-5 items-stretch">
 				{/* The old way */}
 				<div className="cmp cmp-bad">
 					<div className="cmp-head">
 						<XGlyph />
 						The old way
+						<span className="cmp-head-meta">20 min · 4 replies</span>
 					</div>
-					<div className="cmp-body space-y-3">
-						<div className="rounded-lg border border-border p-3 bg-bg-code">
-							<div className="flex items-center gap-2 mb-2">
-								<span className="w-5 h-5 rounded-full bg-rose/15 flex items-center justify-center text-[10px]">
-									💬
-								</span>
-								<span className="text-[11px] text-dim font-medium">Design in #product</span>
+					<div className="cmp-body">
+						<div className="msg">
+							<div className="msg-head">
+								<span className="msg-avatar">D</span>
+								<span className="msg-name">Design</span>
+								<span className="msg-chan">#product</span>
+								<span className="msg-time">10:02</span>
 							</div>
-							<p className="text-muted italic text-[13px]">
+							<p className="msg-text">
 								“can we make the hero feel less cramped? the spacing looks off”
 							</p>
-							<div className="mt-2 rounded border border-border bg-bg h-16 flex items-center justify-center text-[10px] text-muted/50">
-								screenshot.png
+							<div className="mt-2.5">
+								<ShotMock />
 							</div>
 						</div>
-						<div className="space-y-1.5 pl-4 border-l-2 border-border">
-							{[
-								["Dev", "Which section?"],
-								["Design", "the top one on the landing page"],
-								["Dev", "The heading, or the whole block?"],
-								["Design", "…the block with the button"],
-							].map(([who, msg], i) => (
-								<p key={i} className="text-[12px]">
-									<span className="text-dim font-medium">{who}:</span>{" "}
-									<span className="text-muted italic">“{msg}”</span>
-								</p>
+
+						<div className="thread">
+							{thread.map(([time, who, msg]) => (
+								<div key={time} className="thread-row">
+									<span className="thread-time">{time}</span>
+									<span className="thread-who">{who}</span>
+									<span className="thread-msg">“{msg}”</span>
+								</div>
 							))}
+							<div className="thread-row">
+								<span className="thread-time" />
+								<span className="thread-typing">
+									<i />
+									<i />
+									<i />
+									still typing…
+								</span>
+							</div>
 						</div>
-						<p className="text-[11px] text-rose/90 font-medium">
-							4 messages. 20 minutes. Neither your teammate nor your agent can act.
+
+						<p className="cmp-foot">
+							Still no element, no selector, no file. Neither your teammate nor your agent can act
+							on it.
 						</p>
 					</div>
 				</div>
@@ -474,46 +510,53 @@ function BeforeAfter() {
 					<div className="cmp-head">
 						<CheckGlyph />
 						With devbar
+						<span className="cmp-head-meta">1 click · 0 replies</span>
 					</div>
-					<div className="cmp-body font-mono">
-						<div className="space-y-2 text-[11px]">
-							{[
-								["tag", "button#submit-btn", "fg"],
-								["xpath", "/html/body/div/main/form/button", "fg"],
-							].map(([k, v]) => (
-								<div key={k} className="flex gap-2">
-									<span className="text-muted/60 w-[52px] shrink-0">{k}</span>
-									<span className="text-fg text-[10px]">{v}</span>
-								</div>
-							))}
-							<div className="flex gap-2">
-								<span className="text-muted/60 w-[52px] shrink-0">bg</span>
-								<span className="text-fg">
-									<span className="inline-block w-2 h-2 rounded-sm bg-accent mr-1 align-middle" />
+					<div className="cmp-body">
+						<ShotMock annotated />
+
+						<div className="pl">
+							<div className="pl-row">
+								<span className="pl-k">tag</span>
+								<span className="pl-v">button#submit-btn</span>
+							</div>
+							<div className="pl-row">
+								<span className="pl-k">xpath</span>
+								<span className="pl-v">/html/body/div/main/form/button</span>
+							</div>
+							<div className="pl-row">
+								<span className="pl-k">bg</span>
+								<span className="pl-v">
+									<span className="inline-block w-2 h-2 rounded-sm bg-accent mr-1.5 align-middle" />
 									rgb(59, 130, 246)
 								</span>
 							</div>
-							<div className="flex gap-2">
-								<span className="text-muted/60 w-[52px] shrink-0">react</span>
-								<span className="text-accent">App › OrderForm › Button</span>
+							<div className="pl-row">
+								<span className="pl-k">react</span>
+								<span className="pl-v pl-v-accent">App › OrderForm › Button</span>
 							</div>
-							<div className="flex gap-2">
-								<span className="text-muted/60 w-[52px] shrink-0">source</span>
-								<span className="text-accent">src/ui/Button.tsx:6</span>
+							<div className="pl-row">
+								<span className="pl-k">source</span>
+								<span className="pl-v pl-v-accent">src/ui/Button.tsx:6</span>
 							</div>
-							<div className="border-t border-border pt-2 mt-2 flex gap-2">
-								<span className="text-muted/60 w-[52px] shrink-0">note</span>
-								<span className="text-fg font-sans">
+							<div className="pl-row pl-sep">
+								<span className="pl-k">note</span>
+								<span className="pl-v pl-v-note">
 									“Increase top padding to 96px — feels cramped”
 								</span>
 							</div>
-							<div className="flex gap-2">
-								<span className="text-muted/60 w-[52px] shrink-0">📷</span>
-								<span className="text-dim font-sans">annotated screenshot attached</span>
-							</div>
 						</div>
-						<p className="text-[11px] text-emerald/90 font-medium font-sans mt-3">
-							One click. Hand it to your agent, open a GitHub issue, or share with the team.
+
+						<div className="dests">
+							<span className="dest">claude</span>
+							<span className="dest">codex</span>
+							<span className="dest">MCP</span>
+							<span className="dest">GitHub issue</span>
+							<span className="dest">webhook</span>
+						</div>
+
+						<p className="cmp-foot">
+							One click, and the whole spec travels with it — no thread required.
 						</p>
 					</div>
 				</div>

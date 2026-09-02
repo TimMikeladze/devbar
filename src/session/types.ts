@@ -205,7 +205,14 @@ export type DevbarUser = {
 	avatar?: string;
 };
 
-export type ExportMethod = "clipboard" | "json" | "file-md" | "file-json" | "server";
+export type ExportMethod =
+	| "clipboard"
+	| "json"
+	| "file-md"
+	| "file-json"
+	| "file-html"
+	| "file-pdf"
+	| "server";
 
 export type ExportRecord = {
 	id: string;
@@ -214,6 +221,8 @@ export type ExportRecord = {
 	title: string;
 	annotations: Annotation[];
 	method: ExportMethod;
+	/** What the batch was for. Archived with it, so a re-export keeps its point. */
+	task?: string;
 };
 
 export type DevbarPayload = {
@@ -247,5 +256,7 @@ export type DevbarPayload = {
 	annotations: Annotation[];
 	/** What the user actually wants changed. Stated once, up front. */
 	task?: string;
+	/** The settings the report was captured under — what was captured, and how. */
+	settings?: DevbarSettings;
 	prompt: string;
 };

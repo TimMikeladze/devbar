@@ -44,7 +44,10 @@ export function MarkerOverlay({
 	const [commentText, setCommentText] = useState("");
 
 	const markerAnnotations = annotations.filter((a) => a.type === "marker");
-	const nextNumber = markerAnnotations.length + 1;
+	// Highest existing number + 1, not count + 1: after "place 1, 2, delete 1"
+	// a count-based next number would mint a second #2.
+	const nextNumber =
+		markerAnnotations.reduce((max, a) => Math.max(max, (a.data as MarkerData).number), 0) + 1;
 	const nextColor = MARKER_COLORS[(nextNumber - 1) % MARKER_COLORS.length]!;
 
 	useEffect(() => {
