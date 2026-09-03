@@ -49,3 +49,14 @@ visitor's coding agent. It lives in [`src/lib/agentPrompt.ts`](./src/lib/agentPr
 and repeats the install and local-agent commands from the root
 [README](../README.md) — change one and change the other, or
 `test/agent-prompt.test.ts` fails.
+
+## Page metadata
+
+The title, social cards, JSON-LD and the `<noscript>` fallback live in
+[`index.html`](./index.html) and describe the product as it actually is — the
+inspector, the local agent dispatch, the MCP server, the export formats. The
+FAQ structured data repeats the page's own FAQ section word for word, since
+markup a visitor cannot find on the page is a rich-result violation; questions
+whose answer text depends on a build flag stay out of it. `test/landing-metadata.test.ts`
+fails when the title, the social tags, the OG image or an FAQ entry drifts from
+`src/App.tsx`.

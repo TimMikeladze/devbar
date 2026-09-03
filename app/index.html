@@ -4,10 +4,10 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-		<title>devbar.sh — Point at any UI. Ship the change with your agent.</title>
+		<title>devbar.sh — Point at what to change. Your agent ships it.</title>
 		<meta
 			name="description"
-			content="Open-source drop-in inspector for any website. Point at an element, capture the exact context — selectors, styles, React tree, source file — and hand it to your AI agent, a GitHub issue, or your team. Iterate at agent speed."
+			content="Open-source drop-in toolbar for any website. Point at an element, capture its selector, computed styles, React tree and source file, and hand the report to a coding agent running in your repo — over MCP."
 		/>
 
 		<link rel="canonical" href="https://devbar.sh" />
@@ -44,13 +44,10 @@
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content="https://devbar.sh" />
 		<meta property="og:locale" content="en_US" />
-		<meta
-			property="og:title"
-			content="devbar.sh — Point at any UI. Ship the change with your agent."
-		/>
+		<meta property="og:title" content="devbar.sh — Point at what to change. Your agent ships it." />
 		<meta
 			property="og:description"
-			content="A drop-in inspector for any website. Point at a change, capture the exact context, and route it to your AI agent, a GitHub issue, or your team."
+			content="A drop-in inspector for any website. Point at an element, capture the exact context — selectors, computed styles, the React tree, the source file — and hand it to a coding agent running in your repo, over MCP or one click."
 		/>
 		<meta property="og:site_name" content="devbar.sh" />
 		<meta property="og:image" content="https://devbar.sh/og-v3.png" />
@@ -60,7 +57,7 @@
 		<meta property="og:image:type" content="image/png" />
 		<meta
 			property="og:image:alt"
-			content="devbar.sh — point at any UI, ship the change with your agent"
+			content="devbar.sh — Point at what to change. Your agent ships it. A browser mockup with a button selected, next to the captured context: CSS selector, background color, React component path and source file."
 		/>
 
 		<!-- Twitter -->
@@ -69,22 +66,22 @@
 		<meta name="twitter:creator" content="@linesofcode" />
 		<meta
 			name="twitter:title"
-			content="devbar.sh — Point at any UI. Ship the change with your agent."
+			content="devbar.sh — Point at what to change. Your agent ships it."
 		/>
 		<meta
 			name="twitter:description"
-			content="A drop-in inspector for any website. Point at a change, capture the exact context, and route it to your AI agent, a GitHub issue, or your team."
+			content="A drop-in inspector for any website. Point at an element, capture the exact context — selectors, computed styles, the React tree, the source file — and hand it to a coding agent running in your repo, over MCP or one click."
 		/>
 		<meta name="twitter:image" content="https://devbar.sh/og-v3.png" />
 		<meta
 			name="twitter:image:alt"
-			content="devbar.sh — point at any UI, ship the change with your agent"
+			content="devbar.sh — Point at what to change. Your agent ships it. A browser mockup with a button selected, next to the captured context: CSS selector, background color, React component path and source file."
 		/>
 
 		<!-- SEO -->
 		<meta
 			name="keywords"
-			content="website annotation tool, visual bug reporting, LLM prompt generator, AI bug fix, element inspector, XPath capture, CSS selector, React component context, screenshot annotation, visual feedback tool, QA tool, design review tool, code review feedback, Chrome extension annotation, drop-in toolbar, open source, iteration loop, feedback loop, developer tools, designer QA workflow, visual debugging, structured bug report, ChatGPT bug fix, Claude code fix, Cursor AI, bug tracker integration"
+			content="devbar, drop-in toolbar, element inspector, UI annotation, visual feedback tool, agent-ready prompt, coding agent, AI agent, MCP server, Claude Code, Cursor, Codex, opencode, React component tree, React fiber, XPath capture, CSS selector, computed styles, source file location, screenshot annotation, screen recording, structured bug report, QA tool, design review tool, Chrome extension, developer tools, open source, MIT licensed"
 		/>
 		<meta name="author" content="Tim Mikeladze" />
 		<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
@@ -102,18 +99,24 @@
 				"@context": "https://schema.org",
 				"@type": "SoftwareApplication",
 				"name": "devbar.sh",
-				"alternateName": [
-					"devbar",
-					"website annotation tool",
-					"LLM prompt generator",
-					"visual bug reporter"
-				],
-				"description": "Open-source drop-in inspector that turns any UI change into agent-ready context for your AI agent, a GitHub issue, or your team.",
+				"alternateName": ["devbar", "devbar toolbar", "devbar inspector"],
+				"description": "Open-source drop-in toolbar for any website. Point at an element to capture its selector, computed styles, React component tree and source file, then hand the report to a coding agent running in your repository — over MCP, a webhook, or a one-click export.",
 				"url": "https://devbar.sh",
 				"image": "https://devbar.sh/og-v3.png",
 				"applicationCategory": "DeveloperApplication",
 				"applicationSubCategory": "Annotation & QA",
 				"operatingSystem": "Any",
+				"featureList": [
+					"Element inspector: XPath, CSS selector, computed styles, bounding rect and HTML",
+					"React component tree and source file locations from the fiber tree",
+					"Freehand drawing, numbered markers, region and full-page screenshots, tab recording",
+					"Markdown, JSON, standalone HTML and PDF reports",
+					"Local agent dispatch to Claude Code, Codex or opencode running in your repository",
+					"Stdio MCP server for pulling reports and inspecting the live page",
+					"Webhook and callback delivery",
+					"Chrome extension and CDN script tag for any site",
+					"Plugin system and theming"
+				],
 				"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
 				"author": {
 					"@type": "Person",
@@ -127,7 +130,11 @@
 			}
 		</script>
 
-		<!-- JSON-LD: FAQPage -->
+		<!-- JSON-LD: FAQPage — every entry below is also rendered in the page's FAQ
+		     section, word for word. Structured data that a visitor cannot find on
+		     the page is a rich-result violation, so keep the two in step;
+		     test/landing-metadata.test.ts fails when they drift. Questions whose
+		     answer text depends on a build flag stay out of here. -->
 		<script type="application/ld+json">
 			{
 				"@context": "https://schema.org",
@@ -135,18 +142,26 @@
 				"mainEntity": [
 					{
 						"@type": "Question",
-						"name": "How does devbar speed up iteration cycles?",
+						"name": "How does this work with AI agents?",
 						"acceptedAnswer": {
 							"@type": "Answer",
-							"text": "devbar captures selectors, styles, component trees, and screenshots in one interaction — so the developer (or an LLM) can fix it immediately."
+							"text": "Paste the context into Cursor, Claude, or ChatGPT — or connect over MCP, onSubmit, or a webhook so your agent picks up changes automatically."
 						}
 					},
 					{
 						"@type": "Question",
-						"name": "How does React context extraction work?",
+						"name": "What does the MCP server actually do?",
 						"acceptedAnswer": {
 							"@type": "Answer",
-							"text": "devbar reads the React fiber node and walks up the tree, capturing every component's name, props, and source file location — all locally in your browser."
+							"text": "devbar mcp is a stdio MCP server your agent spawns. It reads the report queue you captured in the browser, and — once you switch on Agent live — inspects, screenshots, and highlights the page you have open, through the local devbar server. It is stateless, so several sessions can share one queue."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Does the agent run on my machine?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Yes, and only there. The server binds 127.0.0.1, authorizes requests by origin, and defaults to permission \"plan\" with auto-dispatch off — so nothing runs in your repo until you ask for it."
 						}
 					},
 					{
@@ -154,7 +169,23 @@
 						"name": "Does it work without React?",
 						"acceptedAnswer": {
 							"@type": "Answer",
-							"text": "Yes. XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any website."
+							"text": "Yes. Every tool works on any website. React component context is an automatic bonus when a fiber tree is detected."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Will it slow down my app?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "No. The toolbar renders in its own isolated DOM container with zero background overhead."
+						}
+					},
+					{
+						"@type": "Question",
+						"name": "Why not just use browser DevTools?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "DevTools is for one developer debugging alone. devbar lets anyone — design, PM, QA — point at a change and hand off the exact context."
 						}
 					}
 				]
@@ -174,43 +205,46 @@
 	<body class="antialiased">
 		<div id="root"></div>
 		<noscript>
-			<h1>devbar.sh — Point at any UI, ship the change with your agent</h1>
+			<h1>devbar.sh — Point at what to change. Your agent ships it.</h1>
 			<p>
-				Stop describing UI changes in Slack. Point at any element and hand your AI agent the exact
-				context to make the change.
+				Stop describing UI changes in Slack. Point at any element and hand your coding agent the
+				exact context to make the change.
 			</p>
 			<p>
-				Open-source toolbar that turns visual website annotations into structured, AI-ready bug
-				reports. Captures XPaths, computed styles, React component trees, source file locations, and
-				screenshots — ready for any LLM, MCP agent, or webhook pipeline.
+				Open-source drop-in toolbar that turns visual website annotations into agent-ready reports.
+				Captures XPaths, CSS selectors, computed styles, React component trees, source file
+				locations, screenshots and recordings — for an agent running in your repository, an MCP
+				session, a webhook, or a report you attach to a ticket.
 			</p>
 			<h2>How it works</h2>
 			<ol>
 				<li>
-					<strong>Annotate</strong> — Select elements, draw freehand, drop numbered markers, or
-					capture screenshots.
+					<strong>Annotate</strong> — Select elements, draw freehand, drop numbered markers, capture
+					a region or the whole page, or record the tab. Say what you want changed in the task
+					field.
 				</li>
 				<li>
 					<strong>Auto-capture</strong> — Every annotation extracts XPaths, CSS selectors, computed
 					styles, React component trees, and source file locations.
 				</li>
 				<li>
-					<strong>Export</strong> — One click turns everything into structured Markdown, JSON, or a
-					webhook POST. Pipe to any LLM or AI agent via MCP.
+					<strong>Hand it off</strong> — One click copies the prompt, saves a Markdown, JSON, HTML
+					or PDF report, POSTs to a webhook, or submits it to the local devbar server, which
+					dispatches it to an agent CLI running in your repository.
 				</li>
 			</ol>
 			<h2>Who it's for</h2>
 			<ul>
 				<li>
-					<strong>AI agents &amp; MCP</strong> — Connect via MCP server, webhooks, or callbacks for
-					agentic workflows.
+					<strong>Coding agents &amp; MCP</strong> — Dispatch to Claude Code, Codex or opencode in
+					your repo, or let an open agent session pull reports over MCP.
 				</li>
 				<li>
-					<strong>Developers</strong> — Feed structured bug context directly into coding assistants.
+					<strong>Developers</strong> — Feed structured UI context directly into coding assistants.
 				</li>
 				<li>
-					<strong>Designers &amp; QA</strong> — File bug reports with exact CSS values, bounding
-					rects, and screenshots.
+					<strong>Designers &amp; QA</strong> — File reports with exact CSS values, bounding rects,
+					and screenshots.
 				</li>
 				<li>
 					<strong>Product managers</strong> — Give feedback on staging without leaving the browser.
@@ -221,11 +255,13 @@
 				<li>Element inspector with XPath &amp; CSS selector capture</li>
 				<li>React component tree extraction with source file locations</li>
 				<li>Freehand drawing with context screenshots</li>
-				<li>Screenshot capture (full page or region)</li>
+				<li>Screenshot capture (region or full page) and tab recording</li>
 				<li>Numbered markers with nearest-element detection</li>
-				<li>LLM-ready Markdown and JSON export</li>
-				<li>MCP server, webhooks, and clipboard integration</li>
-				<li>Chrome extension for any website</li>
+				<li>A task field that leads the exported prompt with what you actually want changed</li>
+				<li>Markdown, JSON, standalone HTML and PDF reports</li>
+				<li>Local agent dispatch — Claude Code, Codex or opencode, with live run output</li>
+				<li>Stdio MCP server, webhooks, and clipboard integration</li>
+				<li>Chrome extension and CDN script tag for any website</li>
 				<li>Custom prompt templates</li>
 				<li>Plugin system</li>
 			</ul>
@@ -233,18 +269,35 @@
 			<dl>
 				<dt>How does this work with AI agents?</dt>
 				<dd>
-					Connect via the built-in MCP server, an onSubmit callback, or a webhook URL. Structured
-					context flows directly into Claude, Cursor, or your own agentic pipeline.
+					Paste the context into Cursor, Claude, or ChatGPT — or connect over MCP, onSubmit, or a
+					webhook so your agent picks up changes automatically.
+				</dd>
+				<dt>What does the MCP server actually do?</dt>
+				<dd>
+					devbar mcp is a stdio MCP server your agent spawns. It reads the report queue you captured
+					in the browser, and — once you switch on Agent live — inspects, screenshots, and
+					highlights the page you have open, through the local devbar server. It is stateless, so
+					several sessions can share one queue.
+				</dd>
+				<dt>Does the agent run on my machine?</dt>
+				<dd>
+					Yes, and only there. The server binds 127.0.0.1, authorizes requests by origin, and
+					defaults to permission "plan" with auto-dispatch off — so nothing runs in your repo until
+					you ask for it.
 				</dd>
 				<dt>Does it work without React?</dt>
 				<dd>
-					Yes. XPaths, CSS selectors, computed styles, drawing, screenshots, and markers work on any
-					website.
+					Yes. Every tool works on any website. React component context is an automatic bonus when a
+					fiber tree is detected.
 				</dd>
-				<dt>How does React context extraction work?</dt>
+				<dt>Will it slow down my app?</dt>
 				<dd>
-					devbar reads the React fiber node and walks up the tree, capturing every component's name,
-					props, and source file location — all locally in your browser.
+					No. The toolbar renders in its own isolated DOM container with zero background overhead.
+				</dd>
+				<dt>Why not just use browser DevTools?</dt>
+				<dd>
+					DevTools is for one developer debugging alone. devbar lets anyone — design, PM, QA — point
+					at a change and hand off the exact context.
 				</dd>
 			</dl>
 			<p><a href="https://github.com/TimMikeladze/devbar">View on GitHub</a></p>
