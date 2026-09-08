@@ -11,9 +11,10 @@ There are two directions, and you can use either or both:
   MCP, and can inspect, screenshot, and highlight the live page.
 
 > **What this does.** Enabling dispatch means a web page can cause an agent to
-> run in your repository. devbar defaults are deliberately timid — loopback
-> only, `permission: "plan"`, `autoDispatch: false` — and you should read
-> [Security](#security) before loosening them.
+> run in your repository. The server stays on loopback, but `devbar init` writes
+> `permission: "auto"` and `autoDispatch: true`, so a submitted report edits your
+> workspace unattended. Read [Security](#security), and set `permission: "plan"`
+> with `autoDispatch: false` if you want reports to wait for you.
 
 ## Quick start
 
@@ -65,10 +66,10 @@ export default defineConfig({
 	origins: ["http://localhost:3000"], // pages on these origins match this project
 
 	agent: {
-		command: "claude", // claude | codex | opencode | any binary
-		model: "sonnet",
-		permission: "plan", // plan | auto | full
-		autoDispatch: false, // run the agent on every report
+		command: "claude", // claude | codex | opencode | any binary — `devbar init` detects it
+		model: "opus", // omit it and the agent decides (claude defaults to opus, codex reads its own config)
+		permission: "auto", // plan | auto | full
+		autoDispatch: true, // run the agent on every report
 		concurrency: 1,
 		maxBudgetUsd: 5,
 		timeoutMs: 600_000,
@@ -118,7 +119,7 @@ decides where it lands:
 | Exited 0 and the working tree is unchanged | `new`      |
 | Failed, cancelled or timed out             | `new`      |
 
-A clean exit is not the same as the work being done. Under the default
+A clean exit is not the same as the work being done. Under
 `permission: "plan"` the agent can only propose: it writes a plan, asks whether
 to proceed, and exits 0 having touched nothing — with no one there to answer.
 That used to be recorded as a plain success on a report stuck at `dispatched`,
@@ -236,7 +237,7 @@ call is visible in the toolbar.
 | `devbar tasks [--watch]` | dispatch tasks and their status                               |
 | `devbar reports`         | captured reports                                              |
 | `devbar dispatch [id]`   | dispatch one report, or every pending one                     |
-| `devbar init`            | write a starter `devbar.config.ts`                            |
+| `devbar init`            | write a starter `devbar.config.ts` for the agent you have     |
 | `devbar link`            | print the snippet for wiring this project up                  |
 
 Useful flags: `--port`, `--server`, `--agent`, `--model`, `--permission`,
@@ -261,8 +262,10 @@ Dispatch means a web page can cause code to run on your machine. The rules:
    header is the CLI or the MCP server — a browser always sends `Origin` here.
    Those processes can read the token file anyway. Set
    `trustLocalProcesses: false` to require the token from everything.
-6. **Conservative agent defaults.** `permission: "plan"`, `autoDispatch: false`,
-   a 10-minute timeout, and `maxBudgetUsd` worth setting.
+6. **Agent defaults dispatch.** A fresh config runs the agent on every report
+   (`autoDispatch: true`) and lets it edit the workspace (`permission: "auto"`).
+   Both are one line to tighten; the 10-minute timeout and `maxBudgetUsd` are
+   the other bounds worth setting.
 7. **Bounded input.** Report bodies are capped (25 MB by default) and asset
    paths are generated names only, never taken from the request.
 8. **No `eval` tool.** The live bridge deliberately has no arbitrary-JS escape
@@ -280,13 +283,13 @@ toolbar's **Runs** list. A queued or running row attaches to
 then streams the rest — whoever started it. Collapsing the row closes the
 stream.
 
-**Reports save but nothing runs.** `autoDispatch` is off by default. The toast
-after Submit offers **Dispatch** for that one report; otherwise turn it on, use
+**Reports save but nothing runs.** `autoDispatch` is off for this project. The
+toast after Submit offers **Dispatch** for that one report; otherwise turn it on, use
 `devbar dispatch`, open the toolbar's Agent tab, or let an agent pull with
 `claim_report`.
 
-**The run went green but nothing changed.** `permission` is `plan`, the
-default, which lets the agent propose but not edit. The run's `note` says so and
+**The run went green but nothing changed.** `permission` is `plan`, which lets
+the agent propose but not edit. The run's `note` says so and
 the report returns to `new`. Set `permission: "auto"` to let a dispatch apply its
 own fix — that lets an agent write to the project directory unattended.
 

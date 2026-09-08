@@ -3149,7 +3149,7 @@ export function Devbar({
 								</span>
 							</span>
 							<span className="devbar-settings-summary-meta">
-								{activeProject.model} · {activeProject.permission || "plan"}
+								{activeProject.model || "agent default"} · {activeProject.permission || "plan"}
 								{activeProject.autoDispatch ? " · auto" : ""}
 							</span>
 						</summary>

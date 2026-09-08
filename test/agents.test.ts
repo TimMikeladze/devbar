@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { PRESETS, resolvePreset, resolveRunner } from "../src/server/agents";
+import { PRESETS, defaultModelFor, resolvePreset, resolveRunner } from "../src/server/agents";
 import type { RunContext } from "../src/server/agents";
 
 function ctx(overrides: Partial<RunContext> = {}): RunContext {
@@ -122,6 +122,55 @@ describe("claude event parsing", () => {
 
 		const result = parse({ type: "result", total_cost_usd: 0.12, result: "done" });
 		expect(result).toContainEqual({ type: "done", exitCode: 0, costUsd: 0.12 });
+	});
+});
+
+describe("default model", () => {
+	test("claude gets a model name its own CLI accepts", () => {
+		expect(defaultModelFor("claude")).toBe("opus");
+	});
+
+	test("an agent devbar has no default for runs with no -m at all", () => {
+		// codex rejects a model the account is not entitled to, and opencode fronts
+		// whatever provider it is pointed at — both keep their own config's choice.
+		expect(defaultModelFor("codex")).toBeUndefined();
+		expect(defaultModelFor("opencode")).toBeUndefined();
+		expect(defaultModelFor("some-other-binary")).toBeUndefined();
+
+		const codex = PRESETS.codex as NonNullable<typeof PRESETS.codex>;
+		expect(codex.buildArgs(ctx({ model: undefined })).args).not.toContain("-m");
+	});
+});
+
+describe("codex event parsing", () => {
+	const codex = PRESETS.codex as NonNullable<typeof PRESETS.codex>;
+	const parse = codex.parseEvent as NonNullable<typeof codex.parseEvent>;
+
+	test("reads the session id and agent text out of the JSONL stream", () => {
+		expect(parse({ type: "thread.started", thread_id: "t1" })).toEqual([
+			{ type: "session", sessionId: "t1" },
+		]);
+
+		expect(
+			parse({
+				type: "item.completed",
+				item: { id: "item_1", type: "agent_message", text: "pong" },
+			}),
+		).toEqual([{ type: "stdout", text: "pong\n" }]);
+	});
+
+	test("surfaces the reason a run failed instead of exiting 1 in silence", () => {
+		expect(parse({ type: "error", message: "The 'sol' model is not supported" })).toEqual([
+			{ type: "stdout", text: "[codex] The 'sol' model is not supported\n" },
+		]);
+
+		expect(parse({ type: "turn.failed", error: { message: "quota exceeded" } })).toEqual([
+			{ type: "stdout", text: "[codex] quota exceeded\n" },
+		]);
+
+		expect(
+			parse({ type: "item.completed", item: { type: "error", message: "metadata not found" } }),
+		).toEqual([{ type: "stdout", text: "[codex] metadata not found\n" }]);
 	});
 });
 

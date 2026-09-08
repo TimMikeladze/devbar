@@ -1022,16 +1022,17 @@ codex  mcp add devbar -- bunx devbar.sh mcp`}
 					))}
 				</div>
 				<p className="text-[13px] text-muted leading-relaxed mb-3">
-					Dispatch means a web page can start an agent in your repository, so the defaults are
-					deliberately timid. Live tools stay dark until you switch on <strong>Agent live</strong>{" "}
-					in the toolbar, per origin — navigation needs a second switch, and every call shows up in
-					the toolbar.
+					Dispatch means a web page can start an agent in your repository, so it never leaves
+					loopback and live tools stay dark until you switch on <strong>Agent live</strong> in the
+					toolbar, per origin — navigation needs a second switch, and every call shows up in the
+					toolbar. A fresh config dispatches on submit and lets the agent edit the workspace;
+					<code>permission: "plan"</code> turns that back into propose-only.
 				</p>
 				<div className="flex flex-wrap gap-2">
 					{[
 						"loopback only",
-						'permission: "plan"',
-						"autoDispatch: false",
+						"agent live is opt-in, per origin",
+						"plan mode is one line away",
 						"origin-authorized, no wildcard CORS",
 						"bearer token beyond localhost",
 						"no eval tool",

@@ -3,7 +3,7 @@ import { PRESETS, resolvePreset, type AgentPreset } from "./presets";
 import type { AgentRunner } from "./types";
 
 export { createCliRunner } from "./cli-runner";
-export { PRESETS, customPreset, resolvePreset } from "./presets";
+export { PRESETS, customPreset, resolvePreset, defaultModelFor } from "./presets";
 export type { AgentPreset, BuiltArgs, PromptMode } from "./presets";
 export type {
 	AgentCapabilities,

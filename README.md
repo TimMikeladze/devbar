@@ -129,7 +129,7 @@ claude mcp add devbar -- bunx devbar.sh mcp
 | `devbar tasks [--watch]` | dispatch tasks and their status                     |
 | `devbar reports`         | captured reports                                    |
 | `devbar dispatch [id]`   | dispatch one report, or every pending one           |
-| `devbar init`            | write a starter `devbar.config.ts`                  |
+| `devbar init`            | write a starter `devbar.config.ts` for your agent   |
 | `devbar link`            | print the wiring snippet for this project           |
 
 Discovery only runs on `localhost` pages and only probes `127.0.0.1:3100` and
@@ -137,8 +137,10 @@ Discovery only runs on `localhost` pages and only probes `127.0.0.1:3100` and
 point it elsewhere, or `live={false}` to hide the live page tools entirely.
 
 Live page tools stay off until you switch on **Agent live** — at the top of the
-toolbar's Agent tab, or in Settings — per origin. Dispatch runs an agent in your repository, so the defaults
-are conservative: loopback only, `permission: "plan"`, no auto-dispatch. See
+toolbar's Agent tab, or in Settings — per origin. Dispatch runs an agent in your repository, so it stays on
+loopback and never leaves your machine. `devbar init` detects which agent CLI you have — asking when there
+is more than one — and writes `permission: "auto"` with `autoDispatch: true`, so a submitted report goes
+straight to the agent. Set `permission: "plan"` and `autoDispatch: false` for read-only, dispatch-by-hand. See
 [docs/LOCAL-AGENT.md](./docs/LOCAL-AGENT.md) for the config reference, the
 supported agent CLIs, the MCP tool list, and the security model.
 
@@ -216,7 +218,7 @@ means before you ask for it and what happened after:
   screenshot it. When nothing claims the page, the picker to choose a project is
   right there rather than a tab away.
 - **Waiting on you** — reports you have submitted that no agent has been given.
-  With `autoDispatch` off (the default) Submit stores a report and stops, so
+  With `autoDispatch` off Submit stores a report and stops, so
   each one gets a **Dispatch** button rather than sitting there looking ignored.
   The toast shown right after Submit carries the same **Dispatch** button, so
   the common case never needs this tab at all.

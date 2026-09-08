@@ -8,6 +8,7 @@ import { createReportStore, type ReportStore } from "./report-store";
 import { createPageBus, PageRpcError, type PageBus } from "./page-bus";
 import { createMcpSessions, type McpSessions } from "./mcp-sessions";
 import { fanOut } from "./destinations";
+import { defaultModelFor } from "./agents";
 import {
 	createProjectOverrides,
 	validateAgentSettingsOverrides,
@@ -335,10 +336,10 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			const config: ProjectConfig = {
 				slug: body.slug,
 				dir: body.dir,
-				model: body.model ?? "sonnet",
+				model: body.model ?? defaultModelFor(body.command) ?? "",
 				effort: body.effort ?? "medium",
 				concurrency: body.concurrency ?? 1,
-				permission: body.permission ?? "plan",
+				permission: body.permission ?? "auto",
 				autoDispatch: body.autoDispatch ?? false,
 				...(body.permissionMode ? { permissionMode: body.permissionMode } : {}),
 				...(body.command ? { command: body.command } : {}),

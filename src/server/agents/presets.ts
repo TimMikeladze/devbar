@@ -18,6 +18,13 @@ export type AgentPreset = {
 	name: string;
 	command: string;
 	prompt: PromptMode;
+	/**
+	 * Model devbar picks when the project names none. Each CLI has its own
+	 * vocabulary — handing codex a claude model name is a failed run, not a
+	 * no-op — and an agent with no answer here keeps whatever its own CLI
+	 * defaults to.
+	 */
+	defaultModel?: string;
 	capabilities: AgentCapabilities;
 	/** Session ids devbar generates itself rather than scraping from output. */
 	assignsSession?: boolean;
@@ -59,6 +66,7 @@ const claude: AgentPreset = {
 	name: "claude",
 	command: "claude",
 	prompt: "stdin",
+	defaultModel: "opus",
 	assignsSession: true,
 	capabilities: {
 		model: true,
@@ -126,6 +134,9 @@ const codex: AgentPreset = {
 	name: "codex",
 	command: "codex",
 	prompt: "stdin",
+	// No defaultModel: codex rejects a model its account is not entitled to
+	// (`-m sol` on a ChatGPT account is a 400), so devbar passes no -m and lets
+	// ~/.codex/config.toml decide.
 	capabilities: {
 		model: true,
 		effort: false,
@@ -174,6 +185,15 @@ const codex: AgentPreset = {
 		if (/command|exec|tool|patch|apply/i.test(kind)) {
 			const detail = str(msg.command) ?? str(msg.name) ?? str(msg.path);
 			events.push({ type: "tool", name: kind, detail });
+		}
+
+		// Codex reports refusals and API errors as events, then exits 1. Without
+		// this the run fails with an empty transcript — the JSON parsed fine and
+		// said nothing the cases above match, so the runner drops the line.
+		if (/error|fail/i.test(kind)) {
+			const reason =
+				str(msg.message) ?? str(record(msg.error)?.message) ?? str(record(root.error)?.message);
+			if (reason) events.push({ type: "stdout", text: `[codex] ${reason}\n` });
 		}
 
 		return events;
@@ -265,6 +285,14 @@ export function customPreset(command: string): AgentPreset {
 		},
 		buildArgs: () => ({ args: [], warnings: [] }),
 	};
+}
+
+/**
+ * The model to run `command` with when nothing else says. Undefined means the
+ * CLI's own default — devbar passes no model flag at all.
+ */
+export function defaultModelFor(command: string | undefined): string | undefined {
+	return PRESETS[command ?? "claude"]?.defaultModel;
 }
 
 export function resolvePreset(command: string | undefined): AgentPreset {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir, access } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -7,7 +7,9 @@ import type { DevbarConfig } from "../config";
 import { createLocalServer } from "./local";
 import { loadConfig } from "./config-loader";
 import { createLocalClient, findLocalServer, readStoredToken } from "./local-client";
-import { PRESETS } from "./agents";
+import { PRESETS, defaultModelFor } from "./agents";
+import { commandInit } from "./init";
+import { which } from "./which";
 import type { ProjectConfig } from "./registry";
 
 /** Replaced with the package version at build time (see bunup.config.ts). */
@@ -35,7 +37,7 @@ type CliArgs = {
 	host: string;
 	token?: string;
 	name?: string;
-	model: string;
+	model?: string;
 	effort: string;
 	concurrency: number;
 	maxBudget?: number;
@@ -55,10 +57,9 @@ function parseArgs(argv: string[]): CliArgs {
 	const args: CliArgs = {
 		port: 3100,
 		host: "127.0.0.1",
-		model: "sonnet",
 		effort: "medium",
 		concurrency: 1,
-		permission: "plan",
+		permission: "auto",
 		autoDispatch: true,
 		watch: false,
 		all: false,
@@ -153,7 +154,9 @@ function buildProjectConfig(args: CliArgs): ProjectConfig {
 	return {
 		slug: args.name ?? basename(cwd),
 		dir: cwd,
-		model: args.model,
+		// Filled in by withDefaultModel once the agent is known: a model name is
+		// only meaningful next to the CLI that accepts it.
+		model: args.model ?? "",
 		effort: args.effort,
 		maxBudgetUsd: args.maxBudget,
 		concurrency: args.concurrency,
@@ -192,6 +195,16 @@ export function applyConfig(base: ProjectConfig, file: DevbarConfig | undefined)
 		...(agent.resumeSession !== undefined ? { resumeSession: agent.resumeSession } : {}),
 		...(file.routes ? { routes: file.routes } : {}),
 	};
+}
+
+/**
+ * Give a project the model its agent understands, unless it named one. An empty
+ * model means "no -m flag", which is what an agent devbar has no default for
+ * (opencode, a custom binary) should get.
+ */
+export function withDefaultModel(project: ProjectConfig): ProjectConfig {
+	if (project.model) return project;
+	return { ...project, model: defaultModelFor(project.command) ?? "" };
 }
 
 async function isServerRunning(host: string, port: number): Promise<boolean> {
@@ -237,7 +250,7 @@ Commands
   tasks [--watch]      List dispatch tasks
   reports              List captured reports
   dispatch [id|--all]  Dispatch a report, or every pending one
-  init                 Write a starter devbar.config.ts
+  init                 Write a starter devbar.config.ts (detects the agent CLI)
   link                 Print the toolbar snippet for this project
 
 Options
@@ -246,9 +259,10 @@ Options
   -t, --token <token>       Auth token (default: DEVBAR_TOKEN, or ~/.devbar/token)
       --name <slug>         Project slug (default: current directory name)
       --agent <name>        Agent command: claude, codex, opencode, or any binary
-      --model <model>       Agent model (default: sonnet)
+                            (with init, skips agent detection)
+      --model <model>       Agent model (default: per agent — claude opus, others their own)
       --effort <level>      Agent reasoning effort (default: medium)
-      --permission <level>  plan | auto | full (default: plan)
+      --permission <level>  plan | auto | full (default: auto)
       --permission-mode <m> Raw per-CLI permission string
       --concurrency <n>     Concurrent agent tasks (default: 1)
       --max-budget <usd>    Spend ceiling per project
@@ -259,41 +273,6 @@ Options
   -h, --help                Show this help
   -v, --version             Show the version
 `;
-
-const CONFIG_TEMPLATE = `import { defineConfig } from "devbar.sh/config";
-
-export default defineConfig({
-	// Pages on these origins are matched to this project automatically,
-	// so <Devbar /> needs no server/token/project props.
-	origins: ["http://localhost:3000"],
-
-	agent: {
-		command: "claude", // "claude" | "codex" | "opencode" | any binary on PATH
-		model: "sonnet",
-		// plan = read-only, auto = may edit the workspace, full = no sandbox
-		permission: "plan",
-		// Reports only run an agent once you turn this on.
-		autoDispatch: false,
-	},
-
-	live: {
-		// Lets an agent inspect and screenshot the page you have open.
-		enabled: true,
-		allowMutating: false,
-	},
-});
-`;
-
-async function commandInit(): Promise<void> {
-	const path = join(process.cwd(), "devbar.config.ts");
-	try {
-		await access(path);
-		console.log(`devbar.config.ts already exists at ${path}`);
-		return;
-	} catch {}
-	await writeFile(path, CONFIG_TEMPLATE, "utf-8");
-	console.log(`wrote ${path}`);
-}
 
 async function commandDoctor(args: CliArgs): Promise<void> {
 	const lines: string[] = [];
@@ -310,7 +289,7 @@ async function commandDoctor(args: CliArgs): Promise<void> {
 	const config = await loadConfig(process.cwd());
 	check(!!config, "devbar.config.ts found", config ? undefined : "run `devbar init`");
 
-	const project = applyConfig(buildProjectConfig(args), config);
+	const project = withDefaultModel(applyConfig(buildProjectConfig(args), config));
 	check(
 		!!project.origins?.length,
 		"origins configured",
@@ -367,20 +346,6 @@ async function commandDoctor(args: CliArgs): Promise<void> {
 	console.log(lines.join("\n"));
 	console.log(problems === 0 ? "\nall good" : `\n${problems} problem(s)`);
 	if (problems > 0) process.exitCode = 1;
-}
-
-async function which(command: string): Promise<string | undefined> {
-	const { spawn } = await import("node:child_process");
-	return new Promise((resolve) => {
-		const finder = process.platform === "win32" ? "where" : "which";
-		const child = spawn(finder, [command], { stdio: ["ignore", "pipe", "ignore"] });
-		let out = "";
-		child.stdout?.on("data", (d: Buffer) => {
-			out += d.toString();
-		});
-		child.on("error", () => resolve(undefined));
-		child.on("close", (code) => resolve(code === 0 ? out.trim().split("\n")[0] : undefined));
-	});
 }
 
 function formatAge(ms: number): string {
@@ -455,7 +420,7 @@ async function commandDispatch(args: CliArgs): Promise<void> {
 
 async function commandLink(args: CliArgs): Promise<void> {
 	const config = await loadConfig(process.cwd());
-	const project = applyConfig(buildProjectConfig(args), config);
+	const project = withDefaultModel(applyConfig(buildProjectConfig(args), config));
 	console.log(`Mount the toolbar — no props needed when the page runs on one of:`);
 	console.log(`  ${project.origins?.join(", ") ?? "(no origins configured — run `devbar init`)"}`);
 	console.log("");
@@ -478,7 +443,7 @@ async function commandLink(args: CliArgs): Promise<void> {
 async function commandServe(args: CliArgs): Promise<void> {
 	const token = args.token ?? process.env.DEVBAR_TOKEN ?? (await loadOrCreateToken());
 	const fileConfig = await loadConfig(process.cwd());
-	const projectConfig = applyConfig(buildProjectConfig(args), fileConfig);
+	const projectConfig = withDefaultModel(applyConfig(buildProjectConfig(args), fileConfig));
 
 	if (await isServerRunning(args.host, args.port)) {
 		await registerWithExistingServer(args.host, args.port, token, projectConfig);
@@ -509,8 +474,8 @@ async function commandServe(args: CliArgs): Promise<void> {
 	console.log(`writing reports to ${dir}`);
 	console.log(`project '${projectConfig.slug}' registered (${projectConfig.dir})`);
 	console.log(
-		`  agent=${projectConfig.command ?? "claude"} model=${projectConfig.model} ` +
-			`permission=${projectConfig.permission ?? "plan"} concurrency=${projectConfig.concurrency}`,
+		`  agent=${projectConfig.command ?? "claude"} model=${projectConfig.model || "(the CLI's own)"} ` +
+			`permission=${projectConfig.permission ?? "auto"} concurrency=${projectConfig.concurrency}`,
 	);
 	console.log(`  auto-dispatch=${projectConfig.autoDispatch}`);
 	if (projectConfig.origins?.length) {
@@ -555,7 +520,7 @@ async function main(): Promise<void> {
 		case "dispatch":
 			return commandDispatch(args);
 		case "init":
-			return commandInit();
+			return commandInit(args.command);
 		case "link":
 			return commandLink(args);
 		default:
