@@ -128,8 +128,8 @@ describe("live page bridge", () => {
 		const pageId = await registerPage();
 		const controller = new AbortController();
 		// Open the stream but ignore everything that arrives.
-		void fetch(`${baseUrl}/api/pages/${pageId}/stream`, { signal: controller.signal });
-		await new Promise((r) => setTimeout(r, 50));
+		// Awaiting the response (headers) means the server has attached the stream.
+		await fetch(`${baseUrl}/api/pages/${pageId}/stream`, { signal: controller.signal });
 
 		const res = await fetch(`${baseUrl}/api/pages/${pageId}/rpc`, {
 			method: "POST",
