@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
-import type { AgentPermission, Destination, LiveConfig } from "../config";
+import type { AgentPermission, Destination, LiveConfig, WorkspaceConfig } from "../config";
 
 export type ProjectConfig = {
 	slug: string;
@@ -29,6 +29,8 @@ export type ProjectConfig = {
 	live?: LiveConfig;
 	/** Destinations every report for this project is routed to. When set, these replace the implicit auto-dispatch. */
 	routes?: Destination[];
+	/** The Workspace shell's settings. */
+	workspace?: WorkspaceConfig;
 };
 
 export type Registry = {

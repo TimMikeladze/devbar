@@ -50,6 +50,32 @@ export type LiveConfig = {
 	allowMutating?: boolean;
 };
 
+/**
+ * The Workspace shell: specs, skills, AGENTS.md, subagents, commands and docs,
+ * browsable and editable from the running app, proposed back as pull requests.
+ * Every directory list replaces its default rather than extending it.
+ */
+export type WorkspaceConfig = {
+	/** Serve the workspace for this project. Default true. */
+	enabled?: boolean;
+	/** Directories whose markdown counts as specs. */
+	specs?: string[];
+	/** Directories whose markdown counts as docs (root README/CONTRIBUTING/CHANGELOG always do). */
+	docs?: string[];
+	/** Path prefixes to leave out, on top of node_modules, dist, build and friends. */
+	exclude?: string[];
+	/** Branch pull requests target. Default: the current branch if it is on origin, else origin's default. */
+	baseBranch?: string;
+	/** Prefix for branches the workspace creates. Default "devbar/". */
+	branchPrefix?: string;
+	/**
+	 * "Ask an agent" on a deployed site opens a GitHub issue that mentions this
+	 * handle (default "@claude", which the Claude Code GitHub Action answers).
+	 * false turns it off.
+	 */
+	vibe?: false | { mention?: string; labels?: string[] };
+};
+
 export type DevbarConfig = {
 	/** Project slug. Defaults to the directory name. */
 	project?: string;
@@ -64,6 +90,8 @@ export type DevbarConfig = {
 	live?: LiveConfig;
 	/** Destinations every report for this project is routed to. */
 	routes?: Destination[];
+	/** The Workspace shell. */
+	workspace?: WorkspaceConfig;
 };
 
 /** Identity helper that gives a typed `devbar.config.ts`. */

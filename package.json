@@ -53,6 +53,8 @@
 		"dist/cdn",
 		"dist/local",
 		"dist/config",
+		"dist/workspace",
+		"dist/next",
 		"dist/bin",
 		"extension/manifest.json",
 		"extension/background.js",
@@ -80,6 +82,18 @@
 			"import": {
 				"types": "./dist/config/config.d.ts",
 				"default": "./dist/config/config.js"
+			}
+		},
+		"./workspace": {
+			"import": {
+				"types": "./dist/workspace/index.d.ts",
+				"default": "./dist/workspace/index.js"
+			}
+		},
+		"./next": {
+			"import": {
+				"types": "./dist/next/next.d.ts",
+				"default": "./dist/next/next.js"
 			}
 		},
 		"./cdn": "./dist/cdn/cdn.global.js",

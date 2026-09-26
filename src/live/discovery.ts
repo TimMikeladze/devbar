@@ -27,6 +27,8 @@ export type LocalProject = {
 	routes?: string[];
 	/** True when toolbar-authored settings currently override devbar.config.ts. */
 	hasAgentOverrides?: boolean;
+	/** The server serves this project's Workspace. Absent on servers that predate it. */
+	workspace?: boolean;
 };
 
 export type LocalHandshake = {

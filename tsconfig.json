@@ -22,7 +22,8 @@
 
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./src/*"],
+			"devbar.sh/workspace": ["./src/workspace/server/index.ts"]
 		},
 
 		"noUnusedLocals": false,

@@ -3,15 +3,17 @@
 // injection. Without it the toolbar mounts completely unstyled — the npm entry
 // (src/index.tsx) ships `devbar.sh/styles.css` separately instead.
 import "@/toolbar/toolbar.css";
-import { init } from "@/standalone";
+import { init, mountShell } from "@/standalone";
 import type { DevbarProps } from "@/toolbar/toolbar";
+import type { DevbarShellProps } from "@/workspace/shell";
 
 declare global {
 	interface Window {
 		Devbar: {
 			init: (config?: DevbarProps) => { destroy: () => void };
+			shell: (container: Element, config: DevbarShellProps) => { destroy: () => void };
 		};
 	}
 }
 
-window.Devbar = { init };
+window.Devbar = { init, shell: mountShell };

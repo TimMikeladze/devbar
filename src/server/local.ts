@@ -14,6 +14,8 @@ import {
 	validateAgentSettingsOverrides,
 	type EffectiveProjectConfig,
 } from "./project-overrides";
+import { createWorkspaceHandler, type WorkspaceHandler } from "../workspace/server/handler";
+import { createLocalBackend } from "../workspace/server/local-backend";
 
 const DEVBAR_DIR = join(homedir(), ".devbar");
 const REPORTS_DIR = join(DEVBAR_DIR, "reports");
@@ -90,6 +92,8 @@ export type LocalServerOptions = {
 	trustLocalProcesses?: boolean;
 	/** Called after each report is written to disk */
 	onReport?: (filePath: string, payload: unknown) => void;
+	/** The GitHub CLI the workspace uses. Default "gh"; false never calls it. */
+	githubCli?: string | false;
 };
 
 export type LocalServer = {
@@ -143,6 +147,37 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 	const store = createReportStore(reportsDir);
 	const pages = createPageBus();
 	const mcpSessions = createMcpSessions();
+
+	// One handler per project, rebuilt when the project's dir or workspace
+	// settings change on re-registration.
+	const workspaces = new Map<string, { key: string; handler: WorkspaceHandler }>();
+	function workspaceFor(project: ProjectConfig): WorkspaceHandler {
+		const key = JSON.stringify([project.dir, project.workspace ?? {}, project.origins ?? []]);
+		const cached = workspaces.get(project.slug);
+		if (cached?.key === key) return cached.handler;
+		const handler = createWorkspaceHandler({
+			backend: createLocalBackend({
+				root: project.dir,
+				config: project.workspace,
+				...(options.githubCli !== undefined ? { githubCli: options.githubCli } : {}),
+			}),
+			// `authorize` below has already vetted the caller by origin or token,
+			// and the pages it serves live on other ports than this server.
+			authorize: () => true,
+			checkOrigin: false,
+			maxBodyBytes,
+			shell: {
+				// The app is on its own origin, not this server's: frame the first
+				// one the project claims, and only ever a loopback or claimed one.
+				appUrl: project.origins?.[0] ?? "",
+				allowApp: (url) => isLoopbackOrigin(url.origin) || !!registry.findByOrigin(url.origin),
+				agent: { server: "", project: project.slug },
+				title: project.slug,
+			},
+		});
+		workspaces.set(project.slug, { key, handler });
+		return handler;
+	}
 
 	const dispatcher = createDispatcher({
 		store,
@@ -319,6 +354,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 					routes: (p.routes ?? []).map((r) => (typeof r === "string" ? r : "webhook")),
 					live: p.live ?? { enabled: true, allowMutating: false },
 					hasAgentOverrides: p.hasAgentOverrides,
+					workspace: p.workspace?.enabled !== false,
 				})),
 				mcpSessions: mcpSessions.list().length,
 			});
@@ -351,6 +387,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 				...(body.origins ? { origins: body.origins } : {}),
 				...(body.live ? { live: body.live } : {}),
 				...(body.routes ? { routes: body.routes } : {}),
+				...(body.workspace ? { workspace: body.workspace } : {}),
 			};
 			await registry.register(config);
 			respond(ctx, 200, { ok: true, slug: config.slug });
@@ -397,6 +434,98 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			await registry.unregister(slug);
 			await projectOverrides.clear(slug);
 			respond(ctx, 200, { ok: true });
+			return;
+		}
+
+		// ─── workspace ──────────────────────────────────────────────────────
+		//
+		// The shell and its API for a registered project, served by the
+		// same fetch-style handler the Next.js routes use. Node's request is
+		// adapted to a Web Request and the answer copied back.
+		const workspaceMatch = /^\/api\/projects\/([^/]+)\/workspace\/([^/]+)$/.exec(path);
+		if (workspaceMatch) {
+			const project = registry.get(decodeURIComponent(workspaceMatch[1] as string));
+			if (!project) {
+				respond(ctx, 404, { error: "Project not found" });
+				return;
+			}
+			if (project.workspace?.enabled === false) {
+				respond(ctx, 404, { error: "The workspace is turned off for this project" });
+				return;
+			}
+			let body: string | undefined;
+			if (method === "POST") {
+				try {
+					body = await parseBody(req, maxBodyBytes);
+				} catch (err) {
+					respond(ctx, err instanceof BodyTooLarge ? 413 : 400, {
+						error: err instanceof BodyTooLarge ? "Payload too large" : "Invalid body",
+					});
+					return;
+				}
+			}
+			const response = await workspaceFor(project)(
+				new Request(`http://127.0.0.1${url.pathname}${url.search}`, {
+					method,
+					headers: { "Content-Type": String(req.headers["content-type"] ?? "") },
+					...(body !== undefined ? { body } : {}),
+				}),
+			);
+			// Every header the handler set — the shell page's frame-ancestors
+			// among them — then CORS for the page asking.
+			const headers: Record<string, string> = {};
+			response.headers.forEach((value, key) => {
+				headers[key] = value;
+			});
+			ctx.res.writeHead(response.status, { ...headers, ...corsHeaders(ctx.origin) });
+			// The event stream is copied as it comes, not buffered — and is
+			// cancelled when the shell goes away, which stops its file watch.
+			if (response.body && headers["content-type"]?.startsWith("text/event-stream")) {
+				const reader = response.body.getReader();
+				openStreams.add(ctx.res);
+				ctx.req.on("close", () => {
+					openStreams.delete(ctx.res);
+					void reader.cancel().catch(() => {});
+				});
+				for (;;) {
+					const { done, value } = await reader
+						.read()
+						.catch(() => ({ done: true, value: undefined }));
+					if (done || ctx.res.writableEnded) break;
+					ctx.res.write(value);
+				}
+				if (!ctx.res.writableEnded) ctx.res.end();
+				return;
+			}
+			ctx.res.end(await response.text());
+			return;
+		}
+
+		// The shell is what a person opens this server for. With one project,
+		// the root goes straight to it; with several, it lists them.
+		if (method === "GET" && path === "/") {
+			const projects = registry.list().filter((p) => p.workspace?.enabled !== false);
+			const shellOf = (slug: string) => `/api/projects/${encodeURIComponent(slug)}/workspace/shell`;
+			if (projects.length === 1) {
+				ctx.res.writeHead(302, { Location: shellOf((projects[0] as ProjectConfig).slug) });
+				ctx.res.end();
+				return;
+			}
+			const escape = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+			const items = projects
+				.map(
+					(p) =>
+						`<li><a href="${escape(shellOf(p.slug))}">${escape(p.slug)}</a> <small>${escape(p.dir)}</small></li>`,
+				)
+				.join("");
+			ctx.res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+			ctx.res.end(
+				`<!doctype html><meta charset="utf-8"><title>devbar</title><body style="font:14px system-ui;margin:40px"><h1>devbar</h1>${
+					items
+						? `<p>Open a project's Workspace shell:</p><ul>${items}</ul>`
+						: "<p>No projects registered. Run <code>devbar</code> in one.</p>"
+				}</body>`,
+			);
 			return;
 		}
 

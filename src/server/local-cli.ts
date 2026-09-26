@@ -194,6 +194,7 @@ export function applyConfig(base: ProjectConfig, file: DevbarConfig | undefined)
 		...(agent.timeoutMs !== undefined ? { timeoutMs: agent.timeoutMs } : {}),
 		...(agent.resumeSession !== undefined ? { resumeSession: agent.resumeSession } : {}),
 		...(file.routes ? { routes: file.routes } : {}),
+		...(file.workspace ? { workspace: file.workspace } : {}),
 	};
 }
 
@@ -205,6 +206,12 @@ export function applyConfig(base: ProjectConfig, file: DevbarConfig | undefined)
 export function withDefaultModel(project: ProjectConfig): ProjectConfig {
 	if (project.model) return project;
 	return { ...project, model: defaultModelFor(project.command) ?? "" };
+}
+
+/** Where to open this project's Workspace shell. */
+function shellUrl(args: CliArgs, project: ProjectConfig): string {
+	const host = args.host === "::" || args.host === "0.0.0.0" ? "127.0.0.1" : args.host;
+	return `http://${host}:${args.port}/api/projects/${encodeURIComponent(project.slug)}/workspace/shell`;
 }
 
 async function isServerRunning(host: string, port: number): Promise<boolean> {
@@ -450,6 +457,7 @@ async function commandServe(args: CliArgs): Promise<void> {
 		console.log(
 			`project '${projectConfig.slug}' registered with existing server at http://${args.host}:${args.port}`,
 		);
+		console.log(`  workspace shell: ${shellUrl(args, projectConfig)}`);
 		process.exit(0);
 	}
 
@@ -478,6 +486,9 @@ async function commandServe(args: CliArgs): Promise<void> {
 			`permission=${projectConfig.permission ?? "auto"} concurrency=${projectConfig.concurrency}`,
 	);
 	console.log(`  auto-dispatch=${projectConfig.autoDispatch}`);
+	if (projectConfig.workspace?.enabled !== false) {
+		console.log(`  workspace shell: ${shellUrl(args, projectConfig)}`);
+	}
 	if (projectConfig.origins?.length) {
 		console.log(`  origins=${projectConfig.origins.join(", ")}`);
 	} else {

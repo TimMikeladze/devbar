@@ -1,0 +1,21 @@
+{
+	"name": "devbar-nextjs-example",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "next dev --webpack",
+		"build": "next build --webpack",
+		"start": "next start"
+	},
+	"dependencies": {
+		"devbar.sh": "file:../..",
+		"next": "^16.0.0",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0",
+		"@types/react": "^19.2.14",
+		"typescript": "^5.9.3"
+	}
+}

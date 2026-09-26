@@ -338,3 +338,92 @@ export function LocateIcon(): React.ReactNode {
 		</svg>
 	);
 }
+
+/** A speech bubble: discuss this in the spec. */
+export function CommentIcon(): React.ReactNode {
+	return (
+		<svg
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.8"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		>
+			<path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-7l-4.5 3.5v-3.5H5A1.5 1.5 0 0 1 3.5 16V7A1.5 1.5 0 0 1 5 5.5z" />
+		</svg>
+	);
+}
+
+/** The Workspace shell: an open book — the repo's specs and docs. */
+export function WorkspaceIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<path d="M12 6.5C10.3 5 7.8 4.5 4 4.5v13c3.8 0 6.3.5 8 2 1.7-1.5 4.2-2 8-2v-13c-3.8 0-6.3.5-8 2z" />
+			<path d="M12 6.5v13" />
+		</svg>
+	);
+}
+
+export function ChevronLeftIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<path d="M15 18l-6-6 6-6" />
+		</svg>
+	);
+}
+
+export function PlusIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<path d="M12 5v14M5 12h14" />
+		</svg>
+	);
+}
+
+export function ExternalIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<path d="M14 4h6v6" />
+			<path d="M20 4l-9 9" />
+			<path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5" />
+		</svg>
+	);
+}
+
+export function ReloadIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<path d="M20 11a8 8 0 10-2.3 5.7" />
+			<path d="M20 4v7h-7" />
+		</svg>
+	);
+}
+
+export function TabletIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<rect x="5" y="3" width="14" height="18" rx="2" />
+			<path d="M11 18h2" />
+		</svg>
+	);
+}
+
+export function PhoneIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<rect x="7" y="3" width="10" height="18" rx="2" />
+			<path d="M11 18h2" />
+		</svg>
+	);
+}
+
+/** A panel docked on the right — shows or hides the shell's file panel. */
+export function PanelRightIcon(): React.ReactNode {
+	return (
+		<svg viewBox="0 0 24 24" {...S}>
+			<rect x="3" y="4" width="18" height="16" rx="2" />
+			<path d="M15 4v16" />
+		</svg>
+	);
+}

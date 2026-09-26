@@ -78,13 +78,15 @@ of the module being imported, not in the factory.
 
 ### Package entrypoints
 
-| Import                 | What it is                                                           |
-| ---------------------- | -------------------------------------------------------------------- |
-| `devbar.sh`            | `<Devbar />`, `init()`, the payload types, and the local-agent hooks |
-| `devbar.sh/styles.css` | Toolbar stylesheet (required for the component build)                |
-| `devbar.sh/cdn`        | Self-contained IIFE bundle with styles inlined, for a `<script>` tag |
-| `devbar.sh/local`      | `createLocalServer()` — the local dispatcher used by the CLI         |
-| `devbar.sh/config`     | `defineConfig()` and the `devbar.config.ts` types                    |
+| Import                 | What it is                                                             |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `devbar.sh`            | `<Devbar />`, `init()`, the payload types, and the local-agent hooks   |
+| `devbar.sh/styles.css` | Toolbar stylesheet (required for the component build)                  |
+| `devbar.sh/cdn`        | Self-contained IIFE bundle with styles inlined, for a `<script>` tag   |
+| `devbar.sh/local`      | `createLocalServer()` — the local dispatcher used by the CLI           |
+| `devbar.sh/config`     | `defineConfig()` and the `devbar.config.ts` types                      |
+| `devbar.sh/next`       | `createWorkspaceRoutes()` — the Workspace API and shell as Next routes |
+| `devbar.sh/workspace`  | `createWorkspace()` — the same as a fetch handler, and the backends    |
 
 Only `react`, `react-dom` (peers) and two small runtime dependencies —
 `html-to-image` and `jiti` — are installed with the package. The MCP server the
@@ -287,6 +289,50 @@ re-export a day later still leads with `## Task`, and restoring brings the task
 back unless you have already typed a new one. See
 [docs/HISTORY.md](./docs/HISTORY.md).
 
+### Workspace
+
+The book button on the bar (`Alt+W`) turns the tab into the **Workspace
+shell**: your app, running live in the middle, with the repository's agent
+context around it as pages — **specs** (`specs/`, `docs/specs/`, `.kiro/specs/`,
+spec-kit's `.specify/`, with task progress), **skills**
+(`.claude/skills/*/SKILL.md`), **agents** (`AGENTS.md`, `CLAUDE.md`, subagents,
+slash commands) and **docs**. It is laid out like Notion — a page tree, pages
+opening beside the app, block editing with `/` commands, ⌘K, an emoji for any
+page — in Vercel's black and white, with colour-coded icons. Anyone looking at the app can edit a spec, tick off a task, or ask an
+agent to change the app with the open page as context, and turn the result into
+a pull request.
+
+![The Workspace shell: the page tree on the left, the app running in the middle, a spec open beside it](https://raw.githubusercontent.com/TimMikeladze/devbar/main/docs/images/workspace.png)
+
+It works in both places people look at the app:
+
+- **Local dev** — with `bunx devbar.sh` running there is nothing to wire; the
+  shell is also at `http://127.0.0.1:3100/`. Pages save to disk as you edit
+  them (HMR does the rest), a proposal becomes a branch, a push and
+  `gh pr create` without touching your checkout, and prompts go to your agent
+  CLI — what it changes on disk is proposed the same way.
+- **Deployed, self-hosted** — mount the routes in your Next.js app and point the
+  toolbar at them; the same route serves the shell at `/api/devbar/shell`. In
+  production they read the GitHub repository (a preview deploy reads its own
+  branch), proposals open PRs through the API, and prompts open an issue for
+  `@claude`.
+
+```ts
+// app/api/devbar/[...path]/route.ts
+import { createWorkspaceRoutes } from "devbar.sh/next";
+
+export const { GET, POST, OPTIONS } = createWorkspaceRoutes({ authorize });
+```
+
+```tsx
+<Devbar workspace="/api/devbar" />
+```
+
+Beyond localhost the API only answers callers your `authorize` lets in, or who
+hold `DEVBAR_WORKSPACE_TOKEN`. See [docs/WORKSPACE.md](./docs/WORKSPACE.md) for
+the file conventions, editing, the GitHub setup, access control and the HTTP
+contract, and [examples/nextjs](./examples/nextjs) for a working app.
+
 ### Keyboard shortcuts
 
 | Keys                            | Action                                                    |
@@ -303,6 +349,7 @@ back unless you have already typed a new one. See
 | `Alt+A`                         | Toggle the annotations panel                              |
 | `Alt+T`                         | Focus the task field                                      |
 | `Alt+P`                         | Preview the report                                        |
+| `Alt+W`                         | Open the Workspace shell                                  |
 | `Alt+H`                         | Hide / show the toolbar                                   |
 | `Alt+,`                         | Settings                                                  |
 | `Alt+/`                         | Keyboard shortcuts                                        |

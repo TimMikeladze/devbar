@@ -82,8 +82,19 @@ export default defineConfig({
 	},
 
 	routes: ["agent", { webhook: "https://…" }],
+
+	workspace: {
+		enabled: true, // the Workspace shell for this project
+		specs: ["specs", "docs/specs"], // replaces the default spec directories
+		baseBranch: "main", // where proposals land (default: see docs/WORKSPACE.md)
+	},
 });
 ```
+
+`workspace` configures the Workspace shell — the app framed beside this
+project's specs, skills, `AGENTS.md` and docs, which turns edits into pull
+requests. The server serves it at `http://127.0.0.1:3100/`; see
+[WORKSPACE.md](./WORKSPACE.md).
 
 `origins` is what makes the toolbar zero-config: the server matches the page's
 origin to a project, so nothing needs to be passed as a prop. Without it, pass

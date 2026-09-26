@@ -235,7 +235,32 @@ async function main() {
 		await page.context().close();
 	}
 
-	// 6. Light theme, so the README shows both.
+	// 6. The Workspace shell: the page framed in the middle, this repository's
+	//    own specs down the left, and its Workspace spec open beside the app.
+	{
+		const page = await openPage(browser, true);
+		await page.locator(".devbar-bar").getByRole("button", { name: "Workspace" }).click();
+		await page.waitForURL(/\/workspace\/shell/);
+		await page.waitForSelector(".devbar-nt-row-label");
+		await page
+			.locator(".devbar-nt-side")
+			.getByText("Workspace — the repo's agent context", { exact: false })
+			.first()
+			.click();
+		await page.waitForSelector(".devbar-nt-peek .devbar-nt-title");
+		// Let the framed page settle, and its toolbar report back to the shell.
+		await page.waitForFunction(
+			() => !(document.querySelector('[aria-label="Back"]') as HTMLButtonElement | null)?.disabled,
+			null,
+			{ timeout: 15_000 },
+		);
+		await page.waitForTimeout(1200);
+		await restCursor(page);
+		await shot(page, "workspace.png");
+		await page.context().close();
+	}
+
+	// 7. Light theme, so the README shows both.
 	{
 		const page = await openPage(browser, false);
 		await restCursor(page);

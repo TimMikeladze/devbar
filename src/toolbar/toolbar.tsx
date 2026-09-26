@@ -45,6 +45,7 @@ import {
 	useViewportTracker,
 } from "@/collaboration/presence";
 import { useDevbarState } from "./state";
+import { isFramed, useShellBridge } from "@/workspace/frame";
 import {
 	SelectIcon,
 	DrawIcon,
@@ -75,6 +76,8 @@ import {
 	RecordIcon,
 	RecordItemIcon,
 	LocateIcon,
+	WorkspaceIcon,
+	CommentIcon,
 } from "./icons";
 
 export type DevbarPlugin = {
@@ -114,6 +117,14 @@ export type DevbarProps = {
 	user?: DevbarUser;
 	authProxy?: string;
 	orgId?: string;
+	/**
+	 * The Workspace shell — this app, framed, beside the repo's specs, skills,
+	 * AGENTS.md and docs. Default: on when a local devbar server serves this
+	 * page's project. A string is the Workspace API's mount (e.g. a
+	 * `devbar.sh/next` route, "/api/devbar"), which works on deployed sites
+	 * too; the shell is served from `<mount>/shell`. false hides it.
+	 */
+	workspace?: boolean | string;
 };
 
 type PanelTab = "annotations" | "history" | "agent" | "settings" | "shortcuts";
@@ -1364,6 +1375,7 @@ export function Devbar({
 	user,
 	authProxy,
 	orgId,
+	workspace,
 }: DevbarProps): React.ReactNode {
 	const state = useDevbarState();
 	const authEnabled = !!(authProxy || user);
@@ -1692,6 +1704,50 @@ export function Devbar({
 	const effectiveServer = server ?? localAgent.url;
 	const effectiveProject = project ?? localAgent.project;
 
+	// Where the Workspace shell is served: the mount the host names, else the
+	// local server's copy of the project claiming this page — but only a
+	// server new enough to say it has one. A protected shell asks for its own
+	// token; one is never put in a URL.
+	const workspaceTarget = useMemo((): { endpoint: string } | undefined => {
+		if (workspace === false) return undefined;
+		if (typeof workspace === "string") return { endpoint: workspace };
+		const claimed = localAgent.projects.find((p) => p.slug === localAgent.project);
+		if (localAgent.status !== "connected" || !localAgent.url || claimed?.workspace !== true)
+			return undefined;
+		return {
+			endpoint: `${localAgent.url}/api/projects/${encodeURIComponent(claimed.slug)}/workspace`,
+		};
+	}, [workspace, localAgent.status, localAgent.url, localAgent.project, localAgent.projects]);
+	// Inside the shell's frame there is no shell to open — it is already open.
+	const [framed] = useState(isFramed);
+	const enterShell = useCallback(() => {
+		if (!workspaceTarget) return;
+		// A shell on this origin gets a path, which it resolves against itself —
+		// so a proxy hiding the public host from the server cannot lose the page.
+		const shell = new URL(`${workspaceTarget.endpoint}/shell`, window.location.href);
+		const here = window.location;
+		const page =
+			shell.origin === here.origin ? `${here.pathname}${here.search}${here.hash}` : here.href;
+		shell.searchParams.set("url", page);
+		window.location.assign(shell.href);
+	}, [workspaceTarget]);
+	// Answer the shell framing this page — but only a shell served by this
+	// app's own origin, the local devbar server, or the workspace endpoint.
+	const shellBridge = useShellBridge((origin) => {
+		const originOf = (url: string | undefined) => {
+			try {
+				return url ? new URL(url, window.location.href).origin : undefined;
+			} catch {
+				return undefined;
+			}
+		};
+		return (
+			origin === window.location.origin ||
+			origin === originOf(localAgent.url) ||
+			origin === originOf(workspaceTarget?.endpoint)
+		);
+	});
+
 	const [expandedExportId, setExpandedExportId] = useState<string | null>(null);
 	const [showExportMenu, setShowExportMenu] = useState(false);
 	const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -1987,6 +2043,13 @@ export function Devbar({
 				return;
 			}
 
+			// Workspace shell: Alt+W
+			if (is("w") && workspaceTarget && !framed) {
+				e.preventDefault();
+				enterShell();
+				return;
+			}
+
 			// Hide / show the toolbar: Alt+H
 			if (is("h")) {
 				e.preventDefault();
@@ -2030,6 +2093,9 @@ export function Devbar({
 		showFooterMenu,
 		effectiveServer,
 		toastAction,
+		workspaceTarget,
+		framed,
+		enterShell,
 	]);
 
 	const toastTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -3393,6 +3459,9 @@ export function Devbar({
 							["Alt+A", "Toggle annotations"],
 							["Alt+T", "Focus the task field"],
 							["Alt+P", "Preview the report"],
+							...(workspaceTarget && !framed
+								? [["Alt+W", "Open the Workspace shell"] as [string, string]]
+								: []),
 							["Alt+H", "Hide / show the toolbar"],
 							["Alt+,", "Settings"],
 							["Alt+/", "This help"],
@@ -3816,6 +3885,32 @@ export function Devbar({
 								>
 									<LocateIcon />
 								</button>
+								{shellBridge.connected && a.type === "element" && (
+									<button
+										type="button"
+										className="devbar-annotation-locate"
+										onClick={() => {
+											// Handed to the Workspace shell framing this page — nowhere else.
+											const d = a.data as ElementData;
+											const leaf = d.reactContext?.components[d.reactContext.components.length - 1];
+											shellBridge.discuss({
+												url: window.location.href,
+												selector: d.cssSelector,
+												...(leaf?.source
+													? { file: `${leaf.source.fileName}:${leaf.source.lineNumber}` }
+													: {}),
+												...(d.innerText?.trim() ? { text: d.innerText.trim().slice(0, 200) } : {}),
+												...(a.comments.length
+													? { note: a.comments.map((c) => c.text).join("\n\n") }
+													: {}),
+											});
+										}}
+										title="Discuss in the spec"
+										aria-label="Discuss in the spec"
+									>
+										<CommentIcon />
+									</button>
+								)}
 								<button
 									type="button"
 									className="devbar-annotation-remove"
@@ -4323,6 +4418,20 @@ export function Devbar({
 							<span className="devbar-tooltip-key">Alt+A</span>
 						</span>
 					</button>
+					{workspaceTarget && !framed && (
+						<button
+							type="button"
+							className="devbar-bar-btn"
+							onClick={enterShell}
+							aria-label="Workspace"
+						>
+							<WorkspaceIcon />
+							<span className="devbar-tooltip">
+								Workspace shell
+								<span className="devbar-tooltip-key">Alt+W</span>
+							</span>
+						</button>
+					)}
 					{collab.peers.length > 0 && <PeerAvatars peers={collab.peers} />}
 					<div className="devbar-bar-divider" />
 					{/* Everything that sends the report, together: the primary action,
