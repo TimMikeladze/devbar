@@ -67,6 +67,8 @@ export function AppFrame(props: {
 	banner?: React.ReactNode;
 	/** The app's toolbar asked to discuss an annotation in a spec. */
 	onDiscuss?: (discussion: Discussion) => void;
+	/** The app's toolbar is in this theme. */
+	onTheme?: (theme: "light" | "dark") => void;
 }): React.ReactNode {
 	const frame = useRef<HTMLIFrameElement>(null);
 	const [src, setSrc] = useState(props.initialUrl);
@@ -88,16 +90,19 @@ export function AppFrame(props: {
 	onLocation.current = props.onLocation;
 	const onDiscuss = useRef(props.onDiscuss);
 	onDiscuss.current = props.onDiscuss;
+	const onTheme = useRef(props.onTheme);
+	onTheme.current = props.onTheme;
 
 	const update = useCallback(
-		(location: AppLocation) => {
+		(location: AppLocation, theme?: "light" | "dark") => {
 			setInput(display(location.url, home));
 			onLocation.current?.(location);
-			// Keep the shell's own address pointing at the page, so a reload of the
-			// shell comes back to where you were.
+			// Keep the shell's own address pointing at the page (and its theme), so a
+			// reload of the shell comes back to where you were.
 			try {
 				const here = new URL(window.location.href);
 				here.searchParams.set("url", location.url);
+				if (theme) here.searchParams.set("theme", theme);
 				window.history.replaceState(window.history.state, "", here.href);
 			} catch {}
 		},
@@ -123,10 +128,17 @@ export function AppFrame(props: {
 				});
 				return;
 			}
+			if (data.type === "exit") {
+				// Out to the app's own page only, never somewhere the frame names.
+				if (originOf(data.url) === home) window.location.assign(data.url);
+				return;
+			}
 			if (data.type !== "location") return;
 			setConnected(true);
 			clearInterval(hello.current);
-			update({ url: data.url, title: typeof data.title === "string" ? data.title : "" });
+			const theme = data.theme === "light" || data.theme === "dark" ? data.theme : undefined;
+			if (theme) onTheme.current?.(theme);
+			update({ url: data.url, title: typeof data.title === "string" ? data.title : "" }, theme);
 		};
 		window.addEventListener("message", onMessage);
 		return () => {

@@ -501,12 +501,14 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 				}
 			} catch {}
 		}
+		const theme = url.searchParams.get("theme");
 		const html = shellHtml(
 			{
 				endpoint: mount,
 				app,
 				...(shell.agent ? { agent: shell.agent } : {}),
 				...(shell.title ? { title: shell.title } : {}),
+				...(theme === "light" || theme === "dark" ? { theme } : {}),
 			},
 			`${mount}/shell.js`,
 		);

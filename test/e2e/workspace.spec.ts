@@ -129,11 +129,14 @@ test.describe("workspace shell", () => {
 		await expect(page.getByRole("button", { name: "Back" })).toBeEnabled();
 		await expect(page.getByLabel("App address")).toHaveValue("/local-agent");
 		await expect(app(page).locator("#agent-target")).toBeVisible();
-		// Inside the shell there is no shell to open.
+		// Inside the shell the book button is the way back out.
 		await expect(app(page).locator(".devbar-bar")).toBeVisible();
 		await expect(
-			app(page).locator(".devbar-bar").getByRole("button", { name: "Workspace" }),
+			app(page).locator(".devbar-bar").getByRole("button", { name: "Workspace", exact: true }),
 		).toHaveCount(0);
+		await expect(
+			app(page).locator(".devbar-bar").getByRole("button", { name: "Exit workspace" }),
+		).toBeVisible();
 
 		// The address bar drives the frame, the frame reports back, and Back
 		// undoes it — through the app's own history.
@@ -148,6 +151,49 @@ test.describe("workspace shell", () => {
 		await page.getByRole("link", { name: /Open app/ }).click();
 		await page.waitForURL(/\/local-agent$/);
 		await expect(page.locator(".devbar-bar")).toBeVisible();
+	});
+
+	test("the book button inside the frame leaves the shell for the page the frame is on", async ({
+		page,
+	}) => {
+		await page.getByLabel("App address").fill("/local-agent?step=2");
+		await page.getByLabel("App address").press("Enter");
+		await expect(page.getByLabel("App address")).toHaveValue("/local-agent?step=2");
+		await app(page).locator(".devbar-bar").getByRole("button", { name: "Exit workspace" }).click();
+		await page.waitForURL(/\/local-agent\?step=2$/);
+		await expect(
+			page.locator(".devbar-bar").getByRole("button", { name: "Workspace", exact: true }),
+		).toBeVisible();
+	});
+
+	test("the shell wears the app's theme, not the OS's — on the way in and as it changes", async ({
+		page,
+	}) => {
+		await page.emulateMedia({ colorScheme: "light" });
+		await expect(page.locator(".devbar-shell")).toHaveClass(/devbar-theme-light/);
+		// The app goes dark: its toolbar follows, and the shell follows the toolbar.
+		await app(page)
+			.locator("html")
+			.evaluate((el) => el.classList.add("dark"));
+		await expect(page.locator(".devbar-shell")).toHaveClass(/devbar-theme-dark/);
+		await expect(page).toHaveURL(/theme=dark/);
+
+		// Out, and back in from an app that is dark on every load: the shell is
+		// told on the way in.
+		await app(page).locator(".devbar-bar").getByRole("button", { name: "Exit workspace" }).click();
+		await page.waitForURL(/\/local-agent$/);
+		await page.addInitScript(() => {
+			const mark = () => document.documentElement?.classList.add("dark");
+			mark();
+			document.addEventListener("DOMContentLoaded", mark);
+		});
+		await page.reload();
+		await page
+			.locator(".devbar-bar")
+			.getByRole("button", { name: "Workspace", exact: true })
+			.click();
+		await page.waitForURL(/\/workspace\/shell\?.*theme=dark/);
+		await expect(page.locator(".devbar-shell")).toHaveClass(/devbar-theme-dark/);
 	});
 
 	test("the sidebar is a page tree, and a page opens in a peek beside the app", async ({

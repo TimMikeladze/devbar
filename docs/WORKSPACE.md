@@ -18,8 +18,9 @@ orange, subagents pink, commands teal), or the emoji someone picked for it.
 ## Opening it
 
 Press the book button on the toolbar, or `Alt+W`: the tab turns into the shell,
-framing the page you were on. **Open app** in the shell's top bar takes you
-back out to wherever the frame is.
+framing the page you were on. The same button on the framed app's toolbar
+(or `Alt+W` there), or **Open app** in the shell's top bar, takes you back out
+to wherever the frame is.
 
 The shell is a page of its own, served wherever the Workspace API is:
 
@@ -54,8 +55,11 @@ The shell and the frame are usually different origins (the local server frames
 tells a shell it trusts where the page is — the address bar follows client-side
 navigation — and follows its back, forward and reload. It trusts only a shell
 served by the app's own origin, the local devbar server, or the workspace
-endpoint, and never sends anything but a URL and a title. On a page without the
-toolbar, back and forward stay disabled and reload re-points the frame.
+endpoint, and never sends anything but a URL, a title and its theme. The shell
+wears that theme — light or dark, whichever the toolbar is showing — rather than
+the OS's, and follows it when the app switches. On a page without the toolbar,
+back and forward stay disabled, reload re-points the frame, and the shell follows
+the OS.
 
 An app that sends `X-Frame-Options: DENY` (or a `frame-ancestors` that excludes
 the shell) cannot be framed; the Next.js shell is same-origin, so `SAMEORIGIN`
@@ -187,7 +191,7 @@ page: **Implement this spec** and **Refine this spec**, **Do the next task** on 
 
 | Keys    | Does                                            |
 | ------- | ----------------------------------------------- |
-| `Alt+W` | from the app's toolbar: open the shell          |
+| `Alt+W` | from the app's toolbar: open or exit the shell  |
 | `⌘K`    | search pages, or ask the agent                  |
 | `⌘S`    | save the open page now (it saves itself anyway) |
 | `⌘\`    | show / hide the sidebar                         |
@@ -347,7 +351,7 @@ tokenAccepted?, conflicts? }` with a matching status.
 
 | Route          | Body / query                                                                                       | Returns                                                                  |
 | -------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `GET shell`    | `?url=`                                                                                            | the shell page — no access check, it is static and carries no data       |
+| `GET shell`    | `?url=`, `?theme=light\|dark`                                                                      | the shell page — no access check, it is static and carries no data       |
 | `GET shell.js` |                                                                                                    | the browser bundle the shell page loads                                  |
 | `GET info`     |                                                                                                    | backend, label, ref, base branch, capabilities, `user`                   |
 | `GET entries`  |                                                                                                    | `{ entries }`: path, kind, group, title, description, status, tasks, sha |

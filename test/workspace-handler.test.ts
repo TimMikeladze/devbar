@@ -194,6 +194,22 @@ describe("workspace shell page", () => {
 		expect(shellConfig(await relative.text()).app).toBe("https://app.example/orders?x=1");
 	});
 
+	test("opens in the ?theme= the app was in, painted before the bundle; anything else follows the OS", async () => {
+		const shell = (theme: string) =>
+			handler(new Request(`https://app.example/api/devbar/shell?theme=${theme}`)).then((r) =>
+				r.text(),
+			);
+		const dark = await shell("dark");
+		expect(shellConfig(dark).theme).toBe("dark");
+		expect(dark).not.toContain("#fafafa");
+		const light = await shell("light");
+		expect(shellConfig(light).theme).toBe("light");
+		expect(light).not.toContain("prefers-color-scheme");
+		const bogus = await shell("neon");
+		expect(shellConfig(bogus).theme).toBeUndefined();
+		expect(bogus).toContain("prefers-color-scheme");
+	});
+
 	test("config cannot break out of the script tag", async () => {
 		const res = await handler(
 			new Request(

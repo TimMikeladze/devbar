@@ -1718,7 +1718,7 @@ export function Devbar({
 			endpoint: `${localAgent.url}/api/projects/${encodeURIComponent(claimed.slug)}/workspace`,
 		};
 	}, [workspace, localAgent.status, localAgent.url, localAgent.project, localAgent.projects]);
-	// Inside the shell's frame there is no shell to open — it is already open.
+	// Inside the shell's frame the shell is already open; the book button leaves it.
 	const [framed] = useState(isFramed);
 	const enterShell = useCallback(() => {
 		if (!workspaceTarget) return;
@@ -1729,8 +1729,10 @@ export function Devbar({
 		const page =
 			shell.origin === here.origin ? `${here.pathname}${here.search}${here.hash}` : here.href;
 		shell.searchParams.set("url", page);
+		// The shell opens in the theme you are looking at, not the OS's.
+		shell.searchParams.set("theme", resolvedTheme);
 		window.location.assign(shell.href);
-	}, [workspaceTarget]);
+	}, [workspaceTarget, resolvedTheme]);
 	// Answer the shell framing this page — but only a shell served by this
 	// app's own origin, the local devbar server, or the workspace endpoint.
 	const shellBridge = useShellBridge((origin) => {
@@ -1746,7 +1748,16 @@ export function Devbar({
 			origin === originOf(localAgent.url) ||
 			origin === originOf(workspaceTarget?.endpoint)
 		);
-	});
+	}, resolvedTheme);
+	// The book button (and Alt+W) opens the shell, and inside it leaves again —
+	// for the page the frame is on.
+	const toggleShell = framed
+		? shellBridge.connected
+			? shellBridge.exit
+			: undefined
+		: workspaceTarget
+			? enterShell
+			: undefined;
 
 	const [expandedExportId, setExpandedExportId] = useState<string | null>(null);
 	const [showExportMenu, setShowExportMenu] = useState(false);
@@ -2043,10 +2054,10 @@ export function Devbar({
 				return;
 			}
 
-			// Workspace shell: Alt+W
-			if (is("w") && workspaceTarget && !framed) {
+			// Workspace shell, in or out: Alt+W
+			if (is("w") && toggleShell) {
 				e.preventDefault();
-				enterShell();
+				toggleShell();
 				return;
 			}
 
@@ -2093,9 +2104,7 @@ export function Devbar({
 		showFooterMenu,
 		effectiveServer,
 		toastAction,
-		workspaceTarget,
-		framed,
-		enterShell,
+		toggleShell,
 	]);
 
 	const toastTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -3459,8 +3468,8 @@ export function Devbar({
 							["Alt+A", "Toggle annotations"],
 							["Alt+T", "Focus the task field"],
 							["Alt+P", "Preview the report"],
-							...(workspaceTarget && !framed
-								? [["Alt+W", "Open the Workspace shell"] as [string, string]]
+							...(toggleShell
+								? [["Alt+W", `${framed ? "Exit" : "Open"} the Workspace shell`] as [string, string]]
 								: []),
 							["Alt+H", "Hide / show the toolbar"],
 							["Alt+,", "Settings"],
@@ -4418,16 +4427,16 @@ export function Devbar({
 							<span className="devbar-tooltip-key">Alt+A</span>
 						</span>
 					</button>
-					{workspaceTarget && !framed && (
+					{toggleShell && (
 						<button
 							type="button"
-							className="devbar-bar-btn"
-							onClick={enterShell}
-							aria-label="Workspace"
+							className={`devbar-bar-btn ${framed ? "devbar-bar-btn-active" : ""}`}
+							onClick={toggleShell}
+							aria-label={framed ? "Exit workspace" : "Workspace"}
 						>
 							<WorkspaceIcon />
 							<span className="devbar-tooltip">
-								Workspace shell
+								{framed ? "Exit workspace" : "Workspace shell"}
 								<span className="devbar-tooltip-key">Alt+W</span>
 							</span>
 						</button>

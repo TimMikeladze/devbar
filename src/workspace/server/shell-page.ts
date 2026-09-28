@@ -14,6 +14,8 @@ export type ShellPageConfig = {
 	/** The local devbar project prompts go to; `server: ""` is the shell's own origin. */
 	agent?: { server: string; project: string };
 	title?: string;
+	/** The theme the app's toolbar was in when it opened the shell. Absent: follow the OS. */
+	theme?: "light" | "dark";
 };
 
 function escapeHtml(text: string): string {
@@ -36,6 +38,13 @@ function scriptJson(value: unknown): string {
 
 export function shellHtml(config: ShellPageConfig, scriptUrl: string): string {
 	const title = config.title ? `devbar · ${config.title}` : "devbar · Workspace";
+	// Painted before the bundle loads, so a chosen theme never flashes the OS one.
+	const background =
+		config.theme === "light"
+			? "html, body { background: #fafafa; }"
+			: config.theme === "dark"
+				? ""
+				: "@media (prefers-color-scheme: light) { html, body { background: #fafafa; } }";
 	return `<!doctype html>
 <html lang="en">
 <head>
@@ -45,7 +54,7 @@ export function shellHtml(config: ShellPageConfig, scriptUrl: string): string {
 <title>${escapeHtml(title)}</title>
 <style>
 html, body { margin: 0; height: 100%; background: #0c0c0c; }
-@media (prefers-color-scheme: light) { html, body { background: #fafafa; } }
+${background}
 </style>
 </head>
 <body>

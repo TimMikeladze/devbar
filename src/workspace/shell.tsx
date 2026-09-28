@@ -95,6 +95,8 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 	const [reviewing, setReviewing] = useState<number | null>(null);
 	/** An annotation to discuss, waiting for its spec page to open. */
 	const [discussing, setDiscussing] = useState<Discussion | null>(null);
+	// The shell wears the app's theme: whatever its toolbar reports, once it does.
+	const [theme, setTheme] = useState<DevbarTheme>(props.theme ?? "auto");
 
 	useEffect(() => store("devbar:shell:side-open", sideOpen), [sideOpen]);
 	// A phone has room for one thing at a time; the sidebar starts out of the way.
@@ -261,7 +263,7 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 	return (
 		<div
 			data-devbar="shell"
-			className={`devbar-toolbar devbar-theme-${props.theme ?? "auto"} devbar-shell devbar-nt${sideOpen ? "" : " devbar-nt-noside"}${peek ? " devbar-nt-haspeek" : ""}`}
+			className={`devbar-toolbar devbar-theme-${theme} devbar-shell devbar-nt${sideOpen ? "" : " devbar-nt-noside"}${peek ? " devbar-nt-haspeek" : ""}`}
 			style={
 				{ "--nt-side": `${sideWidth}px`, "--nt-peek": `${peekWidth}px` } as React.CSSProperties
 			}
@@ -306,6 +308,7 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 						initialUrl={frameUrl}
 						onLocation={ws.setAppLocation}
 						onDiscuss={onDiscuss}
+						onTheme={setTheme}
 						banner={frameBanner}
 						leading={
 							<>

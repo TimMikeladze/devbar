@@ -349,7 +349,7 @@ contract, and [examples/nextjs](./examples/nextjs) for a working app.
 | `Alt+A`                         | Toggle the annotations panel                              |
 | `Alt+T`                         | Focus the task field                                      |
 | `Alt+P`                         | Preview the report                                        |
-| `Alt+W`                         | Open the Workspace shell                                  |
+| `Alt+W`                         | Open the Workspace shell, or exit it from inside          |
 | `Alt+H`                         | Hide / show the toolbar                                   |
 | `Alt+,`                         | Settings                                                  |
 | `Alt+/`                         | Keyboard shortcuts                                        |
