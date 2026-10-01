@@ -123,16 +123,17 @@ From there, reports go two ways:
 claude mcp add devbar -- bunx devbar.sh mcp
 ```
 
-| Command                  | Does                                                |
-| ------------------------ | --------------------------------------------------- |
-| `devbar`                 | start the server, or register this project with one |
-| `devbar mcp`             | MCP server on stdio                                 |
-| `devbar doctor`          | check everything needed to dispatch                 |
-| `devbar tasks [--watch]` | dispatch tasks and their status                     |
-| `devbar reports`         | captured reports                                    |
-| `devbar dispatch [id]`   | dispatch one report, or every pending one           |
-| `devbar init`            | write a starter `devbar.config.ts` for your agent   |
-| `devbar link`            | print the wiring snippet for this project           |
+| Command                   | Does                                                |
+| ------------------------- | --------------------------------------------------- |
+| `devbar`                  | start the server, or register this project with one |
+| `devbar mcp`              | MCP server on stdio                                 |
+| `devbar doctor`           | check everything needed to dispatch                 |
+| `devbar tasks [--watch]`  | dispatch tasks and their status                     |
+| `devbar reports`          | captured reports                                    |
+| `devbar dispatch [id]`    | dispatch one report, or every pending one           |
+| `devbar init`             | write a starter `devbar.config.ts` for your agent   |
+| `devbar init --workspace` | mount the Workspace route in a Next.js app          |
+| `devbar link`             | print the wiring snippet for this project           |
 
 Discovery only runs on `localhost` pages and only probes `127.0.0.1:3100` and
 `:3101`. Pass `local={false}` to switch it off, `local={{ ports: [4000] }}` to
@@ -329,7 +330,10 @@ export const { GET, POST, OPTIONS } = createWorkspaceRoutes({ authorize });
 ```
 
 Beyond localhost the API only answers callers your `authorize` lets in, or who
-hold `DEVBAR_WORKSPACE_TOKEN`. See [docs/WORKSPACE.md](./docs/WORKSPACE.md) for
+hold `DEVBAR_WORKSPACE_TOKEN` — or sign in with GitHub, any OpenID Connect
+provider (Google, Okta, Entra), or through Cloudflare Access / Google IAP.
+`requireGitHub: "writes"` makes every change go through the person's own GitHub
+account. `bunx devbar.sh init --workspace` writes the route for you. See [docs/WORKSPACE.md](./docs/WORKSPACE.md) for
 the file conventions, editing, the GitHub setup, access control and the HTTP
 contract, and [examples/nextjs](./examples/nextjs) for a working app.
 

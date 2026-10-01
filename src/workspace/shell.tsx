@@ -5,7 +5,7 @@ import type { DevbarTheme } from "@/session/types";
 import { AppFrame } from "./app-frame";
 import type { Discussion } from "./frame";
 import type { WorkspaceEntry, WorkspaceUser } from "./types";
-import { read, store, useWorkspace } from "./use-workspace";
+import { read, store, useWorkspace, type Workspace } from "./use-workspace";
 import { AskButton } from "./ui/ask";
 import { Glyph } from "./ui/glyphs";
 import { ChangesPage } from "./ui/changes";
@@ -170,6 +170,10 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 	// The spec is open: start the comment, quoting what was annotated.
 	useEffect(() => {
 		if (!discussing || !ws.open || ws.open.loading) return;
+		if (!ws.collab.canPost) {
+			setDiscussing(null);
+			return;
+		}
 		let where = discussing.url;
 		try {
 			where = new URL(discussing.url).pathname;
@@ -413,7 +417,7 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 			)}
 
 			{ws.fatal &&
-				(ws.fatal.needsToken || ws.fatal.signIn ? (
+				(ws.fatal.needsToken || ws.fatal.signIn || ws.fatal.sso ? (
 					<div className="devbar-nt-modal">
 						<form
 							className="devbar-nt-pop devbar-nt-lock"
@@ -426,16 +430,18 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 								<Glyph name="lock" size={30} />
 							</div>
 							<strong>This workspace is protected</strong>
-							<p className="devbar-nt-muted">
-								{ws.fatal.signIn && ws.fatal.needsToken
-									? "Sign in with GitHub, or enter its access token."
-									: ws.fatal.signIn
-										? "Sign in with GitHub to read and edit the repository."
-										: "Enter its access token to read and edit the repository."}
-							</p>
-							{ws.fatal.signIn && (
+							<p className="devbar-nt-muted">{lockMessage(ws.fatal)}</p>
+							{ws.fatal.sso && (
 								<a
 									className="devbar-nt-btn devbar-nt-btn-primary"
+									href={`${props.endpoint.replace(/\/+$/, "")}/sso-login?return=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`}
+								>
+									Sign in with {ws.fatal.sso}
+								</a>
+							)}
+							{ws.fatal.signIn && (
+								<a
+									className={`devbar-nt-btn ${ws.fatal.sso ? "" : "devbar-nt-btn-primary"}`}
 									href={`${props.endpoint.replace(/\/+$/, "")}/login?return=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`}
 								>
 									Sign in with GitHub
@@ -484,4 +490,16 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 			)}
 		</div>
 	);
+}
+
+/** What the lock screen asks for: every way in this workspace accepts, in one sentence. */
+function lockMessage(fatal: NonNullable<Workspace["fatal"]>): string {
+	const ways = [
+		...(fatal.sso ? [`sign in with ${fatal.sso}`] : []),
+		...(fatal.signIn ? ["sign in with GitHub"] : []),
+		...(fatal.needsToken ? ["enter its access token"] : []),
+	];
+	const sentence =
+		ways.length > 1 ? `${ways.slice(0, -1).join(", ")}, or ${ways.at(-1)}` : (ways[0] ?? "");
+	return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)} to read and edit the repository.`;
 }

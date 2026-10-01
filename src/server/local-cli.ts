@@ -9,6 +9,7 @@ import { loadConfig } from "./config-loader";
 import { createLocalClient, findLocalServer, readStoredToken } from "./local-client";
 import { PRESETS, defaultModelFor } from "./agents";
 import { commandInit } from "./init";
+import { commandInitWorkspace } from "./init-workspace";
 import { which } from "./which";
 import type { ProjectConfig } from "./registry";
 
@@ -50,6 +51,8 @@ type CliArgs = {
 	watch: boolean;
 	all: boolean;
 	project?: string;
+	workspace: boolean;
+	auth?: string;
 	positional: string[];
 };
 
@@ -63,6 +66,7 @@ function parseArgs(argv: string[]): CliArgs {
 		autoDispatch: true,
 		watch: false,
 		all: false,
+		workspace: false,
 		positional: [],
 	};
 
@@ -124,6 +128,13 @@ function parseArgs(argv: string[]): CliArgs {
 				break;
 			case "--project":
 				args.project = next;
+				i++;
+				break;
+			case "--workspace":
+				args.workspace = true;
+				break;
+			case "--auth":
+				args.auth = next;
 				i++;
 				break;
 			case "--server":
@@ -258,6 +269,8 @@ Commands
   reports              List captured reports
   dispatch [id|--all]  Dispatch a report, or every pending one
   init                 Write a starter devbar.config.ts (detects the agent CLI)
+  init --workspace     Mount the Workspace in a Next.js app
+       [--auth github|sso|cloudflare|token|app]  how people get in (default: github)
   link                 Print the toolbar snippet for this project
 
 Options
@@ -531,6 +544,7 @@ async function main(): Promise<void> {
 		case "dispatch":
 			return commandDispatch(args);
 		case "init":
+			if (args.workspace) return void (await commandInitWorkspace({ auth: args.auth }));
 			return commandInit(args.command);
 		case "link":
 			return commandLink(args);

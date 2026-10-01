@@ -146,6 +146,16 @@ export function createZip(entries: ZipEntry[]): Uint8Array {
  * leading zeros. A rejected version is only discovered after the upload, so
  * check it before building the archive.
  */
+/**
+ * What the manifest should say for a package version. Chrome's `version` is
+ * integers only, so a prerelease (`2.0.0-rc.0`) keeps its core there and the
+ * full string in `version_name`, which is only shown.
+ */
+export function extensionVersions(pkgVersion: string): { version: string; version_name?: string } {
+	const core = pkgVersion.split(/[-+]/)[0] as string;
+	return core === pkgVersion ? { version: core } : { version: core, version_name: pkgVersion };
+}
+
 export function isValidExtensionVersion(version: string): boolean {
 	const parts = version.split(".");
 	if (parts.length < 1 || parts.length > 4) return false;
@@ -166,14 +176,24 @@ export async function packageExtension(): Promise<{ path: string; version: strin
 	};
 	const manifest = JSON.parse(await readFile(join(EXTENSION_DIR, "manifest.json"), "utf8")) as {
 		version: string;
+		version_name?: string;
 	};
 
-	// `bump.config.ts` bumps both files together, so a mismatch means a hand
-	// edit — and shipping a version the store has already seen is rejected.
-	if (manifest.version !== pkg.version) {
+	// `bun run release` syncs the manifest from package.json, so a mismatch
+	// means a hand edit — and shipping a version the store has already seen is
+	// rejected.
+	const expected = extensionVersions(pkg.version);
+	if (manifest.version !== expected.version || manifest.version_name !== expected.version_name) {
 		throw new Error(
-			`extension/manifest.json is at ${manifest.version} but package.json is at ${pkg.version}. ` +
+			`extension/manifest.json is at ${manifest.version_name ?? manifest.version} but package.json is at ${pkg.version}. ` +
 				"Run `bun run release` rather than editing either by hand.",
+		);
+	}
+	// Every prerelease of 2.0.0 is version 2.0.0 to Chrome: the store would
+	// take the first and refuse the rest, and then the release itself.
+	if (expected.version_name) {
+		throw new Error(
+			`${pkg.version} is a prerelease. Package the extension from a release — the store sees ${expected.version} for every prerelease of it.`,
 		);
 	}
 	if (!isValidExtensionVersion(manifest.version)) {

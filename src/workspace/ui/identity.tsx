@@ -52,7 +52,21 @@ export function IdentityFooter(props: { ws: Workspace }): React.ReactNode {
 								<span>{user.name}</span>
 								<small>via devbar · {info.permission}</small>
 							</span>
+							{info.sso?.signedIn && (
+								<button
+									type="button"
+									className="devbar-nt-btn devbar-nt-btn-ghost devbar-nt-small"
+									onClick={() => void ws.signOut()}
+								>
+									Sign out
+								</button>
+							)}
 						</div>
+					)}
+					{info.needsGitHub && (
+						<p className="devbar-nt-muted devbar-nt-small">
+							Reading only — changes here are made with your own GitHub account.
+						</p>
 					)}
 					{ws.signInUrl ? (
 						<a className="devbar-nt-btn devbar-nt-signin" href={ws.signInUrl}>

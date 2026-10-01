@@ -1,8 +1,14 @@
 import { describe, test, expect } from "bun:test";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { detectAgents, chooseAgent, renderConfig, commandInit } from "../src/server/init";
+import {
+	commandInitWorkspace,
+	renderWorkspaceRoute,
+	WORKSPACE_AUTH,
+	workspaceEnv,
+} from "../src/server/init-workspace";
 
 /** A PATH lookup that only knows about the commands it was handed. */
 function lookup(...installed: string[]) {
@@ -129,5 +135,46 @@ describe("commandInit", () => {
 		await writeFile(path, "// mine\n", "utf-8");
 		await commandInit("claude", dir);
 		expect(await readFile(path, "utf-8")).toBe("// mine\n");
+	});
+});
+
+describe("init --workspace", () => {
+	const quiet = { log: () => {} };
+
+	test("mounts the route in a Next.js app, with the chosen way in, and never overwrites it", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "devbar-init-ws-"));
+		await writeFile(join(dir, "package.json"), JSON.stringify({ dependencies: { next: "16" } }));
+		await mkdir(join(dir, "src/app"), { recursive: true });
+
+		const { written } = await commandInitWorkspace({ cwd: dir, auth: "cloudflare", ...quiet });
+		expect(written).toBe(join(dir, "src/app/api/devbar/[...path]/route.ts"));
+		const route = await readFile(written as string, "utf-8");
+		expect(route).toContain(
+			'import { cloudflareAccess, createWorkspaceRoutes } from "devbar.sh/next"',
+		);
+		expect(route).toContain("authorize: cloudflareAccess(");
+
+		await writeFile(written as string, "// mine");
+		await commandInitWorkspace({ cwd: dir, auth: "github", ...quiet });
+		expect(await readFile(written as string, "utf-8")).toBe("// mine");
+	});
+
+	test("every template says how people get in, and the env list carries a fresh session secret", () => {
+		for (const auth of WORKSPACE_AUTH) {
+			expect(renderWorkspaceRoute(auth)).toContain("createWorkspaceRoutes({");
+		}
+		expect(renderWorkspaceRoute("github")).toContain('"all"');
+		expect(workspaceEnv("sso").join("\n")).toMatch(/DEVBAR_SESSION_SECRET\s+e\.g\. \S{40,}/);
+		expect(workspaceEnv("token").join("\n")).not.toContain("DEVBAR_SESSION_SECRET");
+	});
+
+	test("outside Next.js it writes nothing and shows the fetch-handler mount; a bad --auth is refused", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "devbar-init-ws-"));
+		const lines: string[] = [];
+		expect(await commandInitWorkspace({ cwd: dir, log: (l) => lines.push(l) })).toEqual({});
+		expect(lines.join("\n")).toContain("createWorkspace");
+		await expect(commandInitWorkspace({ cwd: dir, auth: "magic", ...quiet })).rejects.toThrow(
+			"--auth must be one of",
+		);
 	});
 });

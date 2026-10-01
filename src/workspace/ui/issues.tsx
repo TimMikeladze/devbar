@@ -66,7 +66,7 @@ export function IssuesProperty(props: { ws: Workspace }): React.ReactNode {
 		if (numbers.length) void ws.collab.loadIssues(numbers);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [numbers.join(",")]);
-	if (!open || (!numbers.length && !ws.collab.available)) return null;
+	if (!open || (!numbers.length && !ws.collab.canPost)) return null;
 
 	const create = async () => {
 		const issue = await ws.collab.createIssue({ title: title.trim() });
@@ -93,7 +93,7 @@ export function IssuesProperty(props: { ws: Workspace }): React.ReactNode {
 				{numbers.map((n) => (
 					<IssueChip key={n} number={n} issue={ws.collab.issues[n]} />
 				))}
-				{ws.collab.available &&
+				{ws.collab.canPost &&
 					(adding ? (
 						<form
 							className="devbar-nt-inline-form"

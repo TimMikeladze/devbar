@@ -202,7 +202,7 @@ function Thread(props: { ws: Workspace; thread: PlacedThread }): React.ReactNode
 					<div className="devbar-nt-comment-body">
 						<Markdown content={comment.body} />
 					</div>
-					{comment.suggestion !== undefined && (
+					{comment.suggestion !== undefined && ws.collab.canPost && (
 						<button
 							type="button"
 							className="devbar-nt-btn devbar-nt-btn-soft"
@@ -218,42 +218,44 @@ function Thread(props: { ws: Workspace; thread: PlacedThread }): React.ReactNode
 					<Reactions ws={ws} comment={comment} />
 				</div>
 			))}
-			<div className="devbar-nt-thread-foot">
-				<textarea
-					className="devbar-nt-field devbar-nt-field-area"
-					rows={1}
-					placeholder="Reply…"
-					value={reply}
-					onChange={(e) => setReply(e.target.value)}
-					onKeyDown={(e) => {
-						if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && reply.trim()) {
-							void ws.collab.reply(thread, reply.trim()).then((ok) => ok && setReply(""));
-						}
-					}}
-					aria-label="Reply"
-				/>
-				<div className="devbar-nt-thread-actions">
-					{mayResolve && (
+			{ws.collab.canPost && (
+				<div className="devbar-nt-thread-foot">
+					<textarea
+						className="devbar-nt-field devbar-nt-field-area"
+						rows={1}
+						placeholder="Reply…"
+						value={reply}
+						onChange={(e) => setReply(e.target.value)}
+						onKeyDown={(e) => {
+							if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && reply.trim()) {
+								void ws.collab.reply(thread, reply.trim()).then((ok) => ok && setReply(""));
+							}
+						}}
+						aria-label="Reply"
+					/>
+					<div className="devbar-nt-thread-actions">
+						{mayResolve && (
+							<button
+								type="button"
+								className="devbar-nt-btn devbar-nt-btn-ghost"
+								onClick={() => void ws.collab.resolve(thread, !thread.resolved)}
+							>
+								{thread.resolved ? "Reopen" : "Resolve"}
+							</button>
+						)}
 						<button
 							type="button"
-							className="devbar-nt-btn devbar-nt-btn-ghost"
-							onClick={() => void ws.collab.resolve(thread, !thread.resolved)}
+							className="devbar-nt-btn"
+							disabled={!reply.trim() || ws.collab.busy === `reply:${thread.id}`}
+							onClick={() =>
+								void ws.collab.reply(thread, reply.trim()).then((ok) => ok && setReply(""))
+							}
 						>
-							{thread.resolved ? "Reopen" : "Resolve"}
+							Reply
 						</button>
-					)}
-					<button
-						type="button"
-						className="devbar-nt-btn"
-						disabled={!reply.trim() || ws.collab.busy === `reply:${thread.id}`}
-						onClick={() =>
-							void ws.collab.reply(thread, reply.trim()).then((ok) => ok && setReply(""))
-						}
-					>
-						Reply
-					</button>
+					</div>
 				</div>
-			</div>
+			)}
 			{first?.pending && (
 				<p className="devbar-nt-muted devbar-nt-small">
 					Only you see this until the review is submitted.
@@ -357,15 +359,16 @@ export function CommentsPanel(props: { ws: Workspace; onClose: () => void }): Re
 			<div className="devbar-nt-sidepanel-head">
 				<strong>Comments</strong>
 				<span className="devbar-nt-muted">{open.length || ""}</span>
-				<button
-					type="button"
-					className="devbar-nt-btn devbar-nt-btn-ghost"
-					onClick={() => ws.collab.setComposing({})}
-					disabled={!ws.collab.available}
-					title="Comment on the whole page"
-				>
-					New
-				</button>
+				{ws.collab.canPost && (
+					<button
+						type="button"
+						className="devbar-nt-btn devbar-nt-btn-ghost"
+						onClick={() => ws.collab.setComposing({})}
+						title="Comment on the whole page"
+					>
+						New
+					</button>
+				)}
 				<button
 					type="button"
 					className="devbar-nt-iconbtn"
@@ -388,16 +391,25 @@ export function CommentsPanel(props: { ws: Workspace; onClose: () => void }): Re
 					</div>
 				) : (
 					<>
-						<Composer ws={ws} />
-						{ws.collab.threadsError && <p className="devbar-nt-muted">{ws.collab.threadsError}</p>}
-						{!open.length && !ws.collab.composing && !ws.collab.threadsLoading && (
+						{ws.collab.canPost ? (
+							<Composer ws={ws} />
+						) : (
 							<p className="devbar-nt-muted devbar-nt-small">
-								Select text or use a block's ⋮⋮ menu to comment.{" "}
-								{ws.refInfo?.pr
-									? `Comments here go on pull request #${ws.refInfo.pr}.`
-									: "Each thread is a GitHub issue."}
+								Reading only — commenting here needs your own GitHub account.
 							</p>
 						)}
+						{ws.collab.threadsError && <p className="devbar-nt-muted">{ws.collab.threadsError}</p>}
+						{ws.collab.canPost &&
+							!open.length &&
+							!ws.collab.composing &&
+							!ws.collab.threadsLoading && (
+								<p className="devbar-nt-muted devbar-nt-small">
+									Select text or use a block's ⋮⋮ menu to comment.{" "}
+									{ws.refInfo?.pr
+										? `Comments here go on pull request #${ws.refInfo.pr}.`
+										: "Each thread is a GitHub issue."}
+								</p>
+							)}
 						{open.map((t) => (
 							<Thread key={t.id} ws={ws} thread={t} />
 						))}

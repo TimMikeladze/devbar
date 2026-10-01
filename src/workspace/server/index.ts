@@ -7,6 +7,7 @@
  */
 import type { WorkspaceConfig } from "../../config";
 import type { WorkspaceBackend } from "./backend";
+import { allowEmails } from "./auth";
 import { WorkspaceHttpError } from "./errors";
 import { createGitHubBackend, type GitHubBackendOptions } from "./github-backend";
 import {
@@ -26,7 +27,9 @@ export type WorkspaceServerOptions = WorkspaceConfig &
 		| "maxBodyBytes"
 		| "shell"
 		| "signIn"
+		| "sso"
 		| "githubToken"
+		| "requireGitHub"
 		| "webhookSecret"
 		| "events"
 	> & {
@@ -65,6 +68,12 @@ function pickBackend(options: WorkspaceServerOptions, env: Record<string, string
  * with GitHub (an OAuth App is enough); `DEVBAR_GITHUB_APP_ID` and
  * `DEVBAR_GITHUB_APP_PRIVATE_KEY` use a GitHub App's installation token instead
  * of a PAT; `DEVBAR_GITHUB_WEBHOOK_SECRET` opens the webhook route.
+ *
+ * `DEVBAR_OIDC_ISSUER`, `DEVBAR_OIDC_CLIENT_ID` and `DEVBAR_OIDC_CLIENT_SECRET`
+ * (with the session secret) add single sign-on — `DEVBAR_OIDC_ALLOW` narrows it
+ * to emails or `@domains`, `DEVBAR_OIDC_LABEL` names the button.
+ * `DEVBAR_WORKSPACE_REQUIRE_GITHUB=writes|all` makes a GitHub identity of one's
+ * own a must for changes, or for everything.
  */
 export function createWorkspace(options: WorkspaceServerOptions = {}): WorkspaceHandler {
 	const env = options.env ?? process.env;
@@ -81,7 +90,9 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 		maxBodyBytes,
 		shell,
 		signIn,
+		sso,
 		githubToken,
+		requireGitHub,
 		webhookSecret,
 		events,
 		...config
@@ -137,6 +148,42 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 			? { clientId, clientSecret, secret: sessionSecret }
 			: undefined);
 
+	// Single sign-on works on either backend: issuer, client and the session secret.
+	const oidcIssuer = env.DEVBAR_OIDC_ISSUER;
+	const oidcClientId = env.DEVBAR_OIDC_CLIENT_ID;
+	const oidcClientSecret = env.DEVBAR_OIDC_CLIENT_SECRET;
+	const oidcAllow = env.DEVBAR_OIDC_ALLOW?.split(",").filter((entry) => entry.trim());
+	const ssoOptions =
+		sso ??
+		(oidcIssuer && oidcClientId && oidcClientSecret && sessionSecret && sessionSecret.length >= 32
+			? {
+					issuer: oidcIssuer,
+					clientId: oidcClientId,
+					clientSecret: oidcClientSecret,
+					secret: sessionSecret,
+					...(env.DEVBAR_OIDC_LABEL ? { label: env.DEVBAR_OIDC_LABEL } : {}),
+					...(oidcAllow?.length ? { user: allowEmails(oidcAllow) } : {}),
+				}
+			: undefined);
+
+	const envRequire = env.DEVBAR_WORKSPACE_REQUIRE_GITHUB;
+	const mustHaveGitHub =
+		requireGitHub ?? (envRequire === "writes" || envRequire === "all" ? envRequire : false);
+	// Nobody could ever satisfy it: say how to fix it rather than lock everyone out.
+	if (mustHaveGitHub && kind === "github" && !githubSignIn && !githubToken) {
+		return async () =>
+			new Response(
+				JSON.stringify({
+					error: "requireGitHub is on, but nobody can sign in with GitHub",
+					hint: "Set DEVBAR_GITHUB_CLIENT_ID, DEVBAR_GITHUB_CLIENT_SECRET and DEVBAR_SESSION_SECRET, or pass signIn or githubToken",
+				}),
+				{
+					status: 503,
+					headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+				},
+			);
+	}
+
 	return createWorkspaceHandler({
 		backend,
 		authorize,
@@ -148,7 +195,9 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 		maxBodyBytes,
 		shell,
 		...(githubSignIn ? { signIn: githubSignIn } : {}),
+		...(ssoOptions ? { sso: ssoOptions } : {}),
 		...(githubToken ? { githubToken } : {}),
+		...(mustHaveGitHub ? { requireGitHub: mustHaveGitHub } : {}),
 		...(webhookSecret || env.DEVBAR_GITHUB_WEBHOOK_SECRET
 			? { webhookSecret: webhookSecret ?? env.DEVBAR_GITHUB_WEBHOOK_SECRET }
 			: {}),
@@ -158,6 +207,19 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 }
 
 export { createWorkspaceHandler, createLocalBackend, createGitHubBackend, WorkspaceHttpError };
+export {
+	allowEmails,
+	anyOf,
+	cloudflareAccess,
+	googleIap,
+	trustedJwt,
+	userFromClaims,
+	type Authorize,
+	type ClaimsToUser,
+	type TrustedJwtOptions,
+} from "./auth";
+export { createJwksVerifier, JwtError, type JwtClaims } from "./jwt";
+export type { SsoOptions } from "./oidc";
 export { classifyPath, parseDoc, DEFAULT_DOC_DIRS, DEFAULT_SPEC_DIRS } from "../classify";
 export type { WorkspaceBackend } from "./backend";
 export type {

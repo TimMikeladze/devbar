@@ -203,7 +203,14 @@ Keys pressed inside the framed app stay with the app.
 
 ```bash
 bun add devbar.sh
+bunx devbar.sh init --workspace --auth github   # or sso | cloudflare | token | app
 ```
+
+`init --workspace` writes the route below (into `src/app` or `app`), with the
+way in you picked, and prints the variables a production deploy needs —
+including a fresh `DEVBAR_SESSION_SECRET` when people sign in. It never
+overwrites a route that exists. Outside Next.js it prints the fetch-handler
+mount instead. Or by hand:
 
 ```ts
 // app/api/devbar/[...path]/route.ts
@@ -249,12 +256,16 @@ The route picks its backend from the environment:
 | `NODE_ENV=production`                    | `github` | `DEVBAR_GITHUB_TOKEN`, and the repository (see below) |
 | `DEVBAR_WORKSPACE_BACKEND=local\|github` | that one | as above                                              |
 
-| Variable                                      | What                                                                                                |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `DEVBAR_GITHUB_TOKEN` (or `GITHUB_TOKEN`)     | contents, pull requests and issues **write** on the repository — a fine-grained PAT or an app token |
-| `DEVBAR_GITHUB_REPO` (or `GITHUB_REPOSITORY`) | `owner/name`. On Vercel, `VERCEL_GIT_REPO_OWNER`/`VERCEL_GIT_REPO_SLUG` are used automatically      |
-| `DEVBAR_GITHUB_REF`                           | the branch to read. Default: `VERCEL_GIT_COMMIT_REF`, else the default branch                       |
-| `DEVBAR_WORKSPACE_TOKEN`                      | a shared access token (see Access)                                                                  |
+| Variable                                             | What                                                                                                |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `DEVBAR_GITHUB_TOKEN` (or `GITHUB_TOKEN`)            | contents, pull requests and issues **write** on the repository — a fine-grained PAT or an app token |
+| `DEVBAR_GITHUB_REPO` (or `GITHUB_REPOSITORY`)        | `owner/name`. On Vercel, `VERCEL_GIT_REPO_OWNER`/`VERCEL_GIT_REPO_SLUG` are used automatically      |
+| `DEVBAR_GITHUB_REF`                                  | the branch to read. Default: `VERCEL_GIT_COMMIT_REF`, else the default branch                       |
+| `DEVBAR_WORKSPACE_TOKEN`                             | a shared access token (see Access)                                                                  |
+| `DEVBAR_WORKSPACE_REQUIRE_GITHUB`                    | `writes` or `all`: people need a GitHub account of their own (see Access)                           |
+| `DEVBAR_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET` | single sign-on with any OpenID Connect provider (see Access); needs `DEVBAR_SESSION_SECRET`         |
+| `DEVBAR_OIDC_ALLOW`                                  | comma-separated emails or `@domains` admitted through single sign-on — required for Google          |
+| `DEVBAR_OIDC_LABEL`                                  | the sign-in button's name, e.g. `Okta`. Default `SSO`                                               |
 
 Because the ref defaults to `VERCEL_GIT_COMMIT_REF`, a preview deployment reads
 its own branch and proposes into it: reviewers editing a spec on the preview of
@@ -293,7 +304,11 @@ Routing is by the last path segment, so the mount point is up to you.
 
 Who may use a workspace, in order:
 
-1. **`authorize(request)`** — your app's own check. Return the user (`{ name,
+1. **A bearer token** — `token` or `DEVBAR_WORKSPACE_TOKEN`. The shell asks for
+   it once and keeps it in localStorage.
+2. **Single sign-on** — a session from the built-in OpenID Connect sign-in
+   (below).
+3. **`authorize(request)`** — your app's own check. Return the user (`{ name,
 email }`) to allow and attribute, `true` to allow anonymously, or anything
    falsy to refuse. A user returned here is who the PR says proposed it, and the
    commit author when there is an email.
@@ -305,15 +320,107 @@ email }`) to allow and attribute, `true` to allow anonymously, or anything
    },
    ```
 
-2. **A bearer token** — `token` or `DEVBAR_WORKSPACE_TOKEN`. The shell asks for
-   it once and keeps it in localStorage.
-3. **Localhost** — the local backend answers requests whose `Host` is loopback,
+4. **A GitHub sign-in** with at least read access to the repository — when
+   `authorize` is not set (with it, `authorize` decides and GitHub only says
+   whose token acts).
+5. **Localhost** — the local backend answers requests whose `Host` is loopback,
    and only that. It checks the Host header rather than the socket, so a
    DNS-rebinding page (a hostile name resolving to 127.0.0.1) is refused. Expose
    `next dev` beyond localhost — a tunnel, `-H 0.0.0.0` — and it needs one of the
-   two above.
+   others.
 
 With none of them, a production workspace refuses everyone.
+
+### Single sign-on
+
+Google, Okta, Microsoft Entra, Auth0, Keycloak — any OpenID Connect provider,
+with the authorization-code flow, PKCE, a state and a nonce; the ID token is
+verified against the provider's published keys. Register
+`<mount>/sso-callback` as the redirect URI, then:
+
+```bash
+DEVBAR_OIDC_ISSUER=https://acme.okta.com
+DEVBAR_OIDC_CLIENT_ID=...
+DEVBAR_OIDC_CLIENT_SECRET=...
+DEVBAR_OIDC_LABEL=Okta
+DEVBAR_SESSION_SECRET=...   # 32+ random characters
+```
+
+or in code, where `user` decides who gets in and at what level:
+
+```ts
+import { allowEmails, createWorkspaceRoutes } from "devbar.sh/next";
+
+createWorkspaceRoutes({
+	sso: {
+		issuer: "https://accounts.google.com",
+		clientId,
+		clientSecret,
+		secret: process.env.DEVBAR_SESSION_SECRET!,
+		label: "Google",
+		user: allowEmails(["@acme.com", "contractor@gmail.com"]),
+	},
+});
+```
+
+A company tenant (Okta, Entra) only signs in its own people, so everyone it
+signs in is admitted by default. Google signs in anyone with a Google account,
+so with Google's issuer an allow-list is required — without one the workspace
+answers 503 rather than admit the internet. `allowEmails` only counts verified
+addresses. A sign-in lasts 12 hours (`maxAgeSeconds`).
+
+People signed in this way act through the server token, like anyone else
+without a GitHub account — or sign in with GitHub on top, or are made to (next
+section).
+
+### Behind an identity-aware proxy
+
+When something in front of the site already signs people in, trust its signed
+JWT — never a bare header, which anyone going around the proxy could set:
+
+```ts
+import { anyOf, cloudflareAccess, googleIap, trustedJwt } from "devbar.sh/next";
+
+createWorkspaceRoutes({
+	authorize: anyOf(
+		cloudflareAccess({ teamDomain: "acme", audience: process.env.CF_ACCESS_AUD! }),
+		// googleIap({ audience: "/projects/123/global/backendServices/456" }),
+		// trustedJwt({ header: "x-pomerium-jwt-assertion", jwksUrl, issuer, audience }),
+		appSession, // your own check, tried after
+	),
+});
+```
+
+Each verifies the signature against the proxy's published keys (RS256/384/512,
+ES256/384 — never `none` or HMAC), the issuer, the audience and expiry. Pass
+`user: allowEmails([...])` to narrow who gets in, or your own
+`(claims) => user | null`. `anyOf` takes the first check that admits.
+
+### Requiring GitHub
+
+Whoever the steps above admit can, by default, propose, comment and open issues
+without a GitHub account: the server's token acts for them, and they are
+credited by name. To have every change made with a person's own GitHub token —
+so GitHub's permissions, branch protection and offboarding apply — require it:
+
+```ts
+createWorkspaceRoutes({
+	authorize, // still decides who gets in
+	requireGitHub: "writes", // or DEVBAR_WORKSPACE_REQUIRE_GITHUB=writes
+});
+```
+
+| `requireGitHub`   | Someone without a GitHub identity of their own                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `false` (default) | acts through the server token                                                                                                    |
+| `"writes"`        | reads; every change answers 403; the shell hides editing, proposing, comments and new issues, and offers **Sign in with GitHub** |
+| `"all"`           | is not let in; the shell shows its sign-in screen                                                                                |
+
+A GitHub identity is a sign-in (`DEVBAR_GITHUB_CLIENT_ID`,
+`DEVBAR_GITHUB_CLIENT_SECRET`, `DEVBAR_SESSION_SECRET`), your own
+`githubToken(request)`, or locally `gh`'s account. Deployed with neither of the
+first two, nothing could satisfy it, so the workspace answers 503 saying what to
+set.
 
 Mutations also need `Content-Type: application/json` and an `Origin` that is
 the request's own (or none). That closes the cross-site form and `text/plain`

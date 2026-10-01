@@ -35,6 +35,8 @@ export type CommentTarget = { start?: number; end?: number; quote?: string; body
 export type Collab = {
 	/** GitHub features work here; `reason` says how to make them. */
 	available: boolean;
+	/** Comments, replies and issues may be posted — false when they need a GitHub account the caller lacks. */
+	canPost: boolean;
 	reason?: string;
 	/** The caller has a GitHub identity of their own — reactions and approvals need one. */
 	identity: boolean;
@@ -444,6 +446,7 @@ export function useCollab(options: {
 
 	return {
 		available,
+		canPost: available && !info?.needsGitHub,
 		...(info?.github?.reason ? { reason: info.github.reason } : {}),
 		identity: !!info?.githubIdentity,
 		threads,

@@ -630,6 +630,74 @@ describe("workspace handler: GitHub sign-in and permissions", () => {
 	});
 });
 
+describe("workspace handler: requireGitHub", () => {
+	const propose = { title: "t", files: [{ path: "a.md", content: "" }] };
+
+	test("writes: someone the host vouches for reads, but changes need their own GitHub account", async () => {
+		const { backend, acted } = githubStub();
+		const handler = createWorkspaceHandler({
+			backend,
+			authorize: () => ({ name: "Sam" }),
+			signIn: signInOptions().signIn,
+			requireGitHub: "writes",
+		});
+		const info = await handler(new Request("https://app.example/api/devbar/info"));
+		expect(info.status).toBe(200);
+		expect(await info.json()).toMatchObject({ permission: "read", githubIdentity: false });
+
+		const refused = await handler(post("https://app.example/api/devbar/changes", propose));
+		expect(refused.status).toBe(403);
+		expect(await refused.json()).toMatchObject({ signIn: true, hint: "Sign in with GitHub" });
+		expect((await handler(post("https://app.example/api/devbar/logout", {}))).status).toBe(200);
+
+		// Signed in on top of the host's session: they act as themselves.
+		const cookie = await signIn(handler);
+		const ok = await handler(post("https://app.example/api/devbar/changes", propose, { cookie }));
+		expect(ok.status).toBe(200);
+		expect(acted[0]?.actor.github).toMatchObject({ login: "ana", token: "ana-token" });
+	});
+
+	test("all: without a GitHub identity nobody is admitted, and the shell is told to sign in", async () => {
+		const { backend } = githubStub();
+		const handler = createWorkspaceHandler({
+			backend,
+			token: "s3cret",
+			signIn: signInOptions().signIn,
+			requireGitHub: "all",
+		});
+		const res = await handler(
+			new Request("https://app.example/api/devbar/info", {
+				headers: { Authorization: "Bearer s3cret" },
+			}),
+		);
+		expect(res.status).toBe(401);
+		expect(await res.json()).toMatchObject({ signIn: true });
+
+		const cookie = await signIn(handler);
+		const info = await handler(
+			new Request("https://app.example/api/devbar/info", { headers: { cookie } }),
+		);
+		expect(info.status).toBe(200);
+	});
+
+	test("createWorkspace reads it from the environment, and says so when nobody could sign in", async () => {
+		const env = {
+			NODE_ENV: "production",
+			DEVBAR_WORKSPACE_TOKEN: "t",
+			DEVBAR_GITHUB_TOKEN: "x",
+			DEVBAR_GITHUB_REPO: "acme/site",
+			DEVBAR_WORKSPACE_REQUIRE_GITHUB: "writes",
+		};
+		const res = await createWorkspace({ env })(
+			new Request("https://app.example/api/devbar/info", {
+				headers: { Authorization: "Bearer t" },
+			}),
+		);
+		expect(res.status).toBe(503);
+		expect((await res.json()).hint).toContain("DEVBAR_GITHUB_CLIENT_ID");
+	});
+});
+
 describe("workspace handler: webhook and events", () => {
 	test("a webhook delivery counts only with GitHub's signature", async () => {
 		const { backend, webhooks } = githubStub();

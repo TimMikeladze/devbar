@@ -1,3 +1,7 @@
+---
+issues: "[4]"
+---
+
 # Local Dispatch System — Design Spec
 
 ## Overview

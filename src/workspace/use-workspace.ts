@@ -69,7 +69,7 @@ export type ProposeOptionsInput = Pick<
 export type Workspace = {
 	client: WorkspaceClient;
 	info: WorkspaceInfo | null;
-	fatal: { message: string; needsToken: boolean; signIn: boolean } | null;
+	fatal: { message: string; needsToken: boolean; signIn: boolean; sso?: string } | null;
 	unlock: (token: string) => void;
 	entries: WorkspaceEntry[];
 	/** Entries plus pages that exist only as drafts. */
@@ -254,6 +254,9 @@ export function useWorkspace(options: {
 					needsToken:
 						err instanceof WorkspaceRequestError && err.status === 401 && !!err.body.tokenAccepted,
 					signIn: err instanceof WorkspaceRequestError && err.status === 401 && !!err.body.signIn,
+					...(err instanceof WorkspaceRequestError && err.status === 401 && err.body.sso
+						? { sso: err.body.sso }
+						: {}),
 				});
 			}
 		})();

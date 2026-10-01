@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import pkg from "../package.json";
 import manifest from "../extension/manifest.json";
+import { extensionVersions } from "../scripts/package-extension";
 
 const ROOT = join(import.meta.dir, "..");
 const BUNDLE = join(ROOT, "extension/devbar.cdn.js");
@@ -10,8 +11,13 @@ const background = readFileSync(join(ROOT, "extension/background.js"), "utf-8");
 
 describe("chrome extension", () => {
 	test("manifest version tracks the package version", () => {
-		// bump.config.ts bumps both; this catches them drifting apart.
-		expect(manifest.version).toBe(pkg.version);
+		// `bun run release` syncs it; this catches them drifting apart. A
+		// prerelease keeps Chrome's integers-only `version` and shows the rest.
+		const { version_name, ...rest } = manifest as typeof manifest & { version_name?: string };
+		expect({ version: rest.version, version_name }).toEqual({
+			version_name: undefined,
+			...extensionVersions(pkg.version),
+		});
 	});
 
 	// MV3 bans remotely hosted code, and a page CSP can block an injected

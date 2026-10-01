@@ -6,7 +6,9 @@ name: Chrome extension
 # reaches every installed browser within hours.
 on:
   push:
-    tags: ["v*"]
+    # Prereleases (v2.0.0-rc.0) are skipped: Chrome would see every one of
+    # them as 2.0.0, and packaging refuses them.
+    tags: ["v*", "!v*-*"]
   workflow_dispatch:
     inputs:
       publish:

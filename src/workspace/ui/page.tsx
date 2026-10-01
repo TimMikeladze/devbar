@@ -271,7 +271,7 @@ export function NotionPage(props: {
 	/** A selection inside the page's blocks, as the lines it covers — ready to comment on. */
 	const onSelect = () => {
 		const selected = window.getSelection();
-		if (!selected || selected.isCollapsed || !selected.rangeCount || !collab.available) {
+		if (!selected || selected.isCollapsed || !selected.rangeCount || !collab.canPost) {
 			setSelection(null);
 			return;
 		}
@@ -742,7 +742,7 @@ export function NotionPage(props: {
 										onNavigate={props.onNavigate}
 										basePath={path}
 										decorate={decorate}
-										{...(collab.available
+										{...(collab.canPost
 											? {
 													onComment: (block: Block, start: number, end: number) =>
 														collab.setComposing({ start, end, quote: block.source }),

@@ -60,11 +60,19 @@ capture can add several.
 
 Chrome accepts one to four dot-separated integers, each 0–65535, with no leading
 zeros. No prerelease suffixes — `1.0.0-beta.1` is a valid npm version and an
-invalid extension version.
+invalid extension `version`. A prerelease keeps its core in `version` and the
+full string in `version_name`, which Chrome only displays:
 
-`bump.config.ts` lists `extension/manifest.json` alongside `package.json`, so
-`bun run release` moves both together. Do not edit either by hand; the packaging
-script fails on a mismatch specifically to catch that.
+```json
+"version": "2.0.0",
+"version_name": "2.0.0-rc.0",
+```
+
+`bun run release` bumps `package.json`, then `scripts/sync-extension-version.ts`
+writes the manifest to match (the `execute` step in `bump.config.ts`). Do not
+edit either by hand; the packaging script fails on a mismatch specifically to
+catch that. It also refuses to package a prerelease — to the store every
+prerelease of 2.0.0 is 2.0.0 — and the CI workflow skips prerelease tags.
 
 The store rejects a version it has already seen, so every upload needs a bump.
 

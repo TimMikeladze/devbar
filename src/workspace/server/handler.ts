@@ -14,6 +14,8 @@ import {
 } from "../types";
 import type { Actor, GitHubIdentity, WorkspaceBackend } from "./backend";
 import { assertRef, WorkspaceHttpError } from "./errors";
+import { userFromClaims } from "./auth";
+import { createSsoClient, needsAllowList, type SsoFlow, type SsoOptions } from "./oidc";
 import {
 	createSealer,
 	randomState,
@@ -82,10 +84,23 @@ export type WorkspaceHandlerOptions = {
 	/** Sign in with GitHub, so people act as themselves. */
 	signIn?: SignInOptions;
 	/**
+	 * Sign in with an OpenID Connect provider — Google, Okta, Entra, Auth0 — as
+	 * a way in of its own. Those people act through the server token unless they
+	 * also sign in with GitHub (see `requireGitHub`).
+	 */
+	sso?: SsoOptions;
+	/**
 	 * The caller's GitHub token from the host's own session store — instead of
 	 * devbar's sealed cookie. Return nothing for someone without one.
 	 */
 	githubToken?: (request: Request) => string | undefined | Promise<string | undefined>;
+	/**
+	 * Whether people must bring a GitHub identity of their own — a sign-in, the
+	 * host's `githubToken`, or locally `gh`'s account. Off by default: anyone
+	 * admitted acts through the server token. `"writes"`: without one, read
+	 * only. `"all"`: without one, not admitted at all.
+	 */
+	requireGitHub?: false | "writes" | "all";
 	/** Verifies `POST <mount>/webhook` deliveries. Without it the route does not exist. */
 	webhookSecret?: string;
 	/** An event stream closes after this long and the shell reconnects. Default: never. */
@@ -115,6 +130,8 @@ export type WorkspaceHandler = (request: Request) => Promise<Response>;
 const LOOPBACK_HOST = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\]|[a-z0-9-]+\.localhost)(:\d+)?$/i;
 const SESSION_COOKIE = "devbar_session";
 const OAUTH_COOKIE = "devbar_oauth";
+const SSO_COOKIE = "devbar_sso";
+const SSO_FLOW_COOKIE = "devbar_sso_flow";
 const PERMISSIONS = new Set(Object.keys(PERMISSION_RANK));
 const REACTIONS = new Set([
 	"THUMBS_UP",
@@ -232,6 +249,14 @@ function escapeHtml(value: string): string {
 export function createWorkspaceHandler(options: WorkspaceHandlerOptions): WorkspaceHandler {
 	const maxBodyBytes = options.maxBodyBytes ?? 8 * 1024 * 1024;
 	const sealer = options.signIn ? createSealer(options.signIn.secret) : undefined;
+	const sso = options.sso ? createSsoClient(options.sso) : undefined;
+	const ssoSealer = options.sso ? createSealer(options.sso.secret) : undefined;
+	// Refuse to run half-safe: with a provider anyone can sign up to, "signed
+	// in" alone would admit the whole internet.
+	const ssoProblem =
+		options.sso && !options.sso.user && needsAllowList(options.sso.issuer)
+			? `Signing in with ${options.sso.issuer} admits anyone with an account there`
+			: undefined;
 	let backendPromise: Promise<WorkspaceBackend> | undefined;
 	const backend = () =>
 		(backendPromise ??= Promise.resolve(
@@ -312,8 +337,17 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 	 */
 	async function access(request: Request, url: URL, cookies: string[]): Promise<Actor | Response> {
 		let actor: Actor | undefined;
+		const ssoSession = ssoSealer?.open<{ user: WorkspaceUser; permission?: Permission }>(
+			readCookie(request, SSO_COOKIE),
+		);
 		if (options.token && bearer(request) === options.token) {
 			actor = { verified: false, permission: "write" };
+		} else if (ssoSession) {
+			actor = {
+				user: ssoSession.user,
+				verified: true,
+				permission: asPermission(ssoSession.permission) ?? "write",
+			};
 		} else if (options.authorize) {
 			const result = await options.authorize(request);
 			if (isUser(result)) {
@@ -329,6 +363,7 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 				return fail(401, "Not authorized", {
 					tokenAccepted: !!options.token,
 					...(options.signIn ? { signIn: true } : {}),
+					...(sso ? { sso: sso.label } : {}),
 				});
 			}
 		} else {
@@ -380,11 +415,14 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 			return fail(401, "Unauthorized", {
 				tokenAccepted: !!options.token,
 				...(options.signIn ? { signIn: true } : {}),
-				hint: options.signIn
-					? "Sign in with GitHub"
-					: options.token
-						? "Enter the workspace token"
-						: "Give createWorkspaceHandler an `authorize` function or a `token` to serve it beyond localhost",
+				...(sso ? { sso: sso.label } : {}),
+				hint: sso
+					? `Sign in with ${sso.label}`
+					: options.signIn
+						? "Sign in with GitHub"
+						: options.token
+							? "Enter the workspace token"
+							: "Give createWorkspaceHandler an `authorize` function or a `token` to serve it beyond localhost",
 			});
 		}
 
@@ -413,6 +451,22 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 					actor.permission = local.github.permission;
 				}
 			}
+		}
+		// Admitted, but without a GitHub identity of their own the server token
+		// would act for them — which this host has ruled out.
+		if (options.requireGitHub && !actor.github) {
+			const hint = options.signIn
+				? "Sign in with GitHub"
+				: options.githubToken
+					? "Connect your GitHub account"
+					: "Run `gh auth login`";
+			if (options.requireGitHub === "all") {
+				return fail(401, "This workspace needs a GitHub account", {
+					hint,
+					...(options.signIn ? { signIn: true } : {}),
+				});
+			}
+			actor.permission = "read";
 		}
 		return actor;
 	}
@@ -606,6 +660,77 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 		}
 	}
 
+	async function ssoRoute(request: Request, url: URL, route: string): Promise<Response> {
+		if (!sso || !ssoSealer || !options.sso) return fail(404, "Single sign-on is not set up here");
+		const redirectUri = options.sso.redirectUri ?? `${url.origin}${mountOf(url)}/sso-callback`;
+		const cookiePath = mountOf(url);
+		const flowCookie = (value: string, maxAge: number) =>
+			serializeCookie(SSO_FLOW_COOKIE, value, {
+				path: cookiePath,
+				maxAge,
+				secure: secure(request, url),
+			});
+		if (route === "sso-login") {
+			const back = returnPath(url.searchParams.get("return"), url);
+			try {
+				const { url: to, flow } = await sso.start(redirectUri, back);
+				return new Response(null, {
+					status: 302,
+					headers: {
+						Location: to,
+						"Cache-Control": "no-store",
+						"Set-Cookie": flowCookie(ssoSealer.seal(flow, 600), 600),
+					},
+				});
+			} catch (err) {
+				return signInPage(502, (err as Error).message, back);
+			}
+		}
+		const flow = ssoSealer.open<SsoFlow>(readCookie(request, SSO_FLOW_COOKIE));
+		const back = flow?.back ?? `${cookiePath}/shell`;
+		const code = url.searchParams.get("code");
+		if (!flow || !code || url.searchParams.get("state") !== flow.state) {
+			const reason = url.searchParams.get("error_description") ?? url.searchParams.get("error");
+			return signInPage(
+				400,
+				reason
+					? `Sign-in failed: ${reason}`
+					: "That sign-in link expired or was not started here. Try again.",
+				back,
+			);
+		}
+		try {
+			const claims = await sso.finish(code, redirectUri, flow);
+			const result = options.sso.user ? await options.sso.user(claims) : userFromClaims(claims);
+			const user = isUser(result) ? asUser(result) : undefined;
+			if (!user)
+				return signInPage(
+					403,
+					`${sso.label} signed you in, but this workspace does not admit that account.`,
+					back,
+				);
+			const permission = isUser(result) ? asPermission(result.permission) : undefined;
+			const maxAge = options.sso.maxAgeSeconds ?? 12 * 3600;
+			const headers = new Headers({ Location: back, "Cache-Control": "no-store" });
+			headers.append(
+				"Set-Cookie",
+				serializeCookie(
+					SSO_COOKIE,
+					ssoSealer.seal({ user, ...(permission ? { permission } : {}) }, maxAge),
+					{
+						path: cookiePath,
+						maxAge,
+						secure: secure(request, url),
+					},
+				),
+			);
+			headers.append("Set-Cookie", flowCookie("", 0));
+			return new Response(null, { status: 302, headers });
+		} catch (err) {
+			return signInPage(502, `Sign-in failed: ${(err as Error).message}`, back);
+		}
+	}
+
 	async function webhookRoute(request: Request): Promise<Response> {
 		if (!options.webhookSecret) return fail(404, "No webhook is set up here");
 		const raw = await request.text();
@@ -691,8 +816,29 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 			switch (name) {
 				case "info": {
 					const info = await b.info();
+					const readOnly = !!options.requireGitHub && !actor.github;
 					return json(200, {
 						...info,
+						// Say what this caller can do, so the shell hides what would be refused.
+						...(readOnly
+							? {
+									capabilities: {
+										...info.capabilities,
+										write: false,
+										pullRequests: false,
+										vibe: false,
+									},
+									needsGitHub: true,
+								}
+							: {}),
+						...(sso
+							? {
+									sso: {
+										label: sso.label,
+										signedIn: !!ssoSealer?.open(readCookie(request, SSO_COOKIE)),
+									},
+								}
+							: {}),
 						...(actor.user ? { user: actor.user } : {}),
 						permission: actor.permission,
 						githubIdentity: !!actor.github,
@@ -768,7 +914,22 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 		if (method === "POST") {
 			if (name === "logout") {
 				cookies.push(sessionCookie(undefined, request, url));
+				if (sso) {
+					cookies.push(
+						serializeCookie(SSO_COOKIE, "", {
+							path: mountOf(url),
+							maxAge: 0,
+							secure: secure(request, url),
+						}),
+					);
+				}
 				return json(200, { ok: true });
+			}
+			if (options.requireGitHub && !actor.github) {
+				throw new WorkspaceHttpError(403, "Making changes here needs a GitHub account", {
+					hint: options.signIn ? "Sign in with GitHub" : "It needs a GitHub identity of your own",
+					...(options.signIn ? { signIn: true } : {}),
+				});
 			}
 			const body = await readBody(request);
 			const who = withAuthor(actor, body);
@@ -923,8 +1084,16 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 		if (method === "GET" && (name === "shell" || name === "shell.js") && options.shell !== false) {
 			return serveShell(request, url, name);
 		}
+		if (ssoProblem) {
+			return fail(503, ssoProblem, {
+				hint: 'Pass sso.user (e.g. allowEmails(["@acme.com"])) or set DEVBAR_OIDC_ALLOW',
+			});
+		}
 		if (method === "GET" && (name === "login" || name === "callback")) {
 			return signInRoute(request, url, name);
+		}
+		if (method === "GET" && (name === "sso-login" || name === "sso-callback")) {
+			return ssoRoute(request, url, name);
 		}
 		// Signed by GitHub, not sent by a browser: the signature is the access check.
 		if (method === "POST" && name === "webhook") {

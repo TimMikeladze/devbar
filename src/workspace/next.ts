@@ -29,4 +29,5 @@ export function createWorkspaceRoutes(options: WorkspaceServerOptions = {}): Wor
 	return { GET: route, POST: route, OPTIONS: route };
 }
 
+export { allowEmails, anyOf, cloudflareAccess, googleIap, trustedJwt } from "devbar.sh/workspace";
 export type { AuthorizeResult, WorkspaceServerOptions, WorkspaceUser } from "devbar.sh/workspace";

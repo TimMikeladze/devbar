@@ -99,6 +99,10 @@ export type WorkspaceInfo = {
 	permission?: Permission;
 	/** The caller has a GitHub identity of their own (signed in, or `gh`). */
 	githubIdentity?: boolean;
+	/** Changes need a GitHub identity of one's own, which the caller lacks (`requireGitHub`). */
+	needsGitHub?: boolean;
+	/** Single sign-on is set up: its label, and whether the caller is signed in with it. */
+	sso?: { label: string; signedIn: boolean };
 	github?: GitHubState;
 	rateLimit?: RateLimitInfo;
 	/** Local: the branch checked out, which is the only one that saves to disk. */
@@ -456,6 +460,8 @@ export type WorkspaceError = {
 	conflicts?: string[];
 	/** Signing in with GitHub would be accepted. */
 	signIn?: boolean;
+	/** Signing in with this single sign-on provider would be accepted: its label. */
+	sso?: string;
 	/** The level of access the refused action needs (403). */
 	needs?: string;
 };
