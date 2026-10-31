@@ -3,14 +3,6 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router";
 import "./index.css";
 import App from "./App.tsx";
-import { DashboardLayout } from "./components/Layout.tsx";
-import { LoginPage } from "./pages/Login.tsx";
-import { ReportsPage } from "./pages/Reports.tsx";
-import { ReportDetailPage } from "./pages/ReportDetail.tsx";
-import { OrgSettingsPage } from "./pages/OrgSettings.tsx";
-import { AccountSettingsPage } from "./pages/AccountSettings.tsx";
-import { BillingPage } from "./pages/Billing.tsx";
-import { CLOUD, PAID_PLANS } from "./lib/flags";
 import { Link } from "react-router";
 
 function NotFound() {
@@ -47,23 +39,6 @@ createRoot(document.getElementById("root")!).render(
 			<Routes>
 				{/* Public landing page */}
 				<Route index element={<App />} />
-				{/* Hosted SaaS — sign in / sign up and the dashboard. Flagged off by
-				    default, so these routes fall through to the 404 and Rollup drops
-				    the pages from the bundle entirely. */}
-				{CLOUD && (
-					<>
-						{/* Auth */}
-						<Route path="/login" element={<LoginPage />} />
-						{/* Dashboard (protected) */}
-						<Route path="/dashboard" element={<DashboardLayout />}>
-							<Route index element={<ReportsPage />} />
-							<Route path="reports/:id" element={<ReportDetailPage />} />
-							<Route path="settings/org" element={<OrgSettingsPage />} />
-							<Route path="settings/account" element={<AccountSettingsPage />} />
-							{PAID_PLANS && <Route path="settings/billing" element={<BillingPage />} />}
-						</Route>
-					</>
-				)}
 				{/* 404 */}
 				<Route path="*" element={<NotFound />} />
 			</Routes>

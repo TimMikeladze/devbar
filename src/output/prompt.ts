@@ -246,12 +246,17 @@ export const defaultPromptTemplate: PromptTemplate = (context) => {
 
 	const task = context.task?.trim();
 	const taskSection = task ? `\n## Task\n\n${task}\n` : "";
+	const featureSection = context.features?.length
+		? `\n## Product features\n\nThese say what this part of the app should do. Read them before changing its behavior.\n\n${context.features
+				.map((f) => `- \`${f.path}\` (${f.title})`)
+				.join("\n")}\n`
+		: "";
 
 	return `# Bug report
 ${taskSection}
 ## Page information
 ${pageInfo}
-
+${featureSection}
 ## Annotations
 
 ${annotationText}${diagnosticsSection}

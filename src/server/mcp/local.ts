@@ -1,3 +1,5 @@
+import { featuresForPage } from "../../workspace/feature";
+import type { WorkspaceEntry } from "../../workspace/types";
 import { createLocalClient, type LocalClient } from "../local-client";
 import type { PageInfo } from "../page-bus";
 import type { StoredReport } from "../report-store";
@@ -340,6 +342,145 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): LocalMcpSer
 					}),
 				),
 			),
+	});
+
+	// ── product and knowledge ────────────────────────────────────────────────
+
+	/** The project asked for, or the only one registered. */
+	async function workspaceProject(c: LocalClient, value: unknown): Promise<string> {
+		const named = forProject(value);
+		if (named) return named;
+		const { projects } = await c.hello();
+		const only = projects[0];
+		if (only && projects.length === 1) return only.slug;
+		throw new Error(
+			`Several projects are registered; pass project (${projects.map((p) => p.slug).join(", ")})`,
+		);
+	}
+
+	const featureSummary = (e: WorkspaceEntry) => ({
+		id: e.group,
+		path: e.path,
+		title: e.title,
+		...(e.description ? { description: e.description } : {}),
+		...(e.status ? { status: e.status } : {}),
+		...(e.tasks ? { requirements: e.tasks } : {}),
+		...(e.pages ? { pages: e.pages } : {}),
+		...(e.elements ? { elements: e.elements } : {}),
+	});
+
+	server.tool({
+		name: "list_features",
+		title: "List Features",
+		description:
+			"Every feature in the product folder: what the app should do, written by people. Unchecked " +
+			"requirements are the work still to do. Read a feature with get_feature before changing its behavior.",
+		inputSchema: { type: "object", properties: projectArg },
+		handler: (args) =>
+			withClient(async (c) => {
+				const slug = await workspaceProject(c, args.project);
+				const features = (await c.workspaceEntries(slug)).filter((e) => e.kind === "feature");
+				return json({ count: features.length, features: features.map(featureSummary) });
+			}),
+	});
+
+	server.tool({
+		name: "get_feature",
+		title: "Get Feature",
+		description:
+			"One feature's full text, the routes and elements it maps to, its knowledge files and the specs written for it.",
+		inputSchema: {
+			type: "object",
+			properties: {
+				...projectArg,
+				feature: {
+					type: "string",
+					description: "A feature id (billing/checkout) or its path (product/billing/checkout.md)",
+				},
+			},
+			required: ["feature"],
+		},
+		handler: (args) =>
+			withClient(async (c) => {
+				const slug = await workspaceProject(c, args.project);
+				const entries = await c.workspaceEntries(slug);
+				const wanted = String(args.feature);
+				const feature = entries.find(
+					(e) => e.kind === "feature" && (e.group === wanted || e.path === wanted),
+				);
+				if (!feature) return failure(`No feature ${wanted}. See list_features.`);
+				const file = await c.workspaceFile(slug, feature.path);
+				return json({
+					...featureSummary(feature),
+					content: file.content,
+					knowledge: feature.knowledge ?? [],
+					specs: entries
+						.filter((e) => e.kind === "spec" && e.feature === feature.group)
+						.map((e) => e.path),
+				});
+			}),
+	});
+
+	server.tool({
+		name: "features_for_page",
+		title: "Features For Page",
+		description: "The features mapped to a page of the app, by a URL or a pathname.",
+		inputSchema: {
+			type: "object",
+			properties: {
+				...projectArg,
+				page: { type: "string", description: "A URL, or a pathname like /checkout/shipping" },
+			},
+			required: ["page"],
+		},
+		handler: (args) =>
+			withClient(async (c) => {
+				const slug = await workspaceProject(c, args.project);
+				const page = String(args.page);
+				let pathname = page;
+				try {
+					pathname = new URL(page).pathname;
+				} catch {}
+				const features = featuresForPage(await c.workspaceEntries(slug), pathname);
+				return json({ pathname, features: features.map(featureSummary) });
+			}),
+	});
+
+	server.tool({
+		name: "search_knowledge",
+		title: "Search Knowledge",
+		description:
+			"Search the knowledge folder: decisions, research, glossary, customer notes. Every word must appear " +
+			"in the file. Returns the matching lines with their paths.",
+		inputSchema: {
+			type: "object",
+			properties: {
+				...projectArg,
+				query: { type: "string", description: "Words to look for, in any order" },
+				limit: { type: "integer", default: 10, minimum: 1, maximum: 50 },
+			},
+			required: ["query"],
+		},
+		handler: (args) =>
+			withClient(async (c) => {
+				const slug = await workspaceProject(c, args.project);
+				const words = String(args.query).toLowerCase().split(/\s+/).filter(Boolean);
+				if (!words.length) return failure("query is empty");
+				const notes = (await c.workspaceEntries(slug)).filter((e) => e.kind === "knowledge");
+				const results: { path: string; title: string; lines: string[] }[] = [];
+				for (const note of notes) {
+					const { content } = await c.workspaceFile(slug, note.path);
+					const lower = content.toLowerCase();
+					if (!words.every((w) => lower.includes(w))) continue;
+					const lines = content
+						.split("\n")
+						.filter((line) => words.some((w) => line.toLowerCase().includes(w)))
+						.slice(0, 5);
+					results.push({ path: note.path, title: note.title, lines });
+					if (results.length >= (args.limit as number)) break;
+				}
+				return json({ count: results.length, results });
+			}),
 	});
 
 	// ── live page ────────────────────────────────────────────────────────────

@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type React from "react";
 import { ExternalIcon } from "@/toolbar/icons";
 import type { DevbarTheme } from "@/session/types";
 import { AppFrame } from "./app-frame";
 import type { Discussion } from "./frame";
+import { addRequirement, matchRoute } from "./feature";
 import type { WorkspaceEntry, WorkspaceUser } from "./types";
 import { read, store, useWorkspace, type Workspace } from "./use-workspace";
 import { AskButton } from "./ui/ask";
 import { Glyph } from "./ui/glyphs";
 import { ChangesPage } from "./ui/changes";
+import { applyAddToFeature, FeaturePicker, type Located } from "./ui/feature";
 import { freePath, KIND_OF_NEW, template, type NewKind } from "./ui/new-page";
 import { NotionPage } from "./ui/page";
 import { Palette } from "./ui/palette";
@@ -56,6 +58,30 @@ function discussionWords(discussion: Discussion): string[] {
 	return [...words];
 }
 
+/** The features an annotated element maps to: by selector or component, else by route. */
+function featuresFor(entries: WorkspaceEntry[], discussion: Discussion): WorkspaceEntry[] {
+	const features = entries.filter((e) => e.kind === "feature");
+	const byElement = features.filter((e) =>
+		e.elements?.some(
+			(el) =>
+				(discussion.selector && el.selector === discussion.selector) ||
+				(discussion.component && el.component === discussion.component),
+		),
+	);
+	if (byElement.length) return byElement;
+	let pathname = "";
+	try {
+		pathname = new URL(discussion.url).pathname;
+	} catch {
+		return [];
+	}
+	return features.filter((e) => e.pages?.some((p) => matchRoute(p, pathname)));
+}
+
+function dirOf(path: string): string {
+	return path.replace(/\/[^/]*$/, "");
+}
+
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
 }
@@ -95,6 +121,12 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 	const [reviewing, setReviewing] = useState<number | null>(null);
 	/** An annotation to discuss, waiting for its spec page to open. */
 	const [discussing, setDiscussing] = useState<Discussion | null>(null);
+	/** An annotation to map to a feature: choosing one, then waiting for its page to open. */
+	const [mapping, setMapping] = useState<Discussion | null>(null);
+	const [mappingTo, setMappingTo] = useState<string | null>(null);
+	const frameControl = useRef<{ locate: (selectors: string[]) => boolean } | null>(null);
+	const [located, setLocated] = useState<Located | null>(null);
+	const asked = useRef<string[]>([]);
 	// The shell wears the app's theme: whatever its toolbar reports, once it does.
 	const [theme, setTheme] = useState<DevbarTheme>(props.theme ?? "auto");
 
@@ -127,21 +159,31 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 	const newPage = useCallback(
 		(section: Section) => {
 			const kind: NewKind =
-				section === "specs"
-					? "spec"
-					: section === "skills"
-						? "skill"
-						: section === "docs"
-							? "doc"
-							: ws.pages.some((e) => e.path === "AGENTS.md")
-								? "agent"
-								: "instructions";
+				section === "product"
+					? "feature"
+					: section === "knowledge"
+						? "knowledge"
+						: section === "specs"
+							? "spec"
+							: section === "skills"
+								? "skill"
+								: section === "docs"
+									? "doc"
+									: ws.pages.some((e) => e.path === "AGENTS.md")
+										? "agent"
+										: "instructions";
 			const taken = new Set(ws.pages.map((e) => e.path));
+			// `+` with a feature or a note open starts the new one beside it.
+			const home =
+				ws.open?.kind === kind && ws.open.path.includes("/") ? dirOf(ws.open.path) : undefined;
 			const path =
-				kind === "instructions" ? "AGENTS.md" : freePath(kind, "untitled", taken, ws.pages);
+				kind === "instructions"
+					? "AGENTS.md"
+					: freePath(kind, "untitled", taken, ws.pages, ws.info?.dirs, home);
 			ws.create(path, KIND_OF_NEW[kind], template(kind, ""));
 			void ws.openPage(path, KIND_OF_NEW[kind]);
 			if (narrow) setSideOpen(false);
+			return path;
 		},
 		[ws, narrow],
 	);
@@ -149,6 +191,17 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 	const onDiscuss = useCallback(
 		(discussion: Discussion) => {
 			setDiscussing(discussion);
+			// A feature is what the element is supposed to do, so it comes before any spec.
+			const mapped = featuresFor(ws.pages, discussion);
+			if (mapped.length === 1) {
+				openEntry(mapped[0] as WorkspaceEntry);
+				return;
+			}
+			if (mapped.length > 1) {
+				ws.setNotice({ tone: "ok", text: "Pick the feature to discuss it in" });
+				setPalette(true);
+				return;
+			}
 			const words = discussionWords(discussion);
 			const specs = ws.pages
 				.filter((e) => e.kind === "spec")
@@ -188,6 +241,39 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 		setDiscussing(null);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [discussing, ws.open?.path, ws.open?.loading]);
+
+	// The feature is open: map the element, and the note becomes a requirement.
+	useEffect(() => {
+		if (!mapping || !mappingTo || !ws.open || ws.open.loading || ws.open.path !== mappingTo) return;
+		const mapped = applyAddToFeature(ws.content, mapping);
+		if (mapped === null) {
+			ws.setNotice({ tone: "error", text: "Fix the frontmatter first: it isn't valid YAML" });
+		} else {
+			const next = mapping.note ? addRequirement(mapped, mapping.note) : mapped;
+			if (next !== ws.content) ws.edit(mappingTo, "feature", next);
+			if (mapping.positional) {
+				ws.setNotice({
+					tone: "ok",
+					text: "Mapped by position in the page, which can break. A data-testid would hold up better.",
+				});
+			}
+		}
+		setMapping(null);
+		setMappingTo(null);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [mapping, mappingTo, ws.open?.path, ws.open?.loading]);
+
+	const onLocate = useCallback(
+		(selectors: string[]) => {
+			setView("app");
+			asked.current = selectors;
+			setLocated(null);
+			if (!frameControl.current?.locate(selectors)) {
+				ws.setNotice({ tone: "error", text: "Show on page needs the devbar toolbar in the app" });
+			}
+		},
+		[ws],
+	);
 
 	// The frame shows the branch the pages show: its preview deployment, or —
 	// when there is none — the app as it runs, saying so.
@@ -312,6 +398,9 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 						initialUrl={frameUrl}
 						onLocation={ws.setAppLocation}
 						onDiscuss={onDiscuss}
+						onFeature={setMapping}
+						onLocated={(url, found) => setLocated({ url, asked: asked.current, found })}
+						control={frameControl}
 						onTheme={setTheme}
 						banner={frameBanner}
 						leading={
@@ -350,6 +439,8 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 								setView("app");
 							}}
 							onNavigate={openPath}
+							onLocate={onLocate}
+							located={located}
 						/>
 					) : (
 						<div className="devbar-nt-muted devbar-nt-pad">Pick a page from the sidebar.</div>
@@ -384,6 +475,8 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 							onExpand={() => setView("page")}
 							onClose={ws.closePage}
 							onNavigate={openPath}
+							onLocate={onLocate}
+							located={located}
 						/>
 					</aside>
 				</>
@@ -399,6 +492,19 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 					setAskOpen(false);
 				}}
 			/>
+
+			{mapping && !mappingTo && (
+				<FeaturePicker
+					features={ws.pages.filter((e) => e.kind === "feature")}
+					target={mapping}
+					onClose={() => setMapping(null)}
+					onPick={(entry) => {
+						setMappingTo(entry.path);
+						if (ws.open?.path !== entry.path) openEntry(entry);
+					}}
+					onNew={() => setMappingTo(newPage("product"))}
+				/>
+			)}
 
 			{palette && (
 				<Palette

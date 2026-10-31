@@ -58,6 +58,10 @@ export type LiveConfig = {
 export type WorkspaceConfig = {
 	/** Serve the workspace for this project. Default true. */
 	enabled?: boolean;
+	/** The folder where every markdown file is a feature. Default "product"; false turns it off. */
+	product?: string | false;
+	/** The folder of free-form product knowledge. Default "knowledge"; false turns it off. */
+	knowledge?: string | false;
 	/** Directories whose markdown counts as specs. */
 	specs?: string[];
 	/** Directories whose markdown counts as docs (root README/CONTRIBUTING/CHANGELOG always do). */
@@ -69,9 +73,9 @@ export type WorkspaceConfig = {
 	/** Prefix for branches the workspace creates. Default "devbar/". */
 	branchPrefix?: string;
 	/**
-	 * "Ask an agent" on a deployed site opens a GitHub issue that mentions this
-	 * handle (default "@claude", which the Claude Code GitHub Action answers).
-	 * false turns it off.
+	 * "Ask an agent" on a deployed site opens a GitHub issue labelled
+	 * `devbar-agent`, which any automation can trigger on. `mention` adds a
+	 * handle to the top of the body. false turns it off.
 	 */
 	vibe?: false | { mention?: string; labels?: string[] };
 };

@@ -70,7 +70,10 @@ export function DevToolbar() {
 }
 ```
 
-That still ships the toolbar's stylesheet to production, where the guard means
+To use the toolbar on a deployed site, drop the guard and pass the Workspace
+mount instead: see [the Workspace docs](docs/WORKSPACE.md#the-toolbar-on-a-deployed-site).
+
+The guard still ships the toolbar's stylesheet to production, where it means
 it is never used. To keep it out, put the two imports in a module of their own
 and pull that module in with `next/dynamic` — Turbopack will not resolve a CSS
 import from inside a `dynamic()` factory, so the imports have to sit at the top
@@ -91,9 +94,7 @@ of the module being imported, not in the factory.
 Only `react`, `react-dom` (peers) and two small runtime dependencies —
 `html-to-image` and `jiti` — are installed with the package. The MCP server the
 CLI runs is implemented directly rather than pulling in the MCP SDK, so
-`devbar mcp` works with nothing else installed. The hosted
-dashboard's server (Better Auth, Stripe, reports, MCP) lives in this repo under
-`src/server` but is **not** published; see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md).
+`devbar mcp` works with nothing else installed.
 
 ### Connect your local agent
 
@@ -102,7 +103,7 @@ finds it — no `server`, `token`, or `project` props:
 
 ```bash
 cd my-app
-bunx devbar.sh init  # writes devbar.config.ts
+bunx devbar.sh init  # writes devbar.config.ts and the agent rules in AGENTS.md
 bunx devbar.sh       # serves on 127.0.0.1:3100 and registers this project
 ```
 
@@ -123,17 +124,18 @@ From there, reports go two ways:
 claude mcp add devbar -- bunx devbar.sh mcp
 ```
 
-| Command                   | Does                                                |
-| ------------------------- | --------------------------------------------------- |
-| `devbar`                  | start the server, or register this project with one |
-| `devbar mcp`              | MCP server on stdio                                 |
-| `devbar doctor`           | check everything needed to dispatch                 |
-| `devbar tasks [--watch]`  | dispatch tasks and their status                     |
-| `devbar reports`          | captured reports                                    |
-| `devbar dispatch [id]`    | dispatch one report, or every pending one           |
-| `devbar init`             | write a starter `devbar.config.ts` for your agent   |
-| `devbar init --workspace` | mount the Workspace route in a Next.js app          |
-| `devbar link`             | print the wiring snippet for this project           |
+| Command                   | Does                                                 |
+| ------------------------- | ---------------------------------------------------- |
+| `devbar`                  | start the server, or register this project with one  |
+| `devbar mcp`              | MCP server on stdio                                  |
+| `devbar doctor`           | check everything needed to dispatch                  |
+| `devbar tasks [--watch]`  | dispatch tasks and their status                      |
+| `devbar reports`          | captured reports                                     |
+| `devbar dispatch [id]`    | dispatch one report, or every pending one            |
+| `devbar init`             | write `devbar.config.ts` and the agent rules         |
+| `devbar init --workspace` | mount the Workspace route in a Next.js app           |
+| `devbar product check`    | fail on a `feature:` or `knowledge:` link to nothing |
+| `devbar link`             | print the wiring snippet for this project            |
 
 Discovery only runs on `localhost` pages and only probes `127.0.0.1:3100` and
 `:3101`. Pass `local={false}` to switch it off, `local={{ ports: [4000] }}` to
@@ -293,8 +295,10 @@ back unless you have already typed a new one. See
 ### Workspace
 
 The book button on the bar (`Alt+W`) turns the tab into the **Workspace
-shell**: your app, running live in the middle, with the repository's agent
-context around it as pages — **specs** (`specs/`, `docs/specs/`, `.kiro/specs/`,
+shell**: your app, running live in the middle, with the repository's product
+and agent context around it as pages — **features** (`product/`, every file is
+one, mapped to the app's routes and elements), **knowledge** (`knowledge/`),
+**specs** (`specs/`, `docs/specs/`, `.kiro/specs/`,
 spec-kit's `.specify/`, with task progress), **skills**
 (`.claude/skills/*/SKILL.md`), **agents** (`AGENTS.md`, `CLAUDE.md`, subagents,
 slash commands) and **docs**. It is laid out like Notion — a page tree, pages
@@ -315,8 +319,8 @@ It works in both places people look at the app:
 - **Deployed, self-hosted** — mount the routes in your Next.js app and point the
   toolbar at them; the same route serves the shell at `/api/devbar/shell`. In
   production they read the GitHub repository (a preview deploy reads its own
-  branch), proposals open PRs through the API, and prompts open an issue for
-  `@claude`.
+  branch), proposals open PRs through the API, and prompts open an issue labelled
+  `devbar-agent` for whichever agent your repository runs.
 
 ```ts
 // app/api/devbar/[...path]/route.ts

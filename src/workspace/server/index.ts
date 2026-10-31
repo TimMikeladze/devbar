@@ -6,6 +6,7 @@
  * pieces are exported too, for hosts that want to assemble their own.
  */
 import type { WorkspaceConfig } from "../../config";
+import { PERMISSION_RANK, type Permission } from "../types";
 import type { WorkspaceBackend } from "./backend";
 import { allowEmails } from "./auth";
 import { WorkspaceHttpError } from "./errors";
@@ -30,6 +31,8 @@ export type WorkspaceServerOptions = WorkspaceConfig &
 		| "sso"
 		| "githubToken"
 		| "requireGitHub"
+		| "submitPermission"
+		| "rateLimit"
 		| "webhookSecret"
 		| "events"
 	> & {
@@ -74,6 +77,8 @@ function pickBackend(options: WorkspaceServerOptions, env: Record<string, string
  * to emails or `@domains`, `DEVBAR_OIDC_LABEL` names the button.
  * `DEVBAR_WORKSPACE_REQUIRE_GITHUB=writes|all` makes a GitHub identity of one's
  * own a must for changes, or for everything.
+ * `DEVBAR_WORKSPACE_SUBMIT_PERMISSION=read|triage|write|maintain|admin` sets the
+ * level needed to open pull requests and issues and to comment.
  */
 export function createWorkspace(options: WorkspaceServerOptions = {}): WorkspaceHandler {
 	const env = options.env ?? process.env;
@@ -93,6 +98,8 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 		sso,
 		githubToken,
 		requireGitHub,
+		submitPermission,
+		rateLimit,
 		webhookSecret,
 		events,
 		...config
@@ -169,6 +176,10 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 	const envRequire = env.DEVBAR_WORKSPACE_REQUIRE_GITHUB;
 	const mustHaveGitHub =
 		requireGitHub ?? (envRequire === "writes" || envRequire === "all" ? envRequire : false);
+	const envSubmit = env.DEVBAR_WORKSPACE_SUBMIT_PERMISSION;
+	const submitFloor =
+		submitPermission ??
+		(envSubmit && envSubmit in PERMISSION_RANK ? (envSubmit as Permission) : undefined);
 	// Nobody could ever satisfy it: say how to fix it rather than lock everyone out.
 	if (mustHaveGitHub && kind === "github" && !githubSignIn && !githubToken) {
 		return async () =>
@@ -198,6 +209,8 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 		...(ssoOptions ? { sso: ssoOptions } : {}),
 		...(githubToken ? { githubToken } : {}),
 		...(mustHaveGitHub ? { requireGitHub: mustHaveGitHub } : {}),
+		...(submitFloor ? { submitPermission: submitFloor } : {}),
+		...(rateLimit !== undefined ? { rateLimit } : {}),
 		...(webhookSecret || env.DEVBAR_GITHUB_WEBHOOK_SECRET
 			? { webhookSecret: webhookSecret ?? env.DEVBAR_GITHUB_WEBHOOK_SECRET }
 			: {}),

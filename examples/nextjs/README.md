@@ -1,8 +1,8 @@
 # devbar Workspace — Next.js example
 
-A Next.js app serving the devbar Workspace from its own API route: the shell
-that frames this app beside its specs, skills, `AGENTS.md` and docs, edits them
-as pages, and proposes the edits as pull requests.
+A one-page recipe app serving the devbar Workspace from its own API route: the
+shell that frames this app beside its specs, skills, `AGENTS.md` and docs, edits
+them as pages, and proposes the edits as pull requests.
 
 ```bash
 cd examples/nextjs

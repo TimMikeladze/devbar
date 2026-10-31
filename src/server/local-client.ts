@@ -5,6 +5,7 @@ import type { Task } from "./dispatcher";
 import type { McpSessionInfo, McpSessionRegistration } from "./mcp-sessions";
 import type { PageInfo } from "./page-bus";
 import type { StoredReport } from "./report-store";
+import type { WorkspaceEntry } from "../workspace/types";
 
 /**
  * Talks to a running local devbar server.
@@ -38,6 +39,8 @@ export type LocalClient = {
 	listPages(project?: string): Promise<PageInfo[]>;
 	call(pageId: string, method: string, params?: unknown, timeoutMs?: number): Promise<unknown>;
 	listProjects(): Promise<unknown[]>;
+	workspaceEntries(project: string): Promise<WorkspaceEntry[]>;
+	workspaceFile(project: string, path: string): Promise<{ path: string; content: string }>;
 	hello(): Promise<{ projects: { slug: string }[] }>;
 	registerMcpSession(registration: McpSessionRegistration): Promise<McpSessionInfo>;
 	heartbeatMcpSession(id: string, lastTool?: string): Promise<boolean>;
@@ -198,6 +201,18 @@ export async function createLocalClient(options: LocalClientOptions = {}): Promi
 		},
 
 		hello: () => request<{ projects: { slug: string }[] }>("/api/hello"),
+
+		async workspaceEntries(project) {
+			const data = await request<{ entries: WorkspaceEntry[] }>(
+				`/api/projects/${encodeURIComponent(project)}/workspace/entries`,
+			);
+			return data.entries;
+		},
+
+		workspaceFile: (project, path) =>
+			request<{ path: string; content: string }>(
+				`/api/projects/${encodeURIComponent(project)}/workspace/file?path=${encodeURIComponent(path)}`,
+			),
 
 		async registerMcpSession(registration) {
 			const data = await request<{ session: McpSessionInfo }>("/api/mcp/sessions", {

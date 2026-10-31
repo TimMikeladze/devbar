@@ -7,12 +7,12 @@ export type DevbarState = {
 	activeMode: ToolMode;
 	minimized: boolean;
 	setMinimized: (v: boolean) => void;
-	addAnnotation: (annotation: Annotation, remote?: boolean) => void;
+	addAnnotation: (annotation: Annotation) => void;
 	updateAnnotation: (id: string, data: Annotation["data"]) => void;
-	removeAnnotation: (id: string, remote?: boolean) => void;
-	addComment: (annotationId: string, comment: Comment, remote?: boolean) => void;
-	updateComment: (annotationId: string, commentId: string, text: string, remote?: boolean) => void;
-	removeComment: (annotationId: string, commentId: string, remote?: boolean) => void;
+	removeAnnotation: (id: string) => void;
+	addComment: (annotationId: string, comment: Comment) => void;
+	updateComment: (annotationId: string, commentId: string, text: string) => void;
+	removeComment: (annotationId: string, commentId: string) => void;
 	clearAnnotations: () => void;
 	/** Archive the current batch under History and start a fresh one. Returns the record id. */
 	archiveAndClear: (method: ExportMethod, task?: string) => string | null;
@@ -163,7 +163,7 @@ export function useDevbarState(): DevbarState {
 		]);
 	}, []);
 
-	const addAnnotation = useCallback((annotation: Annotation, _remote?: boolean): void => {
+	const addAnnotation = useCallback((annotation: Annotation): void => {
 		setAnnotations((prev) => [...prev, annotation]);
 		dbPutRecord(STORE_NAME, annotation).catch((e) => console.warn("[devbar] save error:", e));
 	}, []);
@@ -182,7 +182,7 @@ export function useDevbarState(): DevbarState {
 		});
 	}, []);
 
-	const removeAnnotation = useCallback((id: string, _remote?: boolean): void => {
+	const removeAnnotation = useCallback((id: string): void => {
 		setAnnotations((prev) => {
 			const removed = prev.find((a) => a.id === id);
 			if (removed?.type === "recording" && (removed.data as any)?.videoBlobUrl) {
@@ -195,25 +195,22 @@ export function useDevbarState(): DevbarState {
 		dbDeleteRecord(STORE_NAME, id).catch((e) => console.warn("[devbar] delete error:", e));
 	}, []);
 
-	const addComment = useCallback(
-		(annotationId: string, comment: Comment, _remote?: boolean): void => {
-			setAnnotations((prev) => {
-				let matched: Annotation | undefined;
-				const updated = prev.map((a) => {
-					if (a.id !== annotationId) return a;
-					matched = { ...a, comments: [...a.comments, comment] };
-					return matched;
-				});
-				if (matched)
-					dbPutRecord(STORE_NAME, matched).catch((e) => console.warn("[devbar] save error:", e));
-				return updated;
+	const addComment = useCallback((annotationId: string, comment: Comment): void => {
+		setAnnotations((prev) => {
+			let matched: Annotation | undefined;
+			const updated = prev.map((a) => {
+				if (a.id !== annotationId) return a;
+				matched = { ...a, comments: [...a.comments, comment] };
+				return matched;
 			});
-		},
-		[],
-	);
+			if (matched)
+				dbPutRecord(STORE_NAME, matched).catch((e) => console.warn("[devbar] save error:", e));
+			return updated;
+		});
+	}, []);
 
 	const updateComment = useCallback(
-		(annotationId: string, commentId: string, text: string, _remote?: boolean): void => {
+		(annotationId: string, commentId: string, text: string): void => {
 			setAnnotations((prev) => {
 				let matched: Annotation | undefined;
 				const updated = prev.map((a) => {
@@ -232,22 +229,19 @@ export function useDevbarState(): DevbarState {
 		[],
 	);
 
-	const removeComment = useCallback(
-		(annotationId: string, commentId: string, _remote?: boolean): void => {
-			setAnnotations((prev) => {
-				let matched: Annotation | undefined;
-				const updated = prev.map((a) => {
-					if (a.id !== annotationId) return a;
-					matched = { ...a, comments: a.comments.filter((c) => c.id !== commentId) };
-					return matched;
-				});
-				if (matched)
-					dbPutRecord(STORE_NAME, matched).catch((e) => console.warn("[devbar] save error:", e));
-				return updated;
+	const removeComment = useCallback((annotationId: string, commentId: string): void => {
+		setAnnotations((prev) => {
+			let matched: Annotation | undefined;
+			const updated = prev.map((a) => {
+				if (a.id !== annotationId) return a;
+				matched = { ...a, comments: a.comments.filter((c) => c.id !== commentId) };
+				return matched;
 			});
-		},
-		[],
-	);
+			if (matched)
+				dbPutRecord(STORE_NAME, matched).catch((e) => console.warn("[devbar] save error:", e));
+			return updated;
+		});
+	}, []);
 
 	const clearAnnotations = useCallback((): void => {
 		setAnnotations([]);

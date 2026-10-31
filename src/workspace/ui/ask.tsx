@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { SendIcon } from "@/toolbar/icons";
+import type { WorkspaceEntry } from "../types";
 import type { OpenPage, Workspace } from "../use-workspace";
 import { RUN_DONE } from "../use-workspace";
 import { Glyph, PageIcon } from "./glyphs";
@@ -11,10 +12,17 @@ import { Glyph, PageIcon } from "./glyphs";
  * suggestions for what to do with the page, and the run as it happens.
  */
 
-export function suggestions(open: OpenPage | null): { label: string; prompt: string }[] {
+export function suggestions(
+	open: OpenPage | null,
+	entry?: WorkspaceEntry,
+): { label: string; prompt: string }[] {
 	if (!open) {
 		return [
 			{ label: "Write a spec for…", prompt: "Write a spec for: " },
+			{
+				label: "Draft a feature for…",
+				prompt: "Add a feature file to the product folder, with its requirements unchecked, for: ",
+			},
 			{
 				label: "Update AGENTS.md from the code",
 				prompt:
@@ -24,6 +32,31 @@ export function suggestions(open: OpenPage | null): { label: string; prompt: str
 	}
 	const path = `\`${open.path}\``;
 	switch (open.kind) {
+		case "feature": {
+			const knowledge = entry?.knowledge?.length
+				? ` Read ${entry.knowledge.map((k) => `\`${k}\``).join(", ")} too.`
+				: "";
+			const where = entry?.pages?.length
+				? ` It lives on ${entry.pages.map((p) => `\`${p}\``).join(", ")}.`
+				: "";
+			return [
+				{
+					label: "Build this feature",
+					prompt: `Implement the unchecked requirements in ${path}.${where}${knowledge} Read AGENTS.md first. If the change is big enough for a spec, write one in the spec folder with \`feature:\` in its frontmatter pointing at this feature. Tick each requirement you finish in the same change as the code, and change nothing else in that file; put anything you'd change about the requirements in your summary.`,
+				},
+				{
+					label: "Refine this feature",
+					prompt: `Review the feature in ${path} for gaps and ambiguity, and improve its requirements in place. Don't change any code, and leave ticked requirements ticked unless you reword them.`,
+				},
+			];
+		}
+		case "knowledge":
+			return [
+				{
+					label: "Check against the code",
+					prompt: `Check ${path} against the codebase and the product folder, and correct anything out of date.`,
+				},
+			];
 		case "spec":
 			return /tasks?\.md$/i.test(open.path)
 				? [
@@ -185,7 +218,10 @@ export function AskButton(props: {
 
 					{!text && (
 						<div className="devbar-nt-ask-suggest">
-							{suggestions(ws.open).map((s) => (
+							{suggestions(
+								ws.open,
+								ws.pages.find((e) => e.path === ws.open?.path),
+							).map((s) => (
 								<button
 									key={s.label}
 									type="button"

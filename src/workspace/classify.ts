@@ -1,5 +1,12 @@
 import type { WorkspaceConfig } from "../config";
-import type { TaskProgress, WorkspaceEntry, WorkspaceKind } from "./types";
+import {
+	DEFAULT_KNOWLEDGE_DIR,
+	DEFAULT_PRODUCT_DIR,
+	featureFields,
+	featureId,
+	readMeta,
+} from "./feature";
+import type { TaskProgress, WorkspaceDirs, WorkspaceEntry, WorkspaceKind } from "./types";
 
 /**
  * Which repository files the workspace shows, and what their first lines say.
@@ -82,6 +89,13 @@ function stripExtension(name: string): string {
 
 export type Classification = { kind: WorkspaceKind; group?: string };
 
+export function workspaceDirs(config: WorkspaceConfig = {}): WorkspaceDirs {
+	return {
+		product: config.product ?? DEFAULT_PRODUCT_DIR,
+		knowledge: config.knowledge ?? DEFAULT_KNOWLEDGE_DIR,
+	};
+}
+
 export function classifyPath(path: string, config: WorkspaceConfig = {}): Classification | null {
 	const p = normalizePath(path);
 	if (!p) return null;
@@ -111,6 +125,16 @@ export function classifyPath(path: string, config: WorkspaceConfig = {}): Classi
 			return { kind: "spec", group: firstSegmentAfter(p, dir) ?? stripExtension(name) };
 	}
 	if (atRoot && ROOT_SPECS.has(upper)) return { kind: "spec", group: stripExtension(name) };
+
+	// A folder someone configured as docs stays docs, like the spec dirs above.
+	if (!config.docs?.some((dir) => within(p, dir))) {
+		const { product, knowledge } = workspaceDirs(config);
+		if (product && within(p, product)) return { kind: "feature", group: featureId(p, product) };
+		if (knowledge && within(p, knowledge)) {
+			const group = firstSegmentAfter(p, knowledge);
+			return group ? { kind: "knowledge", group } : { kind: "knowledge" };
+		}
+	}
 
 	if (atRoot && ROOT_DOCS.has(upper)) return { kind: "doc" };
 	for (const dir of config.docs ?? DEFAULT_DOC_DIRS) {
@@ -231,6 +255,9 @@ export function buildEntry(
 	classification: Classification,
 ): WorkspaceEntry {
 	const parsed = parseDoc(content);
+	const nested = ["feature", "knowledge", "spec"].includes(classification.kind)
+		? readMeta(content)
+		: undefined;
 	return {
 		path,
 		kind: classification.kind,
@@ -240,12 +267,23 @@ export function buildEntry(
 		...(parsed.status ? { status: parsed.status } : {}),
 		...(parsed.icon ? { icon: parsed.icon } : {}),
 		...(parsed.tasks ? { tasks: parsed.tasks } : {}),
+		...(nested ? featureFields(nested.meta) : {}),
+		...(nested?.error ? { metaError: nested.error } : {}),
 		sha,
 		size: new TextEncoder().encode(content).length,
 	};
 }
 
-const KIND_ORDER: WorkspaceKind[] = ["instructions", "spec", "skill", "agent", "command", "doc"];
+const KIND_ORDER: WorkspaceKind[] = [
+	"feature",
+	"knowledge",
+	"instructions",
+	"spec",
+	"skill",
+	"agent",
+	"command",
+	"doc",
+];
 
 /** Stable order: kind, then group, then root-level files before nested ones, then path. */
 export function sortEntries(entries: WorkspaceEntry[]): WorkspaceEntry[] {

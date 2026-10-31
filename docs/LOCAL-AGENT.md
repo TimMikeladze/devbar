@@ -20,7 +20,7 @@ There are two directions, and you can use either or both:
 
 ```bash
 cd my-app
-bunx devbar.sh init  # writes devbar.config.ts
+bunx devbar.sh init  # writes devbar.config.ts and the agent rules in AGENTS.md
 bunx devbar.sh       # starts the server and registers this project
 ```
 
@@ -207,6 +207,15 @@ queue, and restarting an agent loses nothing.
 | `highlight_element`  | flashes an outline in the user's browser — the channel back to the human |
 | `wait_for_reload`    | blocks until HMR or a navigation reloads the page                        |
 
+For the [product folder](./WORKSPACE.md#product-and-knowledge):
+
+| Tool                | What                                                                 |
+| ------------------- | -------------------------------------------------------------------- |
+| `list_features`     | every feature, with its status, requirement progress and mapping     |
+| `get_feature`       | a feature's text, knowledge files and specs, by id or path           |
+| `features_for_page` | the features mapped to a URL or pathname                             |
+| `search_knowledge`  | files in `knowledge/` containing every word, with the matching lines |
+
 The loop these enable: `get_report` → edit code → `wait_for_reload` →
 `screenshot_page` → compare with the annotation → `highlight_element` →
 `resolve_report`.
@@ -248,7 +257,7 @@ call is visible in the toolbar.
 | `devbar tasks [--watch]` | dispatch tasks and their status                               |
 | `devbar reports`         | captured reports                                              |
 | `devbar dispatch [id]`   | dispatch one report, or every pending one                     |
-| `devbar init`            | write a starter `devbar.config.ts` for the agent you have     |
+| `devbar init`            | write `devbar.config.ts` and the rules in `AGENTS.md`         |
 | `devbar link`            | print the snippet for wiring this project up                  |
 
 Useful flags: `--port`, `--server`, `--agent`, `--model`, `--permission`,

@@ -15,10 +15,10 @@ export type TagColor =
 
 const STATUS_COLORS: [RegExp, TagColor][] = [
 	[/^(draft|idea|proposed|todo|backlog)$/i, "gray"],
-	[/^(review|in[ -]?review|in[ -]?progress|wip|doing)$/i, "yellow"],
+	[/^(review|in[ -]?review|in[ -]?progress|wip|doing|building)$/i, "yellow"],
 	[/^(approved|accepted|ready|planned)$/i, "blue"],
 	[/^(done|implemented|shipped|complete[d]?|released)$/i, "green"],
-	[/^(blocked|rejected|deprecated|abandoned)$/i, "red"],
+	[/^(blocked|rejected|deprecated|abandoned|dropped)$/i, "red"],
 ];
 
 const PALETTE: TagColor[] = ["brown", "orange", "purple", "pink", "blue", "green", "yellow"];

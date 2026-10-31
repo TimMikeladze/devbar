@@ -3,7 +3,18 @@
  * Pure types — safe to import from either side.
  */
 
-export type WorkspaceKind = "spec" | "skill" | "instructions" | "agent" | "command" | "doc";
+export type WorkspaceKind =
+	| "feature"
+	| "knowledge"
+	| "spec"
+	| "skill"
+	| "instructions"
+	| "agent"
+	| "command"
+	| "doc";
+
+/** An element of the app a feature maps to. Has a selector, a React component, or both. */
+export type FeatureElement = { name?: string; selector?: string; component?: string };
 
 export type TaskProgress = { done: number; total: number };
 
@@ -12,7 +23,7 @@ export type WorkspaceEntry = {
 	/** Repo-relative, forward slashes. */
 	path: string;
 	kind: WorkspaceKind;
-	/** Specs: the feature folder. Skills: the skill name. */
+	/** Features: the feature's id. Specs: the feature folder. Skills: the skill name. */
 	group?: string;
 	title: string;
 	description?: string;
@@ -22,6 +33,18 @@ export type WorkspaceEntry = {
 	icon?: string;
 	/** Checklist progress, when the file has any `- [ ]` items. */
 	tasks?: TaskProgress;
+	/** Features: route patterns, in the Next.js `[param]` form. */
+	pages?: string[];
+	/** Features: the elements it maps to. */
+	elements?: FeatureElement[];
+	/** Features: files to hand to an agent with it. */
+	knowledge?: string[];
+	/** Specs: the id of the feature this was written for. */
+	feature?: string;
+	/** Knowledge: frontmatter `tags`. */
+	tags?: string[];
+	/** The frontmatter is not valid YAML; the nested fields above could not be read. */
+	metaError?: string;
 	/** Git blob sha of the content. */
 	sha: string;
 	size: number;
@@ -108,9 +131,17 @@ export type WorkspaceInfo = {
 	/** Local: the branch checked out, which is the only one that saves to disk. */
 	checkout?: string;
 	defaultBranch?: string;
-	/** The handle an "Ask an agent" issue mentions. */
+	/** GitHub says the repository is public: what's submitted here is visible to anyone. */
+	public?: boolean;
+	/** This caller is below the level that submitting needs. */
+	needsPermission?: Permission;
+	/** The handle an "Ask an agent" issue mentions. Unset: the label is the only trigger. */
 	vibeMention?: string;
+	/** Where features and knowledge live; false: that folder is turned off. */
+	dirs?: WorkspaceDirs;
 };
+
+export type WorkspaceDirs = { product: string | false; knowledge: string | false };
 
 /**
  * `commit` is the commit the content was read at, when there is one — what a
@@ -247,6 +278,8 @@ export type WorkingTreeStatus = { branch?: string; files: WorkingTreeFile[] };
 
 export type VibeInput = {
 	prompt: string;
+	/** The issue's title. Default: the prompt's first line. */
+	title?: string;
 	/** The workspace file open when the prompt was written. */
 	path?: string;
 	pageUrl?: string;

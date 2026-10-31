@@ -7,7 +7,6 @@ import type {
 	DevbarPosition,
 	DevbarSettings,
 	DevbarTheme,
-	DevbarUser,
 	DrawingData,
 	ElementData,
 	ExportMethod,
@@ -28,7 +27,6 @@ import { DrawOverlay } from "@/tools/draw/draw-overlay";
 import { CaptureOverlay } from "@/tools/capture/capture-overlay";
 import { RecordOverlay } from "@/tools/record/record-overlay";
 import { MarkerOverlay } from "@/tools/marker/marker-overlay";
-import { AuthModal } from "@/server/auth-modal";
 import {
 	useLocalAgent,
 	type LocalAgentSettings,
@@ -37,15 +35,11 @@ import {
 	type LocalTask,
 } from "@/live/use-local-agent";
 import type { LocalProject } from "@/live/discovery";
-import { useCollaboration, type CollaborationCallbacks } from "@/collaboration/use-collaboration";
-import {
-	PeerCursors,
-	PeerAvatars,
-	useCursorTracker,
-	useViewportTracker,
-} from "@/collaboration/presence";
+import { redactReport } from "@/output/redact";
 import { useDevbarState } from "./state";
 import { isFramed, useShellBridge } from "@/workspace/frame";
+import type { WorkspaceEntry } from "@/workspace/types";
+import { stableSelector } from "@/tools/select/element-data";
 import {
 	SelectIcon,
 	DrawIcon,
@@ -70,13 +64,13 @@ import {
 	PreviewIcon,
 	SettingsIcon,
 	AgentIcon,
-	UserIcon,
 	SendIcon,
 	KeyIcon,
 	RecordIcon,
 	RecordItemIcon,
 	LocateIcon,
 	WorkspaceIcon,
+	PlusIcon,
 	CommentIcon,
 } from "./icons";
 
@@ -108,15 +102,10 @@ export type DevbarProps = {
 	local?: boolean | { ports?: number[]; force?: boolean };
 	/** Allow an agent to inspect and screenshot this page once the user opts in. Default true. */
 	live?: boolean;
-	/** Separate WebSocket server URL for collaboration (defaults to server) */
-	wsServer?: string;
 	/** Bearer token sent as Authorization header with server submissions */
 	token?: string;
 	/** Project slug for dispatch routing */
 	project?: string;
-	user?: DevbarUser;
-	authProxy?: string;
-	orgId?: string;
 	/**
 	 * The Workspace shell — this app, framed, beside the repo's specs, skills,
 	 * AGENTS.md and docs. Default: on when a local devbar server serves this
@@ -125,6 +114,18 @@ export type DevbarProps = {
 	 * too; the shell is served from `<mount>/shell`. false hides it.
 	 */
 	workspace?: boolean | string;
+};
+
+/** What the gate in `devbar.tsx` learned from the workspace. */
+export type WorkspaceAccess = {
+	info: { capabilities: { vibe: boolean }; public?: boolean };
+	token?: string;
+};
+
+type ToolbarProps = DevbarProps & {
+	workspaceAccess?: WorkspaceAccess;
+	/** Set when the gate is what shows this toolbar: a deployed site. */
+	onTurnOff?: () => void;
 };
 
 type PanelTab = "annotations" | "history" | "agent" | "settings" | "shortcuts";
@@ -1287,79 +1288,6 @@ function useBarDrag() {
 	return { offset, onMouseDown, reset };
 }
 
-function useDevbarAuth(server?: string, user?: DevbarUser, authEnabled?: boolean) {
-	const [authUser, setAuthUser] = useState<DevbarUser | null>(user ?? null);
-	const [showAuthModal, setShowAuthModal] = useState(false);
-	const clientRef = useRef<import("@/server/client").DevbarAuthClient | null>(null);
-
-	// Update when user prop changes
-	useEffect(() => {
-		if (user) setAuthUser(user);
-	}, [user]);
-
-	// Check session on mount if server is set, auth is enabled, and no user prop
-	useEffect(() => {
-		if (!server || user || !authEnabled) return;
-		let cancelled = false;
-		(async () => {
-			try {
-				const { getAuthClient } = await import("@/server/client");
-				const client = getAuthClient(server);
-				clientRef.current = client;
-				const session = await client.getSession();
-				if (!cancelled && session.data?.user) {
-					setAuthUser({
-						name: session.data.user.name,
-						email: session.data.user.email,
-						avatar: session.data.user.image ?? undefined,
-					});
-				}
-			} catch {
-				// Server unreachable — silently ignore, user can login manually
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, [server, user, authEnabled]);
-
-	const openLogin = useCallback(() => setShowAuthModal(true), []);
-	const closeLogin = useCallback(() => setShowAuthModal(false), []);
-
-	const onLoginSuccess = useCallback(async () => {
-		if (!clientRef.current) return;
-		try {
-			const session = await clientRef.current.getSession();
-			if (session.data?.user) {
-				setAuthUser({
-					name: session.data.user.name,
-					email: session.data.user.email,
-					avatar: session.data.user.image ?? undefined,
-				});
-			}
-		} catch {
-			// Session fetch failed — close modal anyway
-		}
-		setShowAuthModal(false);
-	}, []);
-
-	const signOut = useCallback(async () => {
-		if (!clientRef.current) return;
-		await clientRef.current.signOut();
-		setAuthUser(null);
-	}, []);
-
-	return {
-		authUser,
-		showAuthModal,
-		openLogin,
-		closeLogin,
-		onLoginSuccess,
-		signOut,
-		client: clientRef,
-	};
-}
-
 export function Devbar({
 	onSubmit,
 	promptTemplate,
@@ -1369,18 +1297,13 @@ export function Devbar({
 	server,
 	local,
 	live,
-	wsServer,
 	token,
 	project,
-	user,
-	authProxy,
-	orgId,
 	workspace,
-}: DevbarProps): React.ReactNode {
+	workspaceAccess,
+	onTurnOff,
+}: ToolbarProps): React.ReactNode {
 	const state = useDevbarState();
-	const authEnabled = !!(authProxy || user);
-	const auth = useDevbarAuth(server, user, authEnabled);
-
 	// Local token management — when server is set but no token prop,
 	// allow entering a bearer token via the toolbar UI
 	const STORAGE_KEY = "devbar-local-token";
@@ -1392,83 +1315,17 @@ export function Devbar({
 		}
 	});
 	const [showTokenModal, setShowTokenModal] = useState(false);
+	// A report waiting for its sender to read it before it becomes an issue.
+	const [issueDraft, setIssueDraft] = useState<{
+		payload: DevbarPayload;
+		archive?: () => string | null;
+		title: string;
+		pageUrl: string;
+		prompt: string;
+	} | null>(null);
+	const [issueSending, setIssueSending] = useState(false);
 	const effectiveToken = token || localToken || undefined;
-	const isLocalMode = !!server && !authProxy && !user;
-
-	// Collaboration
-	const collabCallbacks: CollaborationCallbacks = useMemo(
-		() => ({
-			onAnnotationAdd: (annotation) => {
-				state.addAnnotation(annotation, true);
-			},
-			onAnnotationRemove: (annotationId) => {
-				state.removeAnnotation(annotationId, true);
-			},
-			onCommentAdd: (annotationId, comment) => {
-				state.addComment(annotationId, comment, true);
-			},
-			onCommentEdit: (annotationId, commentId, text) => {
-				state.updateComment(annotationId, commentId, text, true);
-			},
-			onCommentRemove: (annotationId, commentId) => {
-				state.removeComment(annotationId, commentId, true);
-			},
-			onClear: () => {
-				state.clearAnnotations();
-			},
-		}),
-		[
-			state.addAnnotation,
-			state.removeAnnotation,
-			state.addComment,
-			state.updateComment,
-			state.removeComment,
-			state.clearAnnotations,
-		],
-	);
-
-	// When WS is cross-origin (wsServer set), exchange session cookie for HMAC token
-	// Refreshes every 4 minutes (token expires in 5)
-	const [wsToken, setWsToken] = useState<string | undefined>(undefined);
-	useEffect(() => {
-		if (!wsServer || !server || !auth.authUser) return;
-		let cancelled = false;
-
-		async function fetchToken() {
-			try {
-				const r = await fetch(`${server!.replace(/\/$/, "")}/api/ws-token`, {
-					method: "POST",
-					credentials: "include",
-				});
-				if (cancelled) return;
-				if (r.ok) {
-					const data = await r.json();
-					if (data?.token) setWsToken(data.token);
-				} else {
-					// Session expired or subscription lapsed — clear token to disconnect WS
-					setWsToken(undefined);
-				}
-			} catch {
-				setWsToken(undefined);
-			}
-		}
-
-		fetchToken();
-		const interval = setInterval(fetchToken, 4 * 60 * 1000);
-		return () => {
-			cancelled = true;
-			clearInterval(interval);
-		};
-	}, [wsServer, server, auth.authUser]);
-
-	// Don't connect to WS until token is ready when cross-origin
-	const collabServer = wsServer ? (wsToken ? wsServer : undefined) : server;
-
-	const collab = useCollaboration(collabServer, auth.authUser ?? user, orgId, collabCallbacks, {
-		authToken: wsToken,
-	});
-	useCursorTracker(collab.sendCursor, collab.connected);
-	useViewportTracker(collab.sendViewport, collab.connected);
+	const isLocalMode = !!server;
 
 	// showToast is defined further down; keep a live handle so the mutation
 	// wrappers below can reach it (same pattern as handleCopyRef).
@@ -1476,53 +1333,26 @@ export function Devbar({
 		() => {},
 	);
 
-	// Wrappers that broadcast local mutations to peers
+	// Mutations that offer an undo
 	const localRemoveAnnotation = useCallback(
 		(id: string) => {
 			const removed = state.annotations.find((a) => a.id === id);
 			state.removeAnnotation(id);
-			collab.sendAnnotationRemove(id);
 			if (!removed) return;
 			// Deleting used to be silent and permanent, screenshot and all.
 			showToastRef.current(`Removed ${annotationLabel(removed)}`, {
 				label: "Undo",
 				run: () => {
 					state.addAnnotation(removed);
-					collab.sendAnnotationAdd(removed);
 				},
 			});
 		},
-		[state.annotations, state.removeAnnotation, state.addAnnotation, collab],
-	);
-
-	const localAddComment = useCallback(
-		(annotationId: string, comment: Comment) => {
-			state.addComment(annotationId, comment);
-			collab.sendCommentAdd(annotationId, comment);
-		},
-		[state.addComment, collab.sendCommentAdd],
-	);
-
-	const localEditComment = useCallback(
-		(annotationId: string, commentId: string, text: string) => {
-			state.updateComment(annotationId, commentId, text);
-			collab.sendCommentEdit(annotationId, commentId, text);
-		},
-		[state.updateComment, collab.sendCommentEdit],
-	);
-
-	const localRemoveComment = useCallback(
-		(annotationId: string, commentId: string) => {
-			state.removeComment(annotationId, commentId);
-			collab.sendCommentRemove(annotationId, commentId);
-		},
-		[state.removeComment, collab.sendCommentRemove],
+		[state.annotations, state.removeAnnotation, state.addAnnotation],
 	);
 
 	const localClearAnnotations = useCallback(() => {
 		const cleared = state.annotations;
 		state.clearAnnotations();
-		collab.sendClear();
 		if (cleared.length === 0) return;
 		// "Confirm clear?" is a speed bump, not a safety net. This is the net.
 		showToastRef.current(`Cleared ${cleared.length} annotation${cleared.length === 1 ? "" : "s"}`, {
@@ -1530,17 +1360,10 @@ export function Devbar({
 			run: () => {
 				for (const annotation of cleared) {
 					state.addAnnotation(annotation);
-					collab.sendAnnotationAdd(annotation);
 				}
 			},
 		});
-	}, [
-		state.annotations,
-		state.clearAnnotations,
-		state.addAnnotation,
-		collab.sendClear,
-		collab.sendAnnotationAdd,
-	]);
+	}, [state.annotations, state.clearAnnotations, state.addAnnotation]);
 
 	// The one thing the exported prompt was missing: what the user actually wants
 	// done. Without it the LLM gets evidence with no intent.
@@ -1561,7 +1384,6 @@ export function Devbar({
 	const localArchiveAndClear = useCallback(
 		(method: ExportMethod): string | null => {
 			const id = state.archiveAndClear(method, task);
-			collab.sendClear();
 			// The task describes the batch that was just exported, so it goes with it.
 			setTask("");
 			try {
@@ -1569,7 +1391,7 @@ export function Devbar({
 			} catch {}
 			return id;
 		},
-		[state.archiveAndClear, collab.sendClear, task],
+		[state.archiveAndClear, task],
 	);
 
 	// Exporting clears the batch. That is right most of the time and wrong just
@@ -1579,7 +1401,6 @@ export function Devbar({
 	const restoreExport = useCallback(
 		(id: string): Annotation[] => {
 			const { annotations: restored, task: restoredTask } = state.restoreExport(id);
-			for (const annotation of restored) collab.sendAnnotationAdd(annotation);
 			// The batch comes back with what it was for — unless a new task has
 			// been typed since, which is the live intent and outranks the old one.
 			if (restoredTask) {
@@ -1598,7 +1419,7 @@ export function Devbar({
 			}
 			return restored;
 		},
-		[state.restoreExport, collab.sendAnnotationAdd],
+		[state.restoreExport],
 	);
 
 	/** Toast for a finished export, with the batch one click from coming back. */
@@ -1690,6 +1511,8 @@ export function Devbar({
 	// bridge an agent uses to inspect what the user is looking at.
 	const annotationsRef = useRef(state.annotations);
 	annotationsRef.current = state.annotations;
+	/** The repository's features, which a report names when it touches one. */
+	const featuresRef = useRef<WorkspaceEntry[]>([]);
 	const settingsRef = useRef(settings);
 	settingsRef.current = settings;
 	const localAgent = useLocalAgent({
@@ -1718,6 +1541,35 @@ export function Devbar({
 			endpoint: `${localAgent.url}/api/projects/${encodeURIComponent(claimed.slug)}/workspace`,
 		};
 	}, [workspace, localAgent.status, localAgent.url, localAgent.project, localAgent.projects]);
+	// Fetched when the first annotation appears, so a page nobody annotates asks
+	// the workspace for nothing. A protected workspace refuses and the report
+	// goes out without features.
+	const annotating = state.annotations.length > 0;
+	useEffect(() => {
+		if (!annotating || !workspaceTarget) return;
+		let gone = false;
+		const accessToken = workspaceAccess?.token;
+		void fetch(
+			`${workspaceTarget.endpoint}/entries`,
+			accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
+		)
+			.then((res) => (res.ok ? (res.json() as Promise<{ entries: WorkspaceEntry[] }>) : undefined))
+			.then((data) => {
+				if (!gone && data) featuresRef.current = data.entries.filter((e) => e.kind === "feature");
+			})
+			.catch(() => {});
+		return () => {
+			gone = true;
+		};
+	}, [annotating, workspaceTarget, workspaceAccess?.token]);
+	// With no local server, a deployed workspace takes the report as an issue.
+	const issueEndpoint =
+		!effectiveServer && workspaceTarget && workspaceAccess?.info.capabilities.vibe
+			? workspaceTarget.endpoint
+			: undefined;
+	const canSubmit = !!effectiveServer || !!issueEndpoint;
+	// A deployed page has no local agent to show or configure.
+	const hosted = !!onTurnOff && localAgent.status !== "connected";
 	// Inside the shell's frame the shell is already open; the book button leaves it.
 	const [framed] = useState(isFramed);
 	const enterShell = useCallback(() => {
@@ -1784,7 +1636,11 @@ export function Devbar({
 		panelOpen && (panelTab === "agent" || panelTab === "settings" || panelTab === "shortcuts");
 	const agentPanelOpen = panelOpen && panelTab === "agent";
 	const settingsPanelOpen = panelOpen && (panelTab === "settings" || panelTab === "shortcuts");
-	const visiblePanelTabs = annotationPanelOpen ? ANNOTATION_TABS : PREFERENCE_TABS;
+	const visiblePanelTabs = annotationPanelOpen
+		? ANNOTATION_TABS
+		: hosted
+			? PREFERENCE_TABS.filter((tab) => tab.key !== "agent")
+			: PREFERENCE_TABS;
 
 	const closePanel = useCallback(() => {
 		setPanelOpen(false);
@@ -1905,18 +1761,16 @@ export function Devbar({
 			if (tool === "capture") setCaptureSubMode(variant === "fullpage" ? "fullpage" : "region");
 			if (tool === "record") setRecordSubMode(variant === "screen" ? "screen" : "tab");
 			state.activateTool(tool);
-			collab.sendToolChange(tool);
 			closePanel();
 			setShowExportMenu(false);
 			setFocusedAnnotation(null);
 		},
-		[state.activateTool, collab.sendToolChange, closePanel],
+		[state.activateTool, closePanel],
 	);
 
 	const stopTool = useCallback(() => {
 		state.deactivateTool();
-		collab.sendToolChange(null);
-	}, [state.deactivateTool, collab.sendToolChange]);
+	}, [state.deactivateTool]);
 
 	/** Focus the task field, opening the annotations panel if it is not on screen. */
 	const focusTask = useCallback(() => {
@@ -1961,7 +1815,7 @@ export function Devbar({
 			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
 				if (state.annotations.length > 0) {
 					e.preventDefault();
-					if (effectiveServer) handleServerSubmitRef.current();
+					if (canSubmit) handleServerSubmitRef.current();
 					else handleCopyRef.current();
 					return;
 				}
@@ -2102,7 +1956,7 @@ export function Devbar({
 		togglePanelTab,
 		showExportMenu,
 		showFooterMenu,
-		effectiveServer,
+		canSubmit,
 		toastAction,
 		toggleShell,
 	]);
@@ -2132,7 +1986,13 @@ export function Devbar({
 
 	const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const handleCopy = useCallback(async () => {
-		const payload = buildPayload(state.annotations, promptTemplate, settings, task);
+		const payload = buildPayload(
+			state.annotations,
+			promptTemplate,
+			settings,
+			task,
+			featuresRef.current,
+		);
 		await copyToClipboard(payload);
 		setCopied(true);
 		clearTimeout(copiedTimerRef.current);
@@ -2157,7 +2017,13 @@ export function Devbar({
 	handleCopyRef.current = handleCopy;
 
 	const handleCopyJson = useCallback(async () => {
-		const payload = buildPayload(state.annotations, promptTemplate, settings, task);
+		const payload = buildPayload(
+			state.annotations,
+			promptTemplate,
+			settings,
+			task,
+			featuresRef.current,
+		);
 		const json = JSON.stringify(payload, null, 2);
 		try {
 			await navigator.clipboard.writeText(json);
@@ -2194,7 +2060,13 @@ export function Devbar({
 
 	const handleExport = useCallback(
 		(format: ExportFormat = "md") => {
-			const payload = buildPayload(state.annotations, promptTemplate, settings, task);
+			const payload = buildPayload(
+				state.annotations,
+				promptTemplate,
+				settings,
+				task,
+				featuresRef.current,
+			);
 			const ok = exportToFile(payload, format, settings);
 			// A PDF that could not reach the print dialog was saved as .html
 			// instead; say which file actually landed.
@@ -2231,28 +2103,22 @@ export function Devbar({
 			payload: DevbarPayload,
 			options?: { dispatch?: boolean; archive?: () => string | null },
 		) => {
-			if (!effectiveServer) return;
+			if (!effectiveServer) {
+				if (!issueEndpoint) return;
+				setIssueDraft({
+					payload,
+					...(options?.archive ? { archive: options.archive } : {}),
+					title: redactReport(
+						payload.task?.split("\n")[0] || `Report from ${payload.title || payload.url}`,
+					),
+					pageUrl: redactReport(payload.url),
+					prompt: redactReport(payload.prompt),
+				});
+				return;
+			}
 			const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-			if (effectiveToken) {
-				// Mode D: static bearer token (e.g. local server)
-				headers["Authorization"] = `Bearer ${effectiveToken}`;
-			} else if (authProxy && auth.authUser) {
-				// Mode C: get signed token from auth proxy
-				try {
-					const res = await fetch(authProxy, { method: "POST", credentials: "include" });
-					if (res.ok) {
-						const data = await res.json();
-						if (data.token) headers["X-Devbar-Token"] = data.token;
-					}
-				} catch {}
-			} else if (user) {
-				// Mode A: injected identity headers
-				headers["X-Devbar-Author"] = user.name;
-				if (user.email) headers["X-Devbar-Email"] = user.email;
-				if (user.avatar) headers["X-Devbar-Avatar"] = user.avatar;
-			}
-			// Mode B: session cookie sent automatically via credentials: "include"
+			if (effectiveToken) headers["Authorization"] = `Bearer ${effectiveToken}`;
 
 			try {
 				const url = `${effectiveServer}/api/reports`;
@@ -2269,9 +2135,6 @@ export function Devbar({
 				const res = await fetch(url, {
 					method: "POST",
 					headers,
-					// Only send cookies when not using bearer token auth —
-					// credentials: "include" with Access-Control-Allow-Origin: * is blocked by browsers
-					...(effectiveToken ? {} : { credentials: "include" as const }),
 					body,
 				});
 				if (res.ok) {
@@ -2324,11 +2187,10 @@ export function Devbar({
 		},
 		[
 			effectiveServer,
+			issueEndpoint,
+			workspaceAccess?.token,
 			effectiveToken,
 			effectiveProject,
-			authProxy,
-			auth.authUser,
-			user,
 			onSubmit,
 			showToast,
 			exportedToast,
@@ -2339,16 +2201,61 @@ export function Devbar({
 		],
 	);
 
+	const sendIssueDraft = async () => {
+		if (!issueDraft || !issueEndpoint) return;
+		setIssueSending(true);
+		try {
+			const res = await fetch(`${issueEndpoint}/vibe`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...(workspaceAccess?.token ? { Authorization: `Bearer ${workspaceAccess.token}` } : {}),
+				},
+				body: JSON.stringify({
+					prompt: issueDraft.prompt,
+					title: issueDraft.title,
+					pageUrl: issueDraft.pageUrl,
+				}),
+			});
+			const data = (await res.json().catch(() => ({}))) as {
+				error?: string;
+				issue?: { number: number; url: string };
+			};
+			if (!res.ok || !data.issue) {
+				showToast(`Send failed (${res.status})${data.error ? `: ${data.error}` : ""}`);
+				return;
+			}
+			const issue = data.issue;
+			onSubmit?.(issueDraft.payload);
+			if (issueDraft.archive) {
+				issueDraft.archive();
+				setPanelOpen(false);
+			}
+			setIssueDraft(null);
+			showToast(`Issue #${issue.number} opened`, {
+				label: "Open issue",
+				run: () => window.open(issue.url, "_blank", "noopener"),
+			});
+		} catch {
+			showToast("Send failed (network error)");
+		} finally {
+			setIssueSending(false);
+		}
+	};
+
 	const handleServerSubmit = useCallback(
 		async (options?: { dispatch?: boolean }) => {
-			if (!effectiveServer) return;
-			await submitReport(buildPayload(state.annotations, promptTemplate, settings, task), {
-				dispatch: options?.dispatch,
-				archive: () => localArchiveAndClear("server"),
-			});
+			if (!canSubmit) return;
+			await submitReport(
+				buildPayload(state.annotations, promptTemplate, settings, task, featuresRef.current),
+				{
+					dispatch: options?.dispatch,
+					archive: () => localArchiveAndClear("server"),
+				},
+			);
 		},
 		[
-			effectiveServer,
+			canSubmit,
 			submitReport,
 			state.annotations,
 			promptTemplate,
@@ -2373,9 +2280,8 @@ export function Devbar({
 	const handleCapture = useCallback(
 		(annotation: Annotation) => {
 			state.addAnnotation(annotation);
-			collab.sendAnnotationAdd(annotation);
 		},
-		[state.addAnnotation, collab.sendAnnotationAdd],
+		[state.addAnnotation],
 	);
 
 	// Rapid mode: stay in tool after capture for supported tools
@@ -2386,10 +2292,9 @@ export function Devbar({
 	const handleRapidCapture = useCallback(
 		(annotation: Annotation) => {
 			state.addAnnotation(annotation);
-			collab.sendAnnotationAdd(annotation);
 			// Don't deactivate - stay in tool mode
 		},
-		[state.addAnnotation, collab.sendAnnotationAdd],
+		[state.addAnnotation],
 	);
 
 	const handleFocusAnnotation = useCallback(
@@ -2469,10 +2374,10 @@ export function Devbar({
 				text,
 				timestamp: Date.now(),
 			};
-			localAddComment(annotationId, comment);
+			state.addComment(annotationId, comment);
 			setCommentTexts((prev) => ({ ...prev, [annotationId]: "" }));
 		},
-		[commentTexts, authorName, localAddComment],
+		[commentTexts, authorName, state.addComment],
 	);
 
 	const startEditComment = useCallback(
@@ -2487,11 +2392,11 @@ export function Devbar({
 		if (!editingComment) return;
 		const trimmed = editText.trim();
 		if (trimmed && trimmed !== "") {
-			localEditComment(editingComment.annotationId, editingComment.commentId, trimmed);
+			state.updateComment(editingComment.annotationId, editingComment.commentId, trimmed);
 		}
 		setEditingComment(null);
 		setEditText("");
-	}, [editingComment, editText, localEditComment]);
+	}, [editingComment, editText, state.updateComment]);
 
 	const cancelEditComment = useCallback(() => {
 		setEditingComment(null);
@@ -2540,8 +2445,8 @@ export function Devbar({
 					animation: `${floatingPanelAnim} 0.15s cubic-bezier(0.16, 1, 0.3, 1)`,
 				};
 
-	// Shared auth buttons
-	const renderAuthButtons = (btnClass: string, withTooltip: boolean) => (
+	// Shared token button
+	const renderTokenButton = (btnClass: string, withTooltip: boolean) => (
 		<>
 			{isLocalMode && !token && (
 				<button
@@ -2568,36 +2473,6 @@ export function Devbar({
 					{withTooltip && (
 						<span className="devbar-tooltip">
 							{localToken ? "Token connected" : "Connect token"}
-						</span>
-					)}
-				</button>
-			)}
-			{server && authEnabled && !user && !auth.authUser && (
-				<button type="button" className={btnClass} onClick={auth.openLogin} title="Sign in">
-					<UserIcon />
-					{withTooltip && <span className="devbar-tooltip">Sign In</span>}
-				</button>
-			)}
-			{auth.authUser && (
-				<button
-					type="button"
-					className={`${btnClass}${btnClass === "devbar-bar-btn" ? " devbar-bar-btn-user" : ""}`}
-					title={`${auth.authUser.name} (${auth.authUser.email})${server && !user ? " — click to sign out" : ""}`}
-					onClick={server && !user ? auth.signOut : undefined}
-				>
-					{auth.authUser.avatar ? (
-						<img
-							src={auth.authUser.avatar}
-							alt=""
-							style={{ width: 18, height: 18, borderRadius: "50%" }}
-						/>
-					) : (
-						<UserIcon />
-					)}
-					{withTooltip && (
-						<span className="devbar-tooltip">
-							{auth.authUser.name}
-							{server && !user ? " (click to sign out)" : ""}
 						</span>
 					)}
 				</button>
@@ -2730,7 +2605,7 @@ export function Devbar({
 			>
 				<PrintIcon /> .pdf
 			</button>
-			{effectiveServer && !omit?.has("submit") && (
+			{canSubmit && !omit?.has("submit") && (
 				<button
 					type="button"
 					className="devbar-export-menu-item"
@@ -2745,19 +2620,21 @@ export function Devbar({
 			{/* Submit stores a report; this one also starts the run. Shown even
 			    when there is no agent to take it, because "why is this greyed out"
 			    is answerable and "where did that option go" is not. */}
-			<button
-				type="button"
-				className="devbar-export-menu-item"
-				disabled={!agentReady}
-				title={agentReason ?? "Submit the report and run the agent on it"}
-				onClick={() => {
-					if (!agentReady) return;
-					void handleServerSubmit({ dispatch: true });
-					close();
-				}}
-			>
-				<AgentIcon /> Send to agent
-			</button>
+			{!hosted && (
+				<button
+					type="button"
+					className="devbar-export-menu-item"
+					disabled={!agentReady}
+					title={agentReason ?? "Submit the report and run the agent on it"}
+					onClick={() => {
+						if (!agentReady) return;
+						void handleServerSubmit({ dispatch: true });
+						close();
+					}}
+				>
+					<AgentIcon /> Send to agent
+				</button>
+			)}
 			<div className="devbar-export-menu-divider" />
 			<button
 				type="button"
@@ -2788,7 +2665,7 @@ export function Devbar({
 	const renderExportButton = (tooltipBelow?: boolean) => {
 		const pending = state.annotations.length;
 		const isPrimary = pending > 0 && !isVertical;
-		const primaryLabel = effectiveServer ? "Submit" : "Copy";
+		const primaryLabel = issueEndpoint ? "Send" : effectiveServer ? "Submit" : "Copy";
 		const menuStyle: React.CSSProperties = tooltipBelow
 			? { bottom: "auto", top: "100%", marginTop: 8 }
 			: isVertical
@@ -2812,7 +2689,7 @@ export function Devbar({
 							togglePanelTab("annotations");
 							return;
 						}
-						if (effectiveServer) void handleServerSubmit();
+						if (canSubmit) void handleServerSubmit();
 						else void handleCopy();
 					}}
 					style={
@@ -2823,7 +2700,7 @@ export function Devbar({
 								: undefined
 					}
 				>
-					{copied ? <CheckIcon /> : effectiveServer ? <SendIcon /> : <SubmitIcon />}
+					{copied ? <CheckIcon /> : canSubmit ? <SendIcon /> : <SubmitIcon />}
 					{/* Label only — the count lives on the Annotations badge next door,
 					    and repeating it here reads as two separate numbers. The label is
 					    dropped on narrow viewports (see the media query) where the row
@@ -2857,7 +2734,7 @@ export function Devbar({
 					<div className={`devbar-export-menu devbar-theme-${resolvedTheme}`} style={menuStyle}>
 						{renderExportMenuItems(
 							() => setShowExportMenu(false),
-							new Set([effectiveServer ? "submit" : "copy"]),
+							new Set([canSubmit ? "submit" : "copy"]),
 						)}
 					</div>
 				)}
@@ -2904,7 +2781,13 @@ export function Devbar({
 	// Preview content generator
 	const getPreviewContent = useCallback(
 		(format: "md" | "json"): string => {
-			const payload = buildPayload(state.annotations, promptTemplate, settings, task);
+			const payload = buildPayload(
+				state.annotations,
+				promptTemplate,
+				settings,
+				task,
+				featuresRef.current,
+			);
 			const text = format === "json" ? JSON.stringify(payload, null, 2) : payload.prompt;
 			// The preview is for reading. A screenshot inlines as tens of thousands
 			// of base64 characters, which buried every line worth checking — the
@@ -3251,6 +3134,11 @@ export function Devbar({
 	// Settings content renderer
 	const renderSettingsContent = () => (
 		<div className="devbar-panel-body" style={{ padding: 12 }}>
+			{onTurnOff && (
+				<button type="button" className="devbar-settings-reset" onClick={onTurnOff}>
+					Turn off on this site
+				</button>
+			)}
 			<div className="devbar-settings-row">
 				<div className="devbar-settings-label">
 					<div className="devbar-settings-title">Local agent</div>
@@ -3475,7 +3363,7 @@ export function Devbar({
 							["Alt+,", "Settings"],
 							["Alt+/", "This help"],
 							["⌘Z", "Undo last annotation"],
-							["⌘↵", effectiveServer ? "Submit the report" : "Copy the report"],
+							["⌘↵", canSubmit ? "Send the report" : "Copy the report"],
 							["Esc", "Close panel"],
 						],
 					],
@@ -3521,7 +3409,8 @@ export function Devbar({
 
 				// Built with the task the batch was archived under, so a re-export
 				// says what it was for rather than shipping evidence alone.
-				const getPayload = () => buildPayload(exp.annotations, promptTemplate, settings, exp.task);
+				const getPayload = () =>
+					buildPayload(exp.annotations, promptTemplate, settings, exp.task, featuresRef.current);
 
 				const saveAs = (format: ExportFormat) => {
 					const ok = exportToFile(getPayload(), format, settings);
@@ -3647,30 +3536,32 @@ export function Devbar({
 									>
 										<PrintIcon /> .pdf
 									</button>
-									{effectiveServer && (
+									{canSubmit && (
 										<>
 											<button
 												type="button"
 												className="devbar-history-action-btn devbar-history-action-btn-labeled"
-												title="Submit this report to the server again"
+												title="Send this report again"
 												onClick={() => {
 													void submitReport(getPayload());
 												}}
 											>
 												<SendIcon /> Submit
 											</button>
-											<button
-												type="button"
-												className="devbar-history-action-btn devbar-history-action-btn-labeled"
-												disabled={!agentReady}
-												title={agentReason ?? "Submit this report and run the agent on it"}
-												onClick={() => {
-													if (!agentReady) return;
-													void submitReport(getPayload(), { dispatch: true });
-												}}
-											>
-												<AgentIcon /> Agent
-											</button>
+											{!hosted && (
+												<button
+													type="button"
+													className="devbar-history-action-btn devbar-history-action-btn-labeled"
+													disabled={!agentReady}
+													title={agentReason ?? "Submit this report and run the agent on it"}
+													onClick={() => {
+														if (!agentReady) return;
+														void submitReport(getPayload(), { dispatch: true });
+													}}
+												>
+													<AgentIcon /> Agent
+												</button>
+											)}
 										</>
 									)}
 									<button
@@ -3773,7 +3664,7 @@ export function Devbar({
 					if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
 						e.preventDefault();
 						if (state.annotations.length === 0) return;
-						if (effectiveServer) handleServerSubmitRef.current();
+						if (canSubmit) handleServerSubmitRef.current();
 						else handleCopyRef.current();
 						return;
 					}
@@ -3899,6 +3790,40 @@ export function Devbar({
 										type="button"
 										className="devbar-annotation-locate"
 										onClick={() => {
+											const d = a.data as ElementData;
+											const leaf = d.reactContext?.components[d.reactContext.components.length - 1];
+											let el: Element | null = null;
+											try {
+												el = d.cssSelector ? document.querySelector(d.cssSelector) : null;
+											} catch {}
+											const stable = el ? stableSelector(el) : undefined;
+											// A selector made of tree positions only goes in when there is nothing better.
+											const fallback = !stable && !leaf?.name ? d.cssSelector : undefined;
+											shellBridge.addToFeature({
+												url: window.location.href,
+												...(stable || fallback ? { selector: stable ?? fallback } : {}),
+												...(leaf?.name ? { component: leaf.name } : {}),
+												...(fallback ? { positional: true } : {}),
+												...(leaf?.source
+													? { file: `${leaf.source.fileName}:${leaf.source.lineNumber}` }
+													: {}),
+												...(d.innerText?.trim() ? { text: d.innerText.trim().slice(0, 200) } : {}),
+												...(a.comments.length
+													? { note: a.comments.map((c) => c.text).join(" ") }
+													: {}),
+											});
+										}}
+										title="Add to feature"
+										aria-label="Add to feature"
+									>
+										<PlusIcon />
+									</button>
+								)}
+								{shellBridge.connected && a.type === "element" && (
+									<button
+										type="button"
+										className="devbar-annotation-locate"
+										onClick={() => {
 											// Handed to the Workspace shell framing this page — nowhere else.
 											const d = a.data as ElementData;
 											const leaf = d.reactContext?.components[d.reactContext.components.length - 1];
@@ -3963,7 +3888,7 @@ export function Devbar({
 														<button
 															type="button"
 															className="devbar-thread-delete"
-															onClick={() => localRemoveComment(a.id, c.id)}
+															onClick={() => state.removeComment(a.id, c.id)}
 															title="Delete comment"
 														>
 															&times;
@@ -4441,15 +4366,14 @@ export function Devbar({
 							</span>
 						</button>
 					)}
-					{collab.peers.length > 0 && <PeerAvatars peers={collab.peers} />}
 					<div className="devbar-bar-divider" />
 					{/* Everything that sends the report, together: the primary action,
 					    the formats behind its caret, and where a run ends up. */}
-					{renderAgentButton("devbar-bar-btn", "devbar-bar-btn-active", true)}
+					{!hosted && renderAgentButton("devbar-bar-btn", "devbar-bar-btn-active", true)}
 					{renderExportButton()}
 					<div className="devbar-bar-divider" />
 					{renderSettingsButton("devbar-bar-btn", "devbar-bar-btn-active", true)}
-					{renderAuthButtons("devbar-bar-btn", true)}
+					{renderTokenButton("devbar-bar-btn", true)}
 					<button
 						type="button"
 						className="devbar-bar-btn"
@@ -4533,7 +4457,7 @@ export function Devbar({
 													<button
 														type="button"
 														className="devbar-thread-delete"
-														onClick={() => localRemoveComment(a.id, c.id)}
+														onClick={() => state.removeComment(a.id, c.id)}
 														title="Delete"
 													>
 														&times;
@@ -4683,16 +4607,60 @@ export function Devbar({
 					);
 				})()}
 
-			{/* Auth modal */}
-			{auth.showAuthModal && server && authEnabled && auth.client.current && (
-				<AuthModal
-					client={auth.client.current}
-					onSuccess={auth.onLoginSuccess}
-					onClose={auth.closeLogin}
-				/>
-			)}
-
 			{/* Local token modal */}
+			{issueDraft && (
+				<div className="devbar-auth-backdrop" onClick={() => setIssueDraft(null)}>
+					<div
+						className="devbar-auth-modal devbar-issue-review"
+						role="dialog"
+						aria-label="Review before opening an issue"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<div className="devbar-auth-header">
+							<span className="devbar-panel-title">Review before opening an issue</span>
+							<button
+								type="button"
+								className="devbar-panel-close"
+								aria-label="Close"
+								onClick={() => setIssueDraft(null)}
+							>
+								&times;
+							</button>
+						</div>
+						<p className="devbar-issue-review-note">
+							{workspaceAccess?.info.public
+								? "This repository is public. Anyone on the internet can read this issue. "
+								: "Everyone with access to the repository can read this issue. "}
+							Screenshots, field values and recognizable secrets are removed. Check the page text
+							yourself and delete anything that shouldn't be there.
+						</p>
+						<textarea
+							className="devbar-issue-review-text"
+							aria-label="Issue body"
+							value={issueDraft.prompt}
+							onChange={(e) => setIssueDraft({ ...issueDraft, prompt: e.target.value })}
+							onKeyDown={(e) => e.stopPropagation()}
+						/>
+						<div className="devbar-issue-review-actions">
+							<button
+								type="button"
+								className="devbar-note-input-cancel"
+								onClick={() => setIssueDraft(null)}
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								className="devbar-note-input-save"
+								disabled={issueSending || !issueDraft.prompt.trim()}
+								onClick={() => void sendIssueDraft()}
+							>
+								Open issue
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 			{showTokenModal && (
 				<div className="devbar-auth-backdrop" onClick={() => setShowTokenModal(false)}>
 					<div className="devbar-auth-modal" onClick={(e) => e.stopPropagation()}>
@@ -4779,7 +4747,6 @@ export function Devbar({
 			)}
 
 			{/* Peer cursors */}
-			{collab.connected && <PeerCursors peers={collab.peers} />}
 
 			{/* Toast */}
 			{toast && (

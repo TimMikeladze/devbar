@@ -10,12 +10,14 @@ import {
 } from "../blocks";
 import { parseDoc } from "../classify";
 import { lineMap } from "../diff";
+import { untickEdited } from "../feature";
 import { toggleTask } from "../markdown";
 import type { BlameRange, HistoryEntry, WorkspaceKind } from "../types";
 import { isUntitled, type Workspace } from "../use-workspace";
 import { BlockEditor } from "./block-editor";
 import { CommentsPanel } from "./comments";
 import { EmojiPicker } from "./emoji-picker";
+import { FeatureProperties, type Located } from "./feature";
 import { customIcon, Glyph, PageIcon, tileHue } from "./glyphs";
 import { HistoryPanel, VersionView } from "./history";
 import { IssueChip, issueRefs, IssuesProperty } from "./issues";
@@ -30,6 +32,8 @@ import { ProposeButton } from "./propose";
  */
 
 const SECTION_OF: Record<WorkspaceKind, string> = {
+	feature: "Product",
+	knowledge: "Knowledge",
 	spec: "Specs",
 	skill: "Skills",
 	instructions: "Agents",
@@ -39,6 +43,8 @@ const SECTION_OF: Record<WorkspaceKind, string> = {
 };
 
 const NEW_KIND: Record<WorkspaceKind, NewKind> = {
+	feature: "feature",
+	knowledge: "knowledge",
 	spec: "spec",
 	skill: "skill",
 	instructions: "instructions",
@@ -124,6 +130,8 @@ export function NotionPage(props: {
 	onExpand?: () => void;
 	onClose: () => void;
 	onNavigate: (path: string) => void;
+	onLocate?: (selectors: string[]) => void;
+	located?: Located | null;
 }): React.ReactNode {
 	const { ws } = props;
 	const open = ws.open;
@@ -314,7 +322,10 @@ export function NotionPage(props: {
 		// A page that has never been saved takes its file name from its title.
 		if (!draft?.baseSha && !open.file && isUntitled(path)) {
 			const taken = new Set(ws.pages.map((e) => e.path));
-			ws.move(path, freePath(NEW_KIND[kind], slugify(next), taken, ws.pages));
+			// A feature or a note keeps the folder it was started in.
+			const home =
+				kind === "feature" || kind === "knowledge" ? path.replace(/\/[^/]*$/, "") : undefined;
+			ws.move(path, freePath(NEW_KIND[kind], slugify(next), taken, ws.pages, ws.info?.dirs, home));
 		}
 	};
 
@@ -345,8 +356,17 @@ export function NotionPage(props: {
 			: undefined;
 	// The title, the icon and the linked issues have places of their own.
 	const properties = Object.entries(parsed.frontmatter).filter(
-		([key]) => key !== "title" && key !== "icon" && key !== "issues",
+		([key]) =>
+			key !== "title" &&
+			key !== "icon" &&
+			key !== "issues" &&
+			!(kind === "feature" && (key === "pages" || key === "elements" || key === "knowledge")),
 	);
+	// "Product / product / Agent page" says the section twice.
+	const parentDir = open.path.split("/").slice(0, -1).join("/");
+	const isRootOfSection =
+		(kind === "feature" || kind === "knowledge") &&
+		parentDir === (kind === "feature" ? ws.info?.dirs?.product : ws.info?.dirs?.knowledge);
 	const icon = customIcon(parsed.frontmatter.icon);
 	const hue = tileHue(open, parsed.frontmatter.icon);
 
@@ -355,7 +375,7 @@ export function NotionPage(props: {
 			<div className="devbar-nt-topbar">
 				<div className="devbar-nt-crumbs">
 					<span>{SECTION_OF[kind]}</span>
-					{open.path.includes("/") && (
+					{open.path.includes("/") && !isRootOfSection && (
 						<>
 							<span className="devbar-nt-crumb-sep">/</span>
 							<span title={open.path}>{open.path.split("/").slice(-2, -1)[0]}</span>
@@ -691,6 +711,17 @@ export function NotionPage(props: {
 											onChange={(next) => edit(setProperty(content, key, next))}
 										/>
 									))}
+									{kind === "feature" && (
+										<FeatureProperties
+											ws={ws}
+											path={path}
+											content={content}
+											edit={edit}
+											onNavigate={props.onNavigate}
+											{...(props.onLocate ? { onLocate: props.onLocate } : {})}
+											located={props.located ?? null}
+										/>
+									)}
 									<IssuesProperty ws={ws} />
 									{parsed.tasks && (
 										<div className="devbar-nt-prop">
@@ -737,7 +768,9 @@ export function NotionPage(props: {
 										body={body}
 										lineOffset={lineOffset}
 										skip={heading?.start}
-										onChange={(next) => edit(head + next)}
+										onChange={(next) =>
+											edit(head + (kind === "feature" ? untickEdited(body, next) : next))
+										}
 										onToggleTask={(line) => edit(toggleTask(content, line))}
 										onNavigate={props.onNavigate}
 										basePath={path}

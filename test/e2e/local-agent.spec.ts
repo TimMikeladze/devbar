@@ -79,6 +79,12 @@ test.describe("local agent", () => {
 		await page.waitForSelector(".devbar-bar");
 	});
 
+	// A closing page's DELETE is best effort and the server only drops silent
+	// pages after 45s, so under load the last test's page can still be listed.
+	test.afterEach(() => {
+		for (const live of server?.pages.list() ?? []) server?.pages.disconnect(live.id);
+	});
+
 	test("discovers the server and names the matched project", async ({ page }) => {
 		await page.locator(".devbar-bar").getByRole("button", { name: "Settings" }).click();
 

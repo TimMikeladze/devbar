@@ -630,6 +630,112 @@ describe("workspace handler: GitHub sign-in and permissions", () => {
 	});
 });
 
+describe("workspace handler: who can submit", () => {
+	const reader = async () => ({
+		login: "rita",
+		id: 1,
+		permission: "read" as const,
+	});
+	const setup = (options: {
+		public?: boolean;
+		submitPermission?: "read" | "write";
+		permission?: "read" | "write";
+	}) => {
+		const backend = stubBackend();
+		const info = backend.info;
+		backend.info = async () => ({ ...(await info()), ...(options.public ? { public: true } : {}) });
+		backend.identify = async () => ({
+			...(await reader()),
+			permission: options.permission ?? "read",
+		});
+		return createWorkspaceHandler({
+			backend,
+			githubToken: () => "t",
+			...(options.submitPermission ? { submitPermission: options.submitPermission } : {}),
+		});
+	};
+	const propose = {
+		title: "t",
+		files: [{ path: "README.md", content: "x" }],
+	};
+
+	test("a reader proposes on a private repository, and needs write on a public one", async () => {
+		const open = await setup({})(post("https://app.example/api/devbar/changes", propose));
+		expect(open.status).toBe(200);
+
+		const handler = setup({ public: true });
+		const refused = await handler(post("https://app.example/api/devbar/changes", propose));
+		expect(refused.status).toBe(403);
+		expect(await refused.json()).toMatchObject({ needs: "write" });
+
+		const info = await (await handler(new Request("https://app.example/api/devbar/info"))).json();
+		expect(info).toMatchObject({
+			needsPermission: "write",
+			capabilities: { pullRequests: false, vibe: false },
+		});
+
+		const writer = setup({ public: true, permission: "write" });
+		expect((await writer(post("https://app.example/api/devbar/changes", propose))).status).toBe(
+			200,
+		);
+	});
+
+	test("submitPermission raises the floor on a private repository", async () => {
+		const handler = setup({ submitPermission: "write" });
+		expect((await handler(post("https://app.example/api/devbar/changes", propose))).status).toBe(
+			403,
+		);
+		expect(
+			(await handler(post("https://app.example/api/devbar/vibe", { prompt: "hi" }))).status,
+		).toBe(403);
+	});
+
+	test("rate limit: refuses past the max with Retry-After, one person at a time", async () => {
+		const backend = stubBackend();
+		const handler = createWorkspaceHandler({
+			backend,
+			authorize: (r) => ({ name: r.headers.get("x-who") as string }),
+			rateLimit: { max: 2, windowSeconds: 60 },
+		});
+		const send = (who: string) =>
+			handler(post("https://app.example/api/devbar/changes", propose, { "x-who": who }));
+		expect((await send("ana")).status).toBe(200);
+		expect((await send("ana")).status).toBe(200);
+		const limited = await send("ana");
+		expect(limited.status).toBe(429);
+		expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
+		expect((await send("bo")).status).toBe(200);
+		expect(backend.proposals).toHaveLength(3);
+	});
+
+	test("rate limit: a shared store decides when given, and false turns it off", async () => {
+		const seen: string[] = [];
+		const shared = createWorkspaceHandler({
+			backend: stubBackend(),
+			authorize: () => ({ name: "ana", email: "ana@acme.com" }),
+			rateLimit: {
+				consume: (key) => {
+					seen.push(key);
+					return false;
+				},
+			},
+		});
+		expect((await shared(post("https://app.example/api/devbar/changes", propose))).status).toBe(
+			429,
+		);
+		expect(seen).toEqual(["user:ana@acme.com"]);
+
+		const off = createWorkspaceHandler({
+			backend: stubBackend(),
+			authorize: () => true,
+			rateLimit: false,
+		});
+		for (let i = 0; i < 35; i++) {
+			expect((await off(post("https://app.example/api/devbar/changes", propose))).status).toBe(200);
+		}
+	});
+});
+
 describe("workspace handler: requireGitHub", () => {
 	const propose = { title: "t", files: [{ path: "a.md", content: "" }] };
 

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { WorkspaceConfig } from "../../config";
 import { encodeMarker } from "../anchor";
-import { buildEntry, classifyPath, MAX_FILE_BYTES, sortEntries } from "../classify";
+import { buildEntry, classifyPath, MAX_FILE_BYTES, sortEntries, workspaceDirs } from "../classify";
 import { installationTokenSource, type AppCredentials } from "../github/app";
 import { createFetchClient, type GitHubClient } from "../github/client";
 import { createGitHubRepo, type GitHubRepo } from "../github/repo";
@@ -141,10 +141,12 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 	const personalRepo = (actor: Actor): GitHubRepo | undefined =>
 		actor.github?.token ? createGitHubRepo(clientFor(actor.github.token), options.repo) : undefined;
 
-	let repoInfo: Promise<{ default_branch: string; html_url: string }> | undefined;
+	let repoInfo:
+		| Promise<{ default_branch: string; html_url: string; private?: boolean }>
+		| undefined;
 	const repository = () =>
 		(repoInfo ??= server
-			.rest<{ default_branch: string; html_url: string }>("GET", repoPath)
+			.rest<{ default_branch: string; html_url: string; private?: boolean }>("GET", repoPath)
 			.catch((err) => {
 				repoInfo = undefined;
 				throw err;
@@ -347,7 +349,7 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 	return {
 		async info() {
 			const repo = await repository();
-			const vibe = config.vibe === false ? undefined : (config.vibe?.mention ?? "@claude");
+			const vibe = config.vibe === false ? undefined : config.vibe?.mention;
 			const limit = server.rateLimit();
 			return {
 				backend: "github",
@@ -356,10 +358,12 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 				defaultBranch: repo.default_branch,
 				baseBranch: await baseBranch(),
 				repoUrl: repo.html_url,
+				...(repo.private === false ? { public: true } : {}),
+				dirs: workspaceDirs(config),
 				capabilities: {
 					write: false,
 					pullRequests: true,
-					vibe: !!vibe,
+					vibe: config.vibe !== false,
 					status: false,
 					branches: true,
 					history: true,
@@ -488,9 +492,9 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 
 		async vibe(input, actor) {
 			if (config.vibe === false) throw new WorkspaceHttpError(501, "Asking an agent is turned off");
-			const mention = config.vibe?.mention ?? "@claude";
+			const mention = config.vibe?.mention;
 			const prompt = input.prompt.trim();
-			const firstLine = prompt.split("\n")[0] as string;
+			const firstLine = input.title?.trim() || (prompt.split("\n")[0] as string);
 			const title = firstLine.length > 80 ? `${firstLine.slice(0, 77)}…` : firstLine;
 			// Agents generally answer only people who can write; below that the
 			// server's token asks on the person's behalf, so the request still runs.
@@ -508,7 +512,7 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 					? ` by **${actor.user.name}**${actor.verified ? "" : " (self-reported)"}`
 					: "";
 			const body = [
-				`${mention} ${prompt}`,
+				mention ? `${mention} ${prompt}` : prompt,
 				"",
 				...(context.length ? ["**Context**", ...context, ""] : []),
 				"---",

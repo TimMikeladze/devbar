@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { Devbar, type DevbarProps } from "@/toolbar/toolbar";
+import { Devbar } from "@/toolbar/devbar";
+import type { DevbarProps } from "@/toolbar/toolbar";
 import { DevbarShell, type DevbarShellProps } from "@/workspace/shell";
 
 export function init(config: DevbarProps = {}): { destroy: () => void } {

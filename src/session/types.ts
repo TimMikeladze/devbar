@@ -112,8 +112,13 @@ export type PageContext = {
 	annotations: Annotation[];
 	/** What the user actually wants changed. Stated once, up front. */
 	task?: string;
+	/** The product features this page or these annotations map to. */
+	features?: MatchedFeature[];
 	settings?: DevbarSettings;
 };
+
+/** A feature file a report touches, and what tied it to the report. */
+export type MatchedFeature = { path: string; title: string; matched: "page" | "element" };
 
 export type PromptTemplate = (context: PageContext) => string;
 
@@ -199,12 +204,6 @@ export type DevbarSettings = {
 	capture: CaptureConfig;
 };
 
-export type DevbarUser = {
-	name: string;
-	email: string;
-	avatar?: string;
-};
-
 export type ExportMethod =
 	| "clipboard"
 	| "json"
@@ -256,6 +255,8 @@ export type DevbarPayload = {
 	annotations: Annotation[];
 	/** What the user actually wants changed. Stated once, up front. */
 	task?: string;
+	/** The product features this page or these annotations map to. */
+	features?: MatchedFeature[];
 	/** The settings the report was captured under — what was captured, and how. */
 	settings?: DevbarSettings;
 	prompt: string;

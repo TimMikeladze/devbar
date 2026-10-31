@@ -2,10 +2,15 @@ import type {
 	Annotation,
 	DevbarPayload,
 	DevbarSettings,
+	ElementData,
+	MarkerData,
+	MatchedFeature,
 	PageContext,
 	PromptTemplate,
 } from "@/session/types";
 import { DEFAULT_CAPTURE_CONFIG } from "@/session/types";
+import { matchRoute } from "@/workspace/feature";
+import type { WorkspaceEntry } from "@/workspace/types";
 import { defaultPromptTemplate } from "./prompt";
 
 // Ring buffer capacities
@@ -247,6 +252,73 @@ function extractPageMeta(): PageContext["pageMeta"] {
 	};
 }
 
+// ─── Features ───────────────────────────────────────────────────────────────
+
+/** What a feature's mapped elements can be compared against, for one annotation. */
+function annotationTargets(annotation: Annotation): { selector?: string; components: string[] } {
+	if (annotation.type === "element") {
+		const d = annotation.data as ElementData;
+		return {
+			selector: d.cssSelector,
+			components: d.reactContext?.components.map((c) => c.name) ?? [],
+		};
+	}
+	if (annotation.type === "marker") {
+		const d = annotation.data as MarkerData;
+		return {
+			...(d.nearestElementCssSelector ? { selector: d.nearestElementCssSelector } : {}),
+			components: d.nearestReactContext?.components.map((c) => c.name) ?? [],
+		};
+	}
+	return { components: [] };
+}
+
+/** The annotated element is the mapped one, or inside it. */
+function insideSelector(annotated: string | undefined, mapped: string): boolean {
+	if (!annotated) return false;
+	if (annotated === mapped) return true;
+	try {
+		return !!document.querySelector(annotated)?.closest(mapped);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Features a report touches. An element match wins over a route match, and a
+ * feature with `pages:` only matches on them: a generic component like `Button`
+ * shouldn't pull in a feature from another page.
+ */
+export function matchFeatures(
+	features: WorkspaceEntry[],
+	pathname: string,
+	annotations: Annotation[],
+): MatchedFeature[] {
+	const targets = annotations.map(annotationTargets);
+	const matched: MatchedFeature[] = [];
+	for (const feature of features) {
+		const onPage = feature.pages?.some((p) => matchRoute(p, pathname));
+		if (feature.pages?.length && !onPage) continue;
+		const byElement = feature.elements?.some((el) =>
+			targets.some(
+				(t) =>
+					(el.selector && insideSelector(t.selector, el.selector)) ||
+					(el.component && t.components.includes(el.component)),
+			),
+		);
+		if (byElement || onPage) {
+			matched.push({
+				path: feature.path,
+				title: feature.title,
+				matched: byElement ? "element" : "page",
+			});
+		}
+	}
+	return matched
+		.sort((a, b) => Number(b.matched === "element") - Number(a.matched === "element"))
+		.slice(0, 5);
+}
+
 // ─── Payload builder ────────────────────────────────────────────────────────
 
 export function buildPayload(
@@ -254,6 +326,7 @@ export function buildPayload(
 	promptTemplate?: PromptTemplate,
 	settings?: DevbarSettings,
 	task?: string,
+	features?: WorkspaceEntry[],
 ): DevbarPayload {
 	const template = promptTemplate ?? defaultPromptTemplate;
 	const cap = settings?.capture ?? DEFAULT_CAPTURE_CONFIG;
@@ -301,6 +374,12 @@ export function buildPayload(
 		userAgent: cap.mediaPreferences ? navigator.userAgent : "",
 		annotations,
 		task: task?.trim() || undefined,
+		...(() => {
+			const matched = features?.length
+				? matchFeatures(features, window.location.pathname, annotations)
+				: [];
+			return matched.length ? { features: matched } : {};
+		})(),
 		settings,
 	};
 

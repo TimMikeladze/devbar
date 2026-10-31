@@ -2804,12 +2804,6 @@
 	color: var(--devbar-text-muted);
 }
 
-.devbar-auth-error {
-	color: var(--devbar-red, #f25c5c);
-	font-size: 12px;
-	padding: 0 2px;
-}
-
 .devbar-auth-submit {
 	background: var(--devbar-blue);
 	color: #fff;
@@ -2832,14 +2826,6 @@
 	cursor: not-allowed;
 }
 
-.devbar-auth-switch {
-	padding: 12px 16px;
-	text-align: center;
-	font-size: 12px;
-	color: var(--devbar-text-muted);
-	border-top: 1px solid var(--devbar-border);
-}
-
 .devbar-auth-link {
 	background: none;
 	border: none;
@@ -2849,14 +2835,6 @@
 	font-family: inherit;
 	text-decoration: underline;
 	padding: 0;
-}
-
-.devbar-bar-btn-user {
-	opacity: 0.8;
-}
-
-.devbar-bar-btn-user:hover {
-	opacity: 1;
 }
 
 /* ─── History section (inside annotations panel) ─── */
@@ -5312,6 +5290,110 @@ svg[class*="devbar-nt-hue-"] {
 	background: var(--nt-hover);
 }
 
+.devbar-nt-feature-list {
+	display: flex;
+	flex: 1;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	min-height: 34px;
+	padding: 5px 8px;
+	font-size: 13px;
+}
+
+.devbar-nt-feature-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	max-width: 100%;
+	min-height: 24px;
+	padding: 0 4px 0 8px;
+	border-radius: 4px;
+	background: var(--nt-hover);
+	color: var(--nt-text);
+	overflow-wrap: anywhere;
+}
+
+.devbar-nt-feature-chip button,
+.devbar-nt-feature-element button {
+	color: var(--nt-text-3);
+	cursor: pointer;
+}
+
+.devbar-nt-feature-chip button:first-child:not(:last-child) {
+	color: var(--nt-text);
+	text-align: left;
+}
+
+.devbar-nt-feature-chip button:hover,
+.devbar-nt-feature-element button:hover {
+	color: var(--nt-text);
+}
+
+.devbar-nt-feature-add {
+	flex: 1 1 120px;
+	min-width: 100px;
+	height: 24px;
+	padding: 0 6px;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--nt-text);
+	font-size: 13px;
+	outline: none;
+}
+
+.devbar-nt-feature-add::placeholder {
+	color: var(--nt-text-3);
+}
+
+.devbar-nt-feature-add:focus {
+	background: var(--nt-panel);
+	box-shadow: var(--nt-shadow);
+}
+
+.devbar-nt-feature-element {
+	display: flex;
+	flex: 1 0 100%;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+/* A route in a status tag keeps its case. */
+.devbar-nt-feature-element .devbar-nt-tag {
+	text-transform: none;
+}
+
+.devbar-nt-feature-element code {
+	min-width: 0;
+	color: var(--nt-text-2);
+	font-size: 12px;
+	overflow-wrap: anywhere;
+}
+
+.devbar-nt-feature-hint {
+	font-size: 13px;
+}
+
+.devbar-nt-feature-link {
+	color: var(--nt-text);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	cursor: pointer;
+}
+
+.devbar-nt-feature-picker-head {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 14px 16px 10px;
+	border-bottom: 1px solid var(--nt-border-2);
+	font-size: 14px;
+	overflow-wrap: anywhere;
+}
+
 .devbar-nt-prop-input {
 	flex: 1;
 	height: 34px;
@@ -7340,4 +7422,49 @@ a.devbar-nt-list-row:hover {
 		max-width: none;
 		margin-top: 2px;
 	}
+}
+
+.devbar-issue-review {
+	width: min(640px, calc(100vw - 32px));
+	max-width: none;
+}
+
+.devbar-issue-review-note {
+	margin: 0;
+	padding: 12px 16px 0;
+	font-size: 12px;
+	line-height: 1.45;
+	color: var(--devbar-text);
+}
+
+.devbar-issue-review-text {
+	display: block;
+	box-sizing: border-box;
+	width: calc(100% - 32px);
+	height: min(45vh, 360px);
+	margin: 12px 16px;
+	padding: 8px;
+	resize: vertical;
+	font:
+		12px/1.45 ui-monospace,
+		SFMono-Regular,
+		Menlo,
+		monospace;
+	color: var(--devbar-text);
+	background: transparent;
+	border: 1px solid var(--devbar-border);
+	border-radius: 6px;
+}
+
+.devbar-issue-review-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 0 16px 14px;
+}
+
+.devbar-issue-review-actions button {
+	padding: 6px 12px;
+	border-radius: 6px;
+	font-size: 12px;
 }

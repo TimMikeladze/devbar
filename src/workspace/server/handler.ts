@@ -101,6 +101,25 @@ export type WorkspaceHandlerOptions = {
 	 * only. `"all"`: without one, not admitted at all.
 	 */
 	requireGitHub?: false | "writes" | "all";
+	/**
+	 * The level needed to open pull requests and issues and to comment. Default:
+	 * "write" on a public repository, where GitHub gives every account read, and
+	 * "read" otherwise. Below "write" the server's token acts for the person.
+	 */
+	submitPermission?: Permission;
+	/**
+	 * How many of those one person can do. Default 30 per 10 minutes, except on
+	 * a loopback workspace. Counted per server instance: a serverless deploy
+	 * should pass `consume`, backed by a shared store. false turns it off.
+	 */
+	rateLimit?:
+		| false
+		| {
+				max?: number;
+				windowSeconds?: number;
+				/** Replaces the counter. Return false to refuse. */
+				consume?: (key: string) => boolean | Promise<boolean>;
+		  };
 	/** Verifies `POST <mount>/webhook` deliveries. Without it the route does not exist. */
 	webhookSecret?: string;
 	/** An event stream closes after this long and the shell reconnects. Default: never. */
@@ -126,6 +145,10 @@ export type ShellOptions = {
 };
 
 export type WorkspaceHandler = (request: Request) => Promise<Response>;
+
+/** The routes that put something on GitHub in someone's name. */
+const SUBMITS = new Set(["changes", "vibe", "comment", "reply", "review"]);
+const RATE_LIMIT_KEYS = 5000;
 
 const LOOPBACK_HOST = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\]|[a-z0-9-]+\.localhost)(:\d+)?$/i;
 const SESSION_COOKIE = "devbar_session";
@@ -479,6 +502,47 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 		}
 	}
 
+	async function submitFloor(b: WorkspaceBackend): Promise<Permission> {
+		if (options.submitPermission) return options.submitPermission;
+		return (await b.info()).public ? "write" : "read";
+	}
+
+	const rateLimit =
+		options.rateLimit === false || (options.rateLimit === undefined && options.allowLoopback)
+			? undefined
+			: {
+					max: options.rateLimit?.max ?? 30,
+					windowMs: (options.rateLimit?.windowSeconds ?? 600) * 1000,
+					consume: options.rateLimit?.consume,
+				};
+	const submitted = new Map<string, number[]>();
+
+	/** Seconds until the next submit is allowed, or 0 if this one counts. */
+	async function rateLimited(actor: Actor): Promise<number> {
+		if (!rateLimit) return 0;
+		// Only an identity someone can't type in. Everyone else shares one bucket.
+		const key = actor.github
+			? `github:${actor.github.login}`
+			: actor.verified && actor.user
+				? `user:${actor.user.email ?? actor.user.name}`
+				: "shared";
+		if (rateLimit.consume) {
+			return (await rateLimit.consume(key)) ? 0 : Math.ceil(rateLimit.windowMs / 1000);
+		}
+		const now = Date.now();
+		const recent = (submitted.get(key) ?? []).filter((at) => now - at < rateLimit.windowMs);
+		if (recent.length >= rateLimit.max) {
+			return Math.ceil(((recent[0] as number) + rateLimit.windowMs - now) / 1000);
+		}
+		recent.push(now);
+		submitted.delete(key);
+		submitted.set(key, recent);
+		if (submitted.size > RATE_LIMIT_KEYS) {
+			submitted.delete(submitted.keys().next().value as string);
+		}
+		return 0;
+	}
+
 	function needIdentity(actor: Actor, what: string): void {
 		if (!actor.github) {
 			throw new WorkspaceHttpError(403, `${what} belongs to one GitHub account`, {
@@ -817,8 +881,16 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 				case "info": {
 					const info = await b.info();
 					const readOnly = !!options.requireGitHub && !actor.github;
+					const floor = options.submitPermission ?? (info.public ? "write" : "read");
+					const belowFloor = !atLeast(actor.permission, floor);
 					return json(200, {
 						...info,
+						...(belowFloor && !readOnly
+							? {
+									capabilities: { ...info.capabilities, pullRequests: false, vibe: false },
+									needsPermission: floor,
+								}
+							: {}),
 						// Say what this caller can do, so the shell hides what would be refused.
 						...(readOnly
 							? {
@@ -931,6 +1003,23 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 					...(options.signIn ? { signIn: true } : {}),
 				});
 			}
+			if (SUBMITS.has(name)) {
+				need(actor, await submitFloor(b));
+				const wait = await rateLimited(actor);
+				if (wait > 0) {
+					return new Response(
+						JSON.stringify({ error: `Too many submissions. Try again in ${wait} seconds` }),
+						{
+							status: 429,
+							headers: {
+								"Content-Type": "application/json",
+								"Cache-Control": "no-store",
+								"Retry-After": String(wait),
+							},
+						},
+					);
+				}
+			}
 			const body = await readBody(request);
 			const who = withAuthor(actor, body);
 			switch (name) {
@@ -967,6 +1056,7 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 					if (!b.vibe) return fail(501, "This workspace does not take agent requests");
 					const input: VibeInput = {
 						prompt: text(body.prompt, "prompt", 20_000),
+						...(typeof body.title === "string" ? { title: body.title.slice(0, 200) } : {}),
 						...(typeof body.path === "string" ? { path: body.path } : {}),
 						...(typeof body.pageUrl === "string" ? { pageUrl: body.pageUrl.slice(0, 2000) } : {}),
 					};

@@ -1,19 +1,20 @@
 # Workspace
 
 A shell around your running app: the app live in the middle, and around it the
-files that steer agents and describe the product — specs, Claude skills,
-`AGENTS.md`/`CLAUDE.md`, subagents, slash commands, docs — as pages you can
-read and edit. Anyone looking at the app can change a spec, tick off a task,
-or ask an agent to change the app with the open page as context, and turn the
-result into a pull request.
+files that describe the product and steer agents — features, knowledge, specs,
+Claude skills, `AGENTS.md`/`CLAUDE.md`, subagents, slash commands, docs — as
+pages you can read and edit. Anyone looking at the app can change a requirement,
+tick off a task, or ask an agent to change the app with the open page as context,
+and turn the result into a pull request.
 
 ![The Workspace shell: the page tree on the left, the app running in the middle, a spec open beside it](https://raw.githubusercontent.com/TimMikeladze/devbar/main/docs/images/workspace.png)
 
 It is laid out like Notion — a sidebar of pages, pages that open beside the app
 in a side peek or as a full page, block editing, ⌘K — and set in Vercel's
 black and white, with the colour carried by the icons: each kind of page has its
-hue (specs blue, tasks green, plans purple, skills amber, agent instructions
-orange, subagents pink, commands teal), or the emoji someone picked for it.
+hue (features teal, knowledge sky, specs blue, tasks green, plans purple, skills
+amber, agent instructions orange, subagents pink, commands teal), or the emoji
+someone picked for it.
 
 ## Opening it
 
@@ -69,6 +70,8 @@ is fine there.
 
 | Sidebar section | Files                                                                                                                                                                                                                                      |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Product         | markdown under `product/`: see [Product and knowledge](#product-and-knowledge)                                                                                                                                                             |
+| Knowledge       | markdown under `knowledge/`                                                                                                                                                                                                                |
 | Specs           | markdown under `specs/`, `docs/specs/`, `.specify/specs/`, `.kiro/specs/`, `docs/superpowers/specs/`, `docs/superpowers/plans/`, `rfcs/`, `docs/rfcs/`; root `SPEC.md`, `PLAN.md`, `ROADMAP.md`, `TODO.md`                                 |
 | Skills          | `.claude/skills/<name>/SKILL.md`, `skills/<name>/SKILL.md`                                                                                                                                                                                 |
 | Agents          | **Instructions**: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` at any depth, `.github/copilot-instructions.md`, `.cursor/rules/*.mdc`, `.kiro/steering/`, `.specify/memory/`. **Subagents**: `.claude/agents/`. **Commands**: `.claude/commands/` |
@@ -95,6 +98,126 @@ written to the file as frontmatter `icon:` — committed with the page, so
 everyone sees it — and a file with no frontmatter gets a small block of its own.
 **Remove** takes it out again, and a block left empty goes with it, so the file
 reads exactly as it did.
+
+## Product and knowledge
+
+There's nothing to set up. Add a page from the **Product** or **Knowledge** section
+of the sidebar, or commit the file yourself, and the folder exists.
+
+`bunx devbar.sh init` adds the rules for agents to `AGENTS.md` (or `CLAUDE.md` when
+that's the only one you have). If you already have a `devbar.config.ts`, run it
+again: it leaves the config alone, and a run that finds the rules changes nothing.
+
+```
+product/                    every file is a feature
+  README.md                 the product itself
+  search.md
+  billing/
+    README.md               the Billing feature, parent of the ones below
+    checkout.md
+knowledge/                  anything else worth knowing, no required shape
+  glossary.md
+specs/                      agent working documents, as before
+```
+
+`product/` says what the app should do, and people own it. `specs/` says how an
+agent plans to build one change. `knowledge/` is what you know about the product
+that isn't a requirement: decisions, research, notes from calls.
+
+### A feature file
+
+```markdown
+---
+status: building
+owner: tim
+pages:
+  - /checkout
+  - /checkout/[step]
+elements:
+  - name: Pay button
+    selector: '[data-testid="pay"]'
+    component: PayButton
+knowledge:
+  - knowledge/pricing-decisions.md
+---
+
+# Checkout
+
+Take payment for what's in the cart, without making anyone create an account.
+
+## Requirements
+
+- [x] Guest checkout with an email address
+- [ ] Pay button is disabled while a payment is in flight
+```
+
+All of the frontmatter is optional.
+
+| Key         | What                                                                                                                  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
+| `status`    | `idea`, `planned`, `building`, `shipped` or `dropped`, set by a person. `devbar product check` warns on anything else |
+| `owner`     | free text                                                                                                             |
+| `pages`     | route patterns: `[id]` is one segment, `[...rest]` one or more, `[[...rest]]` zero or more, `(group)` nothing         |
+| `elements`  | each has a `selector`, a React `component` name, or both, and an optional `name`                                      |
+| `knowledge` | paths handed to the agent with this feature                                                                           |
+
+A feature's id is its path without the extension: `product/billing/checkout.md` is
+`billing/checkout`, `product/billing/README.md` is `billing`, and `product/README.md`
+is `.`. A spec points at its feature with `feature: billing/checkout` in its own
+frontmatter, and the feature page lists those specs.
+
+`+` beside Product creates a feature in `product/`, or beside the open feature when
+one is open, so that's how you get a new one under `billing/`.
+
+### The loop
+
+1. Edit a feature: add a requirement on its page, or annotate an element in the app and press **Add to feature** (the `+`) in the annotations panel. The note becomes an unchecked requirement and the element is added to `elements:`.
+2. Press **Build this feature** in the Ask composer. Locally the agent CLI runs; deployed, it opens an issue labelled `devbar-agent`. The prompt names the feature, its routes and its knowledge files.
+3. The agent implements the unchecked requirements and ticks each one in the same change as the code.
+4. Review the pull request. Merging it is what makes the ticks true on the main branch.
+
+Unchecked requirements are the work queue. Rewording a ticked requirement in a block
+unticks it, because the code doesn't do the new text yet. **Edit as markdown** and
+edits outside the shell don't get that; they show up in the diff.
+
+That agents only tick boxes in `product/` is an instruction in `AGENTS.md`. Nothing
+enforces it.
+
+### What the mapping does
+
+- **On this page**: the sidebar lists the features whose `pages:` match the page the frame is on.
+- **Reports**: when the toolbar can read the workspace, a report names the features it touches in a `## Product features` section of its prompt and in `features` in its payload. A feature with `pages:` only matches on those pages, even by component, so a `Button` on another page doesn't pull it in. A workspace that refuses the toolbar's request sends no features.
+- **Discuss**: the comment button on an annotation looks for a mapped feature first, then a spec.
+- **Show on page**: on a feature page, outlines its selectors in the framed app and marks each **found** or **not found**. It needs the toolbar in the app, and an element with only a `component` isn't checked.
+
+**Add to feature** picks a selector in this order: `data-testid`, `data-test` or
+`data-cy`; an `id`; the React component name. A positional selector goes in only when
+there's nothing else, and the shell warns you, because the next layout change can
+break it.
+
+### Checking links
+
+```bash
+bunx devbar.sh product check
+```
+
+```
+✗ product/b.md: knowledge: knowledge/gone.md does not exist
+! product/b.md: status: maybe is not one of idea, planned, building, shipped, dropped
+✗ specs/a/spec.md: feature: nope does not exist
+2 errors
+```
+
+It exits 1 on any `✗`: a `feature:` or `knowledge:` link to a missing file, or
+frontmatter that isn't valid YAML. `!` lines are warnings. It reads what git would
+track, so it needs a git repository. It can't check selectors, since only a live page
+can say whether one matches.
+
+### Existing repositories
+
+Directories you configured in `specs` or `docs` win, so `specs: ["product/specs"]`
+stays specs. An unrelated root `product/` folder has its markdown listed as features
+and becomes editable through the workspace; set `product: false` to turn that off.
 
 ## Editing
 
@@ -173,19 +296,44 @@ locally, proposal branches that never got one).
 
 The button in the corner — and **Ask** in ⌘K — hands a prompt to an agent, with
 the open page and the app's current page as context. Suggestions fill it for the
-page: **Implement this spec** and **Refine this spec**, **Do the next task** on a
-`tasks.md`, **Improve this skill**, **Sync with the code** on a doc.
+page: **Build this feature** and **Refine this feature**, **Implement this spec**
+and **Refine this spec**, **Do the next task** on a `tasks.md`, **Improve this
+skill**, **Sync with the code** on a doc.
 
 - **With a local devbar server**, the prompt becomes the task of a report and is
   dispatched to your agent CLI. The shell follows the run until it finishes;
   the agent edits your working tree, and what it changed is waiting under
   **Changes** to propose.
-- **On a deployed site** it opens a GitHub issue whose body starts with the
-  mention (`@claude` by default), with the open file and the page as context.
-  The [Claude Code GitHub Action](https://github.com/anthropics/claude-code-action)
-  answers `@claude` on issues and opens the pull request. Set `vibe.mention` to
-  `@codex` or whichever agent your repository runs, or `vibe: false` to turn it
-  off.
+- **On a deployed site** it opens a GitHub issue labelled `devbar-agent`, with
+  the prompt, the open file and the page as context. Nothing answers it until
+  your repository has something listening. devbar doesn't pick the agent. Run
+  any of them from a workflow on that label:
+
+  ```yaml
+  # .github/workflows/devbar-agent.yml
+  on:
+    issues:
+      types: [labeled]
+  jobs:
+    agent:
+      if: github.event.label.name == 'devbar-agent'
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write
+        pull-requests: write
+        issues: write
+      steps:
+        - uses: actions/checkout@v4
+        # Your agent's CLI or action. It reads the issue body and opens a PR.
+        - run: your-agent run --prompt "$PROMPT"
+          env:
+            PROMPT: ${{ github.event.issue.body }}
+  ```
+
+  Agents that answer a handle instead of a label need `vibe.mention`, which puts
+  it at the top of the body: `vibe: { mention: "@codex" }`. `vibe: false` turns
+  asking off. GitHub doesn't start workflows for events made with a workflow's
+  own `GITHUB_TOKEN`, so `DEVBAR_GITHUB_TOKEN` has to be a PAT or an app token.
 
 ## Keyboard
 
@@ -248,6 +396,45 @@ export default {
 
 A redirect rather than a rewrite: the route finds the shell by its own URL.
 
+### The toolbar on a deployed site
+
+Mount it with no environment guard. The workspace decides who sees it:
+
+```tsx
+export function DevToolbar() {
+	return <Devbar workspace="/api/devbar" />;
+}
+```
+
+Off localhost it draws nothing and makes no request until one of these turns it
+on: `?devbar` in the URL, `Alt+W`, opening the app inside the shell, or a marker in
+localStorage from an earlier visit. It then asks `<mount>/info`. If that's a 200,
+the toolbar shows and the marker is set. If not, the marker is cleared. A refused
+`?devbar` or `Alt+W` goes to the shell's sign-in screen and back to the page; a
+refused marker hides the toolbar without a redirect.
+
+**Turn off on this site** in Settings clears the marker and leaves you signed in.
+
+This only decides what to draw. The API checks every request on its own, and the
+toolbar's code is public like the rest of your bundle. The toolbar body is a
+separate chunk that only loads once it's on, so visitors don't download it. The
+stylesheet is still your import: `devbar.sh/styles.css` loads for everyone unless
+you put it in a module behind `next/dynamic`.
+
+On a deployed page **Send** takes the place of Submit. It opens a review dialog
+with the issue body, and the `devbar-agent` issue is only created once you press
+**Open issue**. The dialog says who can read the issue and flags a public
+repository. Screenshots are removed, along with field values, emails, card
+numbers, tokens and secret-looking URL parameters. That's pattern matching in the
+browser, so it won't catch a customer's name in page text. The body is editable
+for that reason. Without `vibe`, below `submitPermission`, or when `requireGitHub`
+needs a sign-in first, the bar stays on Copy. Reports over 20,000 characters are
+refused, and the toast says so.
+
+The site has to be on HTTPS. The annotation tools call `crypto.randomUUID()`,
+which browsers only expose in a secure context, so Select does nothing on a plain
+`http://` host other than localhost.
+
 The route picks its backend from the environment:
 
 | When                                     | Backend  | Needs                                                 |
@@ -263,6 +450,7 @@ The route picks its backend from the environment:
 | `DEVBAR_GITHUB_REF`                                  | the branch to read. Default: `VERCEL_GIT_COMMIT_REF`, else the default branch                       |
 | `DEVBAR_WORKSPACE_TOKEN`                             | a shared access token (see Access)                                                                  |
 | `DEVBAR_WORKSPACE_REQUIRE_GITHUB`                    | `writes` or `all`: people need a GitHub account of their own (see Access)                           |
+| `DEVBAR_WORKSPACE_SUBMIT_PERMISSION`                 | the GitHub level needed to submit (see Who can submit)                                              |
 | `DEVBAR_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET` | single sign-on with any OpenID Connect provider (see Access); needs `DEVBAR_SESSION_SECRET`         |
 | `DEVBAR_OIDC_ALLOW`                                  | comma-separated emails or `@domains` admitted through single sign-on — required for Google          |
 | `DEVBAR_OIDC_LABEL`                                  | the sign-in button's name, e.g. `Okta`. Default `SSO`                                               |
@@ -282,7 +470,7 @@ createWorkspaceRoutes({
 	exclude: ["handbook/private"],
 	baseBranch: "main",
 	branchPrefix: "docs/",
-	vibe: { mention: "@claude", labels: ["agent"] },
+	vibe: { mention: "@codex", labels: ["agent"] }, // both optional
 	shell: { appUrl: "/" }, // or false to serve the API only
 	authorize: async (request) => /* see below */,
 });
@@ -422,6 +610,48 @@ A GitHub identity is a sign-in (`DEVBAR_GITHUB_CLIENT_ID`,
 first two, nothing could satisfy it, so the workspace answers 503 saying what to
 set.
 
+### Who can submit
+
+`submitPermission` is the GitHub level needed to open pull requests and issues and
+to comment:
+
+```ts
+createWorkspaceRoutes({
+	submitPermission: "write", // or DEVBAR_WORKSPACE_SUBMIT_PERMISSION=write
+});
+```
+
+The default is `write` on a public repository, where GitHub gives every account
+read, and `read` otherwise. Below `write` the server token acts for the person, so
+a reader can still open a PR and start your agent on a private repository. Raise it
+if that's not what you want. Someone below the level can still read, and the shell
+hides what they can't do.
+
+People admitted by the shared token, single sign-on or `authorize` count as `write`
+unless `authorize` returns a lower `permission`. On a public repository, that's
+what lets someone in without a GitHub level of their own, so keep that list short.
+
+### Rate limits
+
+Opening PRs and issues, commenting and reviewing are limited to 30 per 10 minutes
+per person, and past that the API answers 429 with `Retry-After`. People without a
+verified identity share one count. The local backend has no limit.
+
+```ts
+createWorkspaceRoutes({
+	rateLimit: { max: 10, windowSeconds: 600 }, // or false
+});
+```
+
+The count lives in memory, per server instance, so on a serverless deploy each
+instance counts on its own. Pass `consume` to use a shared store. It gets the
+person's key and returns whether this submit is allowed, and the window is yours to
+enforce:
+
+```ts
+rateLimit: { consume: (key) => ratelimit.limit(key).then((r) => r.success) },
+```
+
 Mutations also need `Content-Type: application/json` and an `Origin` that is
 the request's own (or none). That closes the cross-site form and `text/plain`
 fetch that would otherwise ride on a signed-in user's cookies. The local devbar
@@ -439,12 +669,14 @@ In `devbar.config.ts`, for the local devbar server:
 export default defineConfig({
 	workspace: {
 		enabled: true, // false: no shell for this project
+		product: "product", // the default; a directory, or false to turn it off
+		knowledge: "knowledge", // the default; a directory, or false to turn it off
 		specs: ["specs", "docs/specs"], // replaces the defaults
 		docs: ["docs"], // replaces the defaults
 		exclude: ["docs/internal"],
 		baseBranch: "main",
 		branchPrefix: "devbar/",
-		vibe: { mention: "@claude" }, // or false
+		vibe: { mention: "@codex" }, // optional, or false
 	},
 });
 ```
@@ -456,18 +688,18 @@ The same keys are options of `createWorkspaceRoutes()` / `createWorkspace()`.
 Relative to wherever the handler is mounted. Errors are `{ error, hint?,
 tokenAccepted?, conflicts? }` with a matching status.
 
-| Route          | Body / query                                                                                       | Returns                                                                  |
-| -------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `GET shell`    | `?url=`, `?theme=light\|dark`                                                                      | the shell page — no access check, it is static and carries no data       |
-| `GET shell.js` |                                                                                                    | the browser bundle the shell page loads                                  |
-| `GET info`     |                                                                                                    | backend, label, ref, base branch, capabilities, `user`                   |
-| `GET entries`  |                                                                                                    | `{ entries }`: path, kind, group, title, description, status, tasks, sha |
-| `GET file`     | `?path=`                                                                                           | `{ path, content, sha }`                                                 |
-| `POST write`   | `{ files: [{ path, content, baseSha? } \| { path, delete: true }] }`                               | `{ written, shas }` — local only (501 on GitHub)                         |
-| `POST changes` | `{ title, body?, files, author?, pageUrl? }`; files may also be `{ path, fromDisk: true }` locally | `{ branch, commit, pushed, pr?, compareUrl?, warnings }`                 |
-| `GET changes`  |                                                                                                    | `{ pulls, branches?, warning? }`                                         |
-| `GET status`   |                                                                                                    | `{ branch, files: [{ path, status }] }` — local only                     |
-| `POST vibe`    | `{ prompt, path?, pageUrl?, author? }`                                                             | `{ issue: { number, url } }` — GitHub only                               |
+| Route          | Body / query                                                                                       | Returns                                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET shell`    | `?url=`, `?theme=light\|dark`                                                                      | the shell page — no access check, it is static and carries no data                                                                   |
+| `GET shell.js` |                                                                                                    | the browser bundle the shell page loads                                                                                              |
+| `GET info`     |                                                                                                    | backend, label, ref, base branch, capabilities, `user`                                                                               |
+| `GET entries`  |                                                                                                    | `{ entries }`: path, kind, group, title, description, status, tasks, sha; features add pages, elements, knowledge; specs add feature |
+| `GET file`     | `?path=`                                                                                           | `{ path, content, sha }`                                                                                                             |
+| `POST write`   | `{ files: [{ path, content, baseSha? } \| { path, delete: true }] }`                               | `{ written, shas }` — local only (501 on GitHub)                                                                                     |
+| `POST changes` | `{ title, body?, files, author?, pageUrl? }`; files may also be `{ path, fromDisk: true }` locally | `{ branch, commit, pushed, pr?, compareUrl?, warnings }`                                                                             |
+| `GET changes`  |                                                                                                    | `{ pulls, branches?, warning? }`                                                                                                     |
+| `GET status`   |                                                                                                    | `{ branch, files: [{ path, status }] }` — local only                                                                                 |
+| `POST vibe`    | `{ prompt, path?, pageUrl?, author? }`                                                             | `{ issue: { number, url } }` — GitHub only                                                                                           |
 
 On the local devbar server the mount is `/api/projects/<slug>/workspace/`,
 `/api/hello` says per project whether it has one (`workspace: true`), and `/`

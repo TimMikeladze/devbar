@@ -444,27 +444,6 @@ button:focus-visible {
 }
 
 /* ──────── Pricing hover ──────── */
-.pricing-card {
-	border-color: #c5c5c5;
-	background: #eff0f3;
-	transition:
-		border-color 0.2s,
-		box-shadow 0.2s,
-		transform 0.2s;
-}
-.pricing-card:hover {
-	border-color: var(--color-muted);
-	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-	transform: translateY(-2px);
-}
-html.dark .pricing-card {
-	border-color: var(--color-border);
-	background: var(--color-bg-card);
-}
-html.dark .pricing-card:hover {
-	box-shadow: 0 4px 24px rgba(255, 255, 255, 0.04);
-}
-
 /* ──────── Copy button in code blocks ──────── */
 .code-block-wrap {
 	position: relative;
@@ -1597,31 +1576,6 @@ html.dark .page-grid::before {
 		padding: 40px;
 	}
 }
-.contact-link {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-}
-.contact-ico {
-	width: 34px;
-	height: 34px;
-	border-radius: 9px;
-	border: 1px solid var(--color-border);
-	background: var(--color-bg);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color-dim);
-	flex-shrink: 0;
-	transition:
-		border-color 0.15s,
-		color 0.15s;
-}
-.contact-link:hover .contact-ico {
-	border-color: var(--color-accent);
-	color: var(--color-accent);
-}
-
 @theme inline {
 	--font-heading: var(--font-sans);
 	--font-sans: "Geist Variable", sans-serif;

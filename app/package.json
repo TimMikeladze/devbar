@@ -10,17 +10,11 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
-		"@base-ui/react": "^1.9.0",
 		"@fontsource-variable/geist": "^5.3.0",
-		"better-auth": "^1.7.12",
-		"class-variance-authority": "^0.7.1",
-		"clsx": "^2.1.1",
-		"lucide-react": "^1.61.0",
 		"react": "^19.3.1",
 		"react-dom": "^19.3.1",
 		"react-router": "^8.5.0",
 		"shiki": "^4.5.0",
-		"tailwind-merge": "^3.7.0",
 		"tw-animate-css": "^1.4.0"
 	},
 	"devDependencies": {

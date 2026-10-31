@@ -9,6 +9,7 @@ import { loadConfig } from "./config-loader";
 import { createLocalClient, findLocalServer, readStoredToken } from "./local-client";
 import { PRESETS, defaultModelFor } from "./agents";
 import { commandInit } from "./init";
+import { commandProductCheck } from "./product-check";
 import { commandInitWorkspace } from "./init-workspace";
 import { which } from "./which";
 import type { ProjectConfig } from "./registry";
@@ -268,9 +269,11 @@ Commands
   tasks [--watch]      List dispatch tasks
   reports              List captured reports
   dispatch [id|--all]  Dispatch a report, or every pending one
-  init                 Write a starter devbar.config.ts (detects the agent CLI)
+  init                 Write a starter devbar.config.ts (detects the agent CLI), and
+                       add the rules for product/ and knowledge/ to AGENTS.md
   init --workspace     Mount the Workspace in a Next.js app
        [--auth github|sso|cloudflare|token|app]  how people get in (default: github)
+  product check        Fail on a feature: or knowledge: link to a missing file
   link                 Print the toolbar snippet for this project
 
 Options
@@ -546,6 +549,12 @@ async function main(): Promise<void> {
 		case "init":
 			if (args.workspace) return void (await commandInitWorkspace({ auth: args.auth }));
 			return commandInit(args.command);
+		case "product":
+			if (args.positional[1] !== "check") {
+				console.error("Usage: devbar product check");
+				process.exit(1);
+			}
+			return commandProductCheck();
 		case "link":
 			return commandLink(args);
 		default:

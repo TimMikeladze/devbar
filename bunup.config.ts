@@ -37,6 +37,8 @@ export default defineConfig([
 		format: "esm",
 		dts: true,
 		target: "browser",
+		// The toolbar body is a dynamic import in src/toolbar/devbar.tsx.
+		splitting: true,
 		external: ["react", "react-dom"],
 		// Without this the JSX transform emits `jsxDEV`, which React's
 		// production runtime doesn't export — consumers get a blank page.
@@ -59,28 +61,6 @@ export default defineConfig([
 			injectStyles({
 				minify: true,
 			}),
-		],
-	},
-	{
-		name: "server",
-		entry: [
-			"src/server/index.ts",
-			"src/server/cli.ts",
-			"src/server/vercel.ts",
-			"src/server/ws-server.ts",
-			"src/server/ws-cli.ts",
-		],
-		outDir: "dist/server",
-		format: "esm",
-		dts: true,
-		external: [
-			"hono",
-			"better-auth",
-			"drizzle-orm",
-			"postgres",
-			"@libsql/client",
-			"@drizzle-team/brocli",
-			"stripe",
 		],
 	},
 	{

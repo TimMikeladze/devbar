@@ -15,12 +15,4 @@ export default defineConfig({
 			"devbar.sh": path.join(devbarRoot, "dist/index.js"),
 		},
 	},
-	server: {
-		proxy: {
-			"/api": {
-				target: "http://localhost:3100",
-				changeOrigin: true,
-			},
-		},
-	},
 });

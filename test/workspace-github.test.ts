@@ -505,6 +505,17 @@ describe("github backend: history, issues, agents, freshness", () => {
 		});
 	});
 
+	test("with no mention configured, the issue names no agent and the label is the trigger", async () => {
+		const { backend, fake } = setup();
+		const info = await backend.info();
+		expect(info.vibeMention).toBeUndefined();
+		await backend.vibe?.({ prompt: "# Bug report\nIt broke.", title: "Fix the header" }, guest);
+		const issue = fake.issues[0];
+		expect(issue?.title).toBe("Fix the header");
+		expect(issue?.body).toStartWith("# Bug report");
+		expect(issue?.labels).toEqual(["devbar-agent"]);
+	});
+
 	test("an event stream hears the branch move, and webhook deliveries", async () => {
 		const { backend, push } = setup();
 		const events: unknown[] = [];

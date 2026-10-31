@@ -4,9 +4,6 @@ import { useState, useEffect } from "react";
 import { DefaultPage } from "./pages/default";
 import { ServerNoAuthPage } from "./pages/server-no-auth";
 import { ServerArchivesPage } from "./pages/server-archives";
-import { ServerInjectedUserPage } from "./pages/server-injected-user";
-import { ServerAuthProxyPage } from "./pages/server-auth-proxy";
-import { ServerUserAndAuthProxyPage } from "./pages/server-user-and-auth-proxy";
 import { CustomToolsPage } from "./pages/custom-tools";
 import { LightThemePage } from "./pages/light-theme";
 import { DarkThemePage } from "./pages/dark-theme";
@@ -14,6 +11,7 @@ import { AutoThemePage } from "./pages/auto-theme";
 import { ClipboardOnlyPage } from "./pages/clipboard-only";
 import { HostileHostCssPage } from "./pages/hostile-host-css";
 import { LocalAgentPage } from "./pages/local-agent";
+import { WorkspaceGatePage } from "./pages/workspace-gate";
 
 const routes: Record<string, { label: string; group: string; component: () => React.ReactNode }> = {
 	"/": { label: "Default (no server, no auth)", group: "Auth Variations", component: DefaultPage },
@@ -22,25 +20,15 @@ const routes: Record<string, { label: string; group: string; component: () => Re
 		group: "Auth Variations",
 		component: ServerNoAuthPage,
 	},
-	"/server-injected-user": {
-		label: "Server + Injected User",
-		group: "Auth Variations",
-		component: ServerInjectedUserPage,
-	},
-	"/server-auth-proxy": {
-		label: "Server + Auth Proxy",
-		group: "Auth Variations",
-		component: ServerAuthProxyPage,
-	},
-	"/server-user-and-auth-proxy": {
-		label: "Server + User + Auth Proxy",
-		group: "Auth Variations",
-		component: ServerUserAndAuthProxyPage,
-	},
 	"/local-agent": {
 		label: "Local agent (auto-discovery)",
 		group: "Auth Variations",
 		component: LocalAgentPage,
+	},
+	"/workspace-gate": {
+		label: "Deployed workspace (gated)",
+		group: "Auth Variations",
+		component: WorkspaceGatePage,
 	},
 	"/server-archives": {
 		label: "Server (archives to History)",

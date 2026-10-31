@@ -1,12 +1,9 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createHighlighter, type Highlighter } from "shiki";
 import { Devbar } from "devbar.sh";
 import "devbar.sh/styles.css";
-import { PricingCards } from "./components/PricingCards";
 import { LogoMark } from "./components/Logo";
 import { useTheme, type Theme } from "./hooks/useTheme";
-import { CLOUD, PAID_PLANS, CONTACT_FORM } from "./lib/flags";
 import { initAnalytics, trackEvent } from "./lib/analytics";
 import { AGENT_SETUP_PROMPT } from "./lib/agentPrompt";
 import { copyText } from "./lib/clipboard";
@@ -73,9 +70,7 @@ function App() {
 				<DropItIn />
 				<LocalAgent />
 				<Features />
-				{PAID_PLANS && <Pricing />}
 				<FAQ />
-				{CONTACT_FORM && <Contact />}
 				<Footer />
 			</main>
 		</div>
@@ -113,8 +108,6 @@ function Header() {
 	const links = [
 		{ href: "#how-it-works", label: "How it works" },
 		{ href: "#local-agent", label: "Local agent" },
-		// Only linkable when the section it scrolls to is rendered.
-		...(PAID_PLANS ? [{ href: "#pricing", label: "Pricing" }] : []),
 		{ href: "#faq", label: "FAQ" },
 		{ href: "https://github.com/TimMikeladze/devbar", label: "GitHub", external: true },
 	];
@@ -141,16 +134,6 @@ function Header() {
 						</a>
 					))}
 					<ThemeToggle theme={theme} onCycle={cycle} />
-					{CLOUD && (
-						<>
-							<Link to="/login" className="text-fg hover:text-fg/80 transition-colors font-medium">
-								Sign in
-							</Link>
-							<Link to="/login?signup=1" className="btn-signal text-[13px] !py-1.5 !px-3.5">
-								Get started
-							</Link>
-						</>
-					)}
 				</nav>
 
 				<button
@@ -185,16 +168,6 @@ function Header() {
 					))}
 					<div className="border-t border-border/60 pt-3 mt-3 flex items-center gap-3">
 						<ThemeToggle theme={theme} onCycle={cycle} />
-						{CLOUD && (
-							<>
-								<Link to="/login" className="text-[14px] text-fg font-medium">
-									Sign in
-								</Link>
-								<Link to="/login?signup=1" className="btn-signal text-[13px] !py-1.5 !px-3.5">
-									Get started
-								</Link>
-							</>
-						)}
 					</div>
 				</nav>
 			)}
@@ -261,15 +234,8 @@ function Hero() {
 				</div>
 			</div>
 
-			{/* Real Devbar toolbar — dogfooded, floats freely via position:fixed.
-			    An unset server stays undefined rather than "": the empty string is a
-			    server, so it would beat the discovered local one and leave Submit
-			    off while running this page from a checkout. */}
-			<Devbar
-				server={import.meta.env.VITE_DEVBAR_SERVER || undefined}
-				wsServer={import.meta.env.VITE_DEVBAR_WS_SERVER}
-				project="devbar"
-			/>
+			{/* The toolbar, dogfooded. It floats freely via position:fixed. */}
+			<Devbar project="devbar" />
 		</section>
 	);
 }
@@ -772,9 +738,7 @@ import "devbar.sh/styles.css";
 		},
 		{
 			label: "JSON",
-			desc: CLOUD
-				? "The full machine-readable payload — pipe to an agent or store it on the dashboard."
-				: "The full machine-readable payload — pipe it straight to an agent.",
+			desc: "The full machine-readable payload — pipe it straight to an agent.",
 			lang: "json",
 			code: `{
   "url": "https://app.example.com/dashboard",
@@ -1118,34 +1082,6 @@ function Features() {
 }
 
 /* ═══════════════════════════════════════════
-   Pricing
-   ═══════════════════════════════════════════ */
-
-function Pricing() {
-	const ref = useReveal();
-	return (
-		<section ref={ref} id="pricing" className="mb-24 sm:mb-32 scroll-mt-20 reveal">
-			<div className="text-center mb-10 sm:mb-14">
-				<Eyebrow center>Pricing</Eyebrow>
-				<h2 className="section-title">Capture context. Free.</h2>
-				<p className="section-sub">
-					The inspector is free and open source. Add the hosted dashboard when your team wants
-					shared history and change requests in one place.
-				</p>
-			</div>
-			<PricingCards
-				onSelectTeam={() => {
-					window.location.href = "/login?signup=1";
-				}}
-				onSelectOrg={() => {
-					window.location.href = "/login?signup=1";
-				}}
-			/>
-		</section>
-	);
-}
-
-/* ═══════════════════════════════════════════
    InstallTabs (bun / npm / pnpm switcher)
    ═══════════════════════════════════════════ */
 
@@ -1301,10 +1237,8 @@ function FAQ() {
 			a: "Yes. Every tool works on any website. React component context is an automatic bonus when a fiber tree is detected.",
 		},
 		{
-			q: "How does team collaboration work?",
-			a: CLOUD
-				? "Everyone uses the same toolbar. Change requests and bug reports flow to the dashboard, a GitHub issue, Slack, or your agent with identical context."
-				: "Everyone uses the same toolbar. Change requests and bug reports flow to a GitHub issue, Slack, or your agent with identical context.",
+			q: "How does a team use it?",
+			a: "Everyone uses the same toolbar. Change requests and bug reports flow to a GitHub issue, Slack, or your agent with identical context.",
 		},
 		{
 			q: "Will it slow down my app?",
@@ -1316,9 +1250,7 @@ function FAQ() {
 		},
 		{
 			q: "Is it really open source?",
-			a: PAID_PLANS
-				? "Yes. MIT licensed, self-hostable, and free forever. The paid dashboard is optional."
-				: "Yes. MIT licensed, self-hostable, and free forever.",
+			a: "Yes. MIT licensed, self-hostable, and free forever.",
 		},
 	];
 
@@ -1339,210 +1271,6 @@ function FAQ() {
 						<p className="text-[13px] text-muted leading-relaxed pl-[18px]">{f.a}</p>
 					</div>
 				))}
-			</div>
-		</section>
-	);
-}
-
-/* ═══════════════════════════════════════════
-   Contact
-   ═══════════════════════════════════════════ */
-
-function Contact() {
-	const ref = useReveal();
-	const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-	const resetTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-	useEffect(() => () => clearTimeout(resetTimer.current), []);
-
-	const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		const form = e.currentTarget;
-		const formData = new FormData(form);
-		const email = formData.get("email") as string;
-		const message = formData.get("message") as string;
-
-		clearTimeout(resetTimer.current);
-		setStatus("sending");
-		try {
-			const res = await fetch("/api/contact", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email, message }),
-			});
-			if (!res.ok) throw new Error();
-			setStatus("sent");
-			form.reset();
-			resetTimer.current = setTimeout(() => setStatus("idle"), 5000);
-		} catch {
-			setStatus("error");
-			resetTimer.current = setTimeout(() => setStatus("idle"), 5000);
-		}
-	};
-
-	return (
-		<section ref={ref} id="contact" className="mb-24 sm:mb-32 scroll-mt-20 reveal">
-			<div className="cta-frame">
-				<div className="grid sm:grid-cols-2 gap-8 sm:gap-10 items-start">
-					{/* Left: copy */}
-					<div>
-						<Eyebrow>Contact</Eyebrow>
-						<h2 className="text-2xl sm:text-[2rem] font-bold text-fg tracking-[-0.03em] mb-3 leading-[1.1]">
-							Close the loop with us.
-						</h2>
-						<p className="text-[14px] text-muted leading-relaxed mb-6 max-w-sm">
-							A question, a feature request, or just want to say hi? We read everything.
-						</p>
-						<div className="space-y-3">
-							<a
-								href="https://github.com/TimMikeladze/devbar/issues"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="contact-link group"
-							>
-								<span className="contact-ico">
-									<GithubGlyph />
-								</span>
-								<span>
-									<span className="text-fg font-medium block text-[13px]">Open an issue</span>
-									<span className="text-[12px] text-muted">Bugs & feature requests on GitHub</span>
-								</span>
-							</a>
-							<a
-								href="https://x.com/linesofcode"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="contact-link group"
-							>
-								<span className="contact-ico">
-									<XLogoGlyph />
-								</span>
-								<span>
-									<span className="text-fg font-medium block text-[13px]">@linesofcode</span>
-									<span className="text-[12px] text-muted">DMs open on X</span>
-								</span>
-							</a>
-						</div>
-					</div>
-
-					{/* Right: form */}
-					<div className="border border-border rounded-xl bg-bg-card overflow-hidden">
-						<div className="px-5 py-3 border-b border-border flex items-center gap-2">
-							<svg
-								width="14"
-								height="14"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="1.5"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								className="text-muted"
-							>
-								<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-								<polyline points="22,6 12,13 2,6" />
-							</svg>
-							<span className="text-[12px] font-medium text-muted">Send a message</span>
-						</div>
-						<form onSubmit={handleSubmit} className="p-5 space-y-3">
-							<div>
-								<label
-									htmlFor="contact-email"
-									className="block text-[11px] font-medium text-muted uppercase tracking-wider mb-1.5"
-								>
-									Email
-								</label>
-								<input
-									id="contact-email"
-									name="email"
-									type="email"
-									required
-									placeholder="you@company.com"
-									className="w-full rounded-lg border border-border bg-bg-code px-3 py-2 text-[13px] text-fg placeholder:text-muted/40 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/20 transition-all"
-								/>
-							</div>
-							<div>
-								<label
-									htmlFor="contact-message"
-									className="block text-[11px] font-medium text-muted uppercase tracking-wider mb-1.5"
-								>
-									Message
-								</label>
-								<textarea
-									id="contact-message"
-									name="message"
-									required
-									rows={4}
-									placeholder="What's on your mind?"
-									className="w-full rounded-lg border border-border bg-bg-code px-3 py-2 text-[13px] text-fg placeholder:text-muted/40 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/20 transition-all resize-y"
-								/>
-							</div>
-							<div className="flex items-center gap-3 pt-1">
-								<button
-									type="submit"
-									disabled={status === "sending" || status === "sent"}
-									className="btn-signal disabled:opacity-50 disabled:cursor-not-allowed"
-								>
-									{status === "sending" ? (
-										<>
-											<svg
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="3"
-												className="animate-spin"
-											>
-												<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-											</svg>
-											Sending…
-										</>
-									) : status === "sent" ? (
-										<>
-											<svg
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="3"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-											>
-												<polyline points="20 6 9 17 4 12" />
-											</svg>
-											Sent
-										</>
-									) : (
-										<>
-											<svg
-												width="14"
-												height="14"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth="1.5"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-											>
-												<line x1="22" y1="2" x2="11" y2="13" />
-												<polygon points="22 2 15 22 11 13 2 9 22 2" />
-											</svg>
-											Send message
-										</>
-									)}
-								</button>
-								{status === "sent" && (
-									<span className="text-emerald text-[12px]">Thanks! We’ll be in touch soon.</span>
-								)}
-								{status === "error" && (
-									<span className="text-rose text-[12px]">Something went wrong. Try again.</span>
-								)}
-							</div>
-						</form>
-					</div>
-				</div>
 			</div>
 		</section>
 	);

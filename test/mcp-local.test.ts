@@ -3,6 +3,7 @@ import { createLocalMcpServer } from "../src/server/mcp/local";
 import type { LocalClient } from "../src/server/local-client";
 import type { PageInfo } from "../src/server/page-bus";
 import type { StoredReport } from "../src/server/report-store";
+import type { WorkspaceEntry } from "../src/workspace/types";
 
 const PNG_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -221,5 +222,95 @@ describe("local MCP server with no devbar server", () => {
 		const result = response?.result as { isError?: boolean };
 		expect(result.isError).toBe(true);
 		expect(firstText(result)).toContain("No devbar server is running");
+	});
+});
+
+describe("product and knowledge tools", () => {
+	const entry = (over: Partial<WorkspaceEntry>): WorkspaceEntry => ({
+		path: "",
+		kind: "feature",
+		title: "",
+		sha: "s",
+		size: 0,
+		...over,
+	});
+	const entries: WorkspaceEntry[] = [
+		entry({
+			path: "product/billing/checkout.md",
+			group: "billing/checkout",
+			title: "Checkout",
+			pages: ["/checkout/[step]"],
+			knowledge: ["knowledge/pricing.md"],
+		}),
+		entry({ path: "specs/a/spec.md", kind: "spec", title: "A", feature: "billing/checkout" }),
+		entry({ path: "knowledge/pricing.md", kind: "knowledge", title: "Pricing" }),
+		entry({ path: "knowledge/other.md", kind: "knowledge", title: "Other" }),
+	];
+	const files: Record<string, string> = {
+		"product/billing/checkout.md": "# Checkout\n",
+		"knowledge/pricing.md": "# Pricing\n\nSaved cards cost extra.\nNothing here.\n",
+		"knowledge/other.md": "# Other\n\nSaved games.\n",
+	};
+	const client = () =>
+		fakeClient({
+			workspaceEntries: async () => entries,
+			workspaceFile: async (_project, path) => ({ path, content: files[path] ?? "" }),
+		}).client;
+	const textOf = (result: unknown) =>
+		JSON.parse((result as { content: { text: string }[] }).content[0]?.text ?? "null");
+
+	test("list_features returns only features", async () => {
+		const { mcp } = await connect(client());
+		const data = textOf(await mcp.callTool({ name: "list_features", arguments: {} }));
+		expect(data.features.map((f: { id: string }) => f.id)).toEqual(["billing/checkout"]);
+	});
+
+	test("get_feature takes an id or a path, and lists its specs", async () => {
+		const { mcp } = await connect(client());
+		for (const feature of ["billing/checkout", "product/billing/checkout.md"]) {
+			const data = textOf(await mcp.callTool({ name: "get_feature", arguments: { feature } }));
+			expect(data.content).toBe("# Checkout\n");
+			expect(data.specs).toEqual(["specs/a/spec.md"]);
+			expect(data.knowledge).toEqual(["knowledge/pricing.md"]);
+		}
+		const missing = (await mcp.callTool({
+			name: "get_feature",
+			arguments: { feature: "nope" },
+		})) as { isError?: boolean };
+		expect(missing.isError).toBe(true);
+	});
+
+	test("features_for_page takes a URL or a pathname", async () => {
+		const { mcp } = await connect(client());
+		const data = textOf(
+			await mcp.callTool({
+				name: "features_for_page",
+				arguments: { page: "http://localhost:3000/checkout/shipping?x=1" },
+			}),
+		);
+		expect(data.pathname).toBe("/checkout/shipping");
+		expect(data.features).toHaveLength(1);
+	});
+
+	test("search_knowledge needs every word and returns the lines", async () => {
+		const { mcp } = await connect(client());
+		const data = textOf(
+			await mcp.callTool({ name: "search_knowledge", arguments: { query: "saved cards" } }),
+		);
+		expect(data.results).toEqual([
+			{ path: "knowledge/pricing.md", title: "Pricing", lines: ["Saved cards cost extra."] },
+		]);
+	});
+
+	test("with several projects and none named, it says which to pick", async () => {
+		const { mcp } = await connect(
+			fakeClient({ hello: async () => ({ projects: [{ slug: "a" }, { slug: "b" }] }) }).client,
+		);
+		const result = (await mcp.callTool({ name: "list_features", arguments: {} })) as {
+			isError?: boolean;
+			content: { text: string }[];
+		};
+		expect(result.isError).toBe(true);
+		expect(result.content[0]?.text).toContain("a, b");
 	});
 });

@@ -68,6 +68,11 @@ export function IdentityFooter(props: { ws: Workspace }): React.ReactNode {
 							Reading only — changes here are made with your own GitHub account.
 						</p>
 					)}
+					{info.needsPermission && (
+						<p className="devbar-nt-muted devbar-nt-small">
+							Reading only. Submitting here needs {info.needsPermission} access to the repository.
+						</p>
+					)}
 					{ws.signInUrl ? (
 						<a className="devbar-nt-btn devbar-nt-signin" href={ws.signInUrl}>
 							<Glyph name="person" size={14} /> Sign in with GitHub

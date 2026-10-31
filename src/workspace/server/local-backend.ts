@@ -3,7 +3,14 @@ import { mkdir, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs
 import { homedir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import type { WorkspaceConfig } from "../../config";
-import { buildEntry, classifyPath, MAX_FILE_BYTES, normalizePath, sortEntries } from "../classify";
+import {
+	buildEntry,
+	classifyPath,
+	MAX_FILE_BYTES,
+	normalizePath,
+	sortEntries,
+	workspaceDirs,
+} from "../classify";
 import { createGhClient, GH_MISSING, GH_SIGNED_OUT } from "../github/client";
 import { createGitHubRepo, type GitHubRepo, type Viewer } from "../github/repo";
 import type {
@@ -687,6 +694,7 @@ export function createLocalBackend(options: LocalBackendOptions): WorkspaceBacke
 				...(repository ? { defaultBranch: await defaultBranch(repository.top) } : {}),
 				baseBranch: repository ? await resolveBaseBranch(root, config.baseBranch) : undefined,
 				repoUrl: repository ? await githubUrlOf(repository.top, remote) : undefined,
+				dirs: workspaceDirs(config),
 				capabilities: {
 					write: true,
 					pullRequests: !!repository,

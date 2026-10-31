@@ -51,6 +51,15 @@ export function getCssSelector(el: Element): string {
 	return parts.join(" > ");
 }
 
+/** A selector that survives a rebuild: a test id, else an id React did not generate. */
+export function stableSelector(el: Element): string | undefined {
+	for (const attr of ["data-testid", "data-test", "data-cy"]) {
+		const value = el.getAttribute(attr);
+		if (value) return `[${attr}="${value.replace(/["\\]/g, "\\$&")}"]`;
+	}
+	return /^[A-Za-z][\w-]*$/.test(el.id) ? `#${el.id}` : undefined;
+}
+
 const RELEVANT_STYLES = [
 	// Layout
 	"display",

@@ -1,94 +1,41 @@
-# Deployment & hosted app
+# Deployment
 
-Everything in this document is about **devbar.sh, the hosted app** — the landing
-page, the cloud dashboard, and the API behind them. None of it ships in the
-published npm package, which is only the embeddable toolbar and its local CLI
-(see the [README](../README.md)).
+This covers devbar.sh, the landing page, and publishing the package. To deploy the
+workspace on your own site, see [Self-hosting with Next.js](./WORKSPACE.md#self-hosting-with-nextjs).
 
-The server code lives in `src/server` and is built into `dist/server` for this
-repo's own deploys. It is excluded from `files` in `package.json`, so it is not
-part of the tarball, and the packages it needs (hono, better-auth, drizzle,
-postgres, stripe, the MCP SDK) are devDependencies for the same reason.
+## Landing page
 
-## Feature flags
-
-Optional surfaces are behind flags, **off by default** — a plain build is the
-self-hosted open-source product: the landing page and the toolbar, with no
-accounts, no dashboard, no paid plans and no contact form. Each flag has two
-halves that must be set together: a build-time `VITE_FLAG_*` for the SPA
-(`app/src/lib/flags.ts`) and a runtime `DEVBAR_FLAG_*` for the API
-(`src/server/flags.ts`). Only the literal values `true` and `1` enable a flag.
-
-| Flag          | SPA env                  | API env                    | On → what appears                                                                                                      |
-| ------------- | ------------------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `cloud`       | `VITE_FLAG_CLOUD`        | `DEVBAR_FLAG_CLOUD`        | Sign in / sign up links and `/login`, the `/dashboard/*` pages, `/api/auth/*`, `/api/reports`, `/api/ws-token`, `/mcp` |
-| `paidPlans`   | `VITE_FLAG_PAID_PLANS`   | `DEVBAR_FLAG_PAID_PLANS`   | Pricing section and nav link, Billing page, `/api/stripe/*` and webhook                                                |
-| `contactForm` | `VITE_FLAG_CONTACT_FORM` | `DEVBAR_FLAG_CONTACT_FORM` | Landing contact section and `POST /api/contact`                                                                        |
-
-Notes:
-
-- Vite inlines `import.meta.env`, so a flagged-off section is dead code and
-  never ships in the bundle — verified against the built assets. Flipping a
-  flag needs a rebuild, not just a restart.
-- The SPA flags are exported as plain constants (`CLOUD`, `PAID_PLANS`,
-  `CONTACT_FORM`),
-  not as properties of a `flags` object. Rollup only folds the direct constant,
-  so reading through an object would keep the gated markup in the bundle.
-- `paidPlans` implies `cloud` on both halves: a subscription hangs off an
-  account, so setting `PAID_PLANS` without `CLOUD` resolves to off rather than
-  shipping a checkout with nothing to attach it to.
-- With `cloud` off the API never opens a database connection and never builds a
-  Better Auth instance — `createDevbarServer()` returns `db: null, auth: null`.
-  A self-hosted server needs no `DATABASE_URL` and no `BETTER_AUTH_SECRET`.
-- WebSocket collaboration is _not_ behind `cloud`. It works with anonymous
-  peers or an HMAC token minted by the host app, so it needs no accounts.
-- With `paidPlans` off the subscription guard is not installed either. There is
-  nothing to subscribe to, so gating the dashboard behind a subscription would
-  lock out every self-hosted user.
-- The API mounts flagged routes conditionally, so they are absent from the
-  router rather than returning a "disabled" response. Note that with `cloud` on,
-  anonymous calls to a missing `/api/*` path answer `401` from the auth
-  middleware, not `404`; with `cloud` off there is no auth middleware and they
-  answer `404`.
-
-## Architecture
-
-Everything runs on [Vercel](https://vercel.com/):
-
-| Concern                            | How it is served                                  |
-| ---------------------------------- | ------------------------------------------------- |
-| Landing page & SaaS app (Vite SPA) | Static output on the edge CDN                     |
-| API (Hono routes)                  | Serverless function via the `hono/vercel` adapter |
-
-- **SPA** — Vite React app in `app/`. Built to `app/dist`, which is Vercel's `outputDirectory`.
-- **API** — Hono routes under `/api` (Better Auth, reports, comments, Stripe billing, contact form) plus an MCP endpoint at `/mcp`. Served by a Vercel serverless function (`api/serverless.ts` → `src/server/vercel.ts`).
-- **WebSocket collaboration** — `src/server/ws-server.ts` exists and is wired to `/ws/:roomKey`, but **is not currently deployed**. It needs a long-lived process, which Vercel's serverless functions are not; the Fly.io setup that used to host it has been removed. With `VITE_DEVBAR_WS_SERVER` unset the toolbar falls back to the API origin, so nothing breaks — live collaboration simply has nothing to connect to.
-
-## Deployment
-
-Vercel's Git integration builds directly from GitHub — there is no deploy
-workflow in `.github/workflows`. Pushing to `main` triggers a build using the
-`buildCommand` in `vercel.json`; branches get preview deployments.
-
-### First-time setup
+`app/` is a Vite React SPA with no backend. Vercel builds it with the `buildCommand`
+in `vercel.json` and serves `app/dist` as static files. Pushing to `main` deploys it,
+and branches get preview deployments. There is no deploy workflow in
+`.github/workflows`, and the repo needs no Actions secrets for deploys.
 
 ```bash
 # Link the repo to the Vercel project (run from repo root)
 vercel link
 ```
 
-Then connect the GitHub repository in the Vercel dashboard (Project Settings →
-Git) so pushes build automatically, and set the environment variables listed
-below.
+Then connect the GitHub repository in the Vercel dashboard (Project Settings → Git).
 
-### Deploy to prod
+### Environment variables
 
-1. Merge work to `main` — Vercel builds and deploys it
-2. Run `bun run release` (bumps `package.json` and the extension manifest, commits, pushes, tags via `bumpp`)
+Set at build time. Both are optional.
 
-### Publish to npm
+| Name                    | Purpose                                              |
+| ----------------------- | ---------------------------------------------------- |
+| `VITE_UMAMI_URL`        | Umami instance URL, e.g. `https://umami.example.com` |
+| `VITE_UMAMI_WEBSITE_ID` | Umami website ID (UUID)                              |
 
-The npm package is published by hand — there is no release workflow:
+Unless **both** are set, the Umami tracker is never injected and no request leaves
+the visitor's browser. When they are set, the tracker loads on the landing page only,
+not the 404, and records a single pageview per load. See `app/src/lib/analytics.ts`.
+
+## Releasing
+
+`bun run release` bumps `package.json` and the extension manifest, commits, pushes
+and tags via `bumpp`.
+
+The npm package is published by hand. There is no release workflow:
 
 ```bash
 bun run build
@@ -96,66 +43,10 @@ bun run test
 npm publish
 ```
 
-### GitHub Actions
+## GitHub Actions
 
-| Workflow           | File                                 | Purpose                                                                |
-| ------------------ | ------------------------------------ | ---------------------------------------------------------------------- |
-| **CI**             | `.github/workflows/ci.yml`           | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS) |
-| **Close inactive** | `.github/workflows/close-issues.yml` | Marks issues stale after 30 days and closes them 14 days later         |
-
-Deploys are not run from Actions — Vercel's Git integration handles them, so no
-deploy secrets are needed.
-
-### Required GitHub Configuration
-
-None. CI only builds and tests, and deploys come from Vercel's Git integration,
-so the repo needs no Actions secrets.
-
-### Vercel Environment Variables
-
-Set in the Vercel dashboard (Project Settings → Environment Variables). Use Vercel's environment scoping to give Production and Preview different values where they need them:
-
-**Build-time (baked into SPA):**
-
-| Name                        | Purpose                                                      |
-| --------------------------- | ------------------------------------------------------------ |
-| `VITE_FLAG_CLOUD`           | Feature flag — sign in / sign up and dashboard (default off) |
-| `VITE_FLAG_PAID_PLANS`      | Feature flag — paid plans UI, implies cloud (default off)    |
-| `VITE_FLAG_CONTACT_FORM`    | Feature flag — contact form (default off)                    |
-| `VITE_STRIPE_TEAM_PRICE_ID` | Stripe Team plan price ID                                    |
-| `VITE_STRIPE_ORG_PRICE_ID`  | Stripe Org plan price ID                                     |
-| `VITE_UMAMI_URL`            | Umami instance URL, e.g. `https://umami.example.com`         |
-| `VITE_UMAMI_WEBSITE_ID`     | Umami website ID (UUID)                                      |
-| `VITE_DEVBAR_WS_SERVER`     | WebSocket server URL (leave unset — none is deployed)        |
-| `VITE_DEVBAR_SERVER`        | API server URL (leave empty to use same origin)              |
-
-Analytics is opt-in: unless **both** `VITE_UMAMI_URL` and
-`VITE_UMAMI_WEBSITE_ID` are set at build time, the Umami tracker is never
-injected and no request leaves the visitor's browser. When they are set, the
-tracker loads on the landing page only — not the login page, the dashboard or
-the 404 — and records a single pageview per load (`data-auto-track` is off, so
-client-side navigation into the app is not reported). See
-`app/src/lib/analytics.ts`.
-
-**Runtime (serverless function):**
-
-| Name                               | Purpose                                                                        |
-| ---------------------------------- | ------------------------------------------------------------------------------ |
-| `DEVBAR_FLAG_CLOUD`                | Feature flag — auth, dashboard API, MCP endpoint (default off)                 |
-| `DEVBAR_FLAG_PAID_PLANS`           | Feature flag — Stripe routes + subscription guard, implies cloud (default off) |
-| `DEVBAR_FLAG_CONTACT_FORM`         | Feature flag — `POST /api/contact` (default off)                               |
-| `DATABASE_URL`                     | Postgres connection string (only read when `cloud` is on)                      |
-| `BETTER_AUTH_SECRET`               | Better Auth session signing secret (required when `cloud` is on)               |
-| `BETTER_AUTH_URL`                  | Better Auth base URL (e.g. `https://devbar.sh`)                                |
-| `BETTER_AUTH_GITHUB_CLIENT_ID`     | GitHub OAuth client ID (optional)                                              |
-| `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth client secret (optional)                                          |
-| `BETTER_AUTH_GOOGLE_CLIENT_ID`     | Google OAuth client ID (optional)                                              |
-| `BETTER_AUTH_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (optional)                                          |
-| `STRIPE_SECRET_KEY`                | Stripe API key                                                                 |
-| `STRIPE_WEBHOOK_SECRET`            | Stripe webhook signing secret                                                  |
-| `STRIPE_TEAM_PRICE_ID`             | Stripe Team plan price ID (runtime, for subscription creation)                 |
-| `STRIPE_ORG_PRICE_ID`              | Stripe Org plan price ID (runtime)                                             |
-| `APP_URL`                          | App URL for Stripe redirect URLs (falls back to `BETTER_AUTH_URL`)             |
-| `DEVBAR_HMAC_SECRET`               | HMAC signing for WebSocket auth tokens (unused while WS is down)               |
-| `DISCORD_WEBHOOK_URL`              | Contact form Discord webhook                                                   |
-| `DEVBAR_TRUSTED_ORIGINS`           | Comma-separated allowed CORS origins                                           |
+| Workflow              | File                                      | Purpose                                                                |
+| --------------------- | ----------------------------------------- | ---------------------------------------------------------------------- |
+| **CI**                | `.github/workflows/ci.yml`                | Build, type-check, lint, format, test on every push/PR (Ubuntu, macOS) |
+| **Close inactive**    | `.github/workflows/close-issues.yml`      | Marks issues stale after 30 days and closes them 14 days later         |
+| **Publish extension** | `.github/workflows/publish-extension.yml` | See [CHROME-EXTENSION.md](./CHROME-EXTENSION.md)                       |

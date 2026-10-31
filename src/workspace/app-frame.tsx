@@ -67,6 +67,12 @@ export function AppFrame(props: {
 	banner?: React.ReactNode;
 	/** The app's toolbar asked to discuss an annotation in a spec. */
 	onDiscuss?: (discussion: Discussion) => void;
+	/** The app's toolbar asked to map an annotation to a feature. */
+	onFeature?: (target: Discussion) => void;
+	/** The app's toolbar outlined these of the selectors it was asked for. */
+	onLocated?: (url: string, found: string[]) => void;
+	/** Filled with what the shell can ask of the frame. `locate` is false without a toolbar to answer. */
+	control?: React.MutableRefObject<{ locate: (selectors: string[]) => boolean } | null>;
 	/** The app's toolbar is in this theme. */
 	onTheme?: (theme: "light" | "dark") => void;
 }): React.ReactNode {
@@ -92,6 +98,10 @@ export function AppFrame(props: {
 	onDiscuss.current = props.onDiscuss;
 	const onTheme = useRef(props.onTheme);
 	onTheme.current = props.onTheme;
+	const onFeature = useRef(props.onFeature);
+	onFeature.current = props.onFeature;
+	const onLocated = useRef(props.onLocated);
+	onLocated.current = props.onLocated;
 
 	const update = useCallback(
 		(location: AppLocation, theme?: "light" | "dark") => {
@@ -117,15 +127,25 @@ export function AppFrame(props: {
 			if (!data || data.source !== FRAME_SOURCE || typeof data.url !== "string") return;
 			const str = (value: unknown, max: number) =>
 				typeof value === "string" && value ? value.slice(0, max) : undefined;
-			if (data.type === "discuss") {
+			if (data.type === "discuss" || data.type === "feature") {
 				// Only strings, bounded: the framed app is trusted to name a page, no more.
-				onDiscuss.current?.({
+				const handler = data.type === "discuss" ? onDiscuss : onFeature;
+				handler.current?.({
 					url: data.url.slice(0, 2000),
 					...(str(data.selector, 500) ? { selector: str(data.selector, 500) } : {}),
+					...(str(data.component, 200) ? { component: str(data.component, 200) } : {}),
+					...(data.positional === true ? { positional: true } : {}),
 					...(str(data.file, 500) ? { file: str(data.file, 500) } : {}),
 					...(str(data.text, 500) ? { text: str(data.text, 500) } : {}),
 					...(str(data.note, 5000) ? { note: str(data.note, 5000) } : {}),
 				});
+				return;
+			}
+			if (data.type === "located") {
+				const found = Array.isArray(data.found)
+					? data.found.filter((s): s is string => typeof s === "string").slice(0, 50)
+					: [];
+				onLocated.current?.(data.url.slice(0, 2000), found);
 				return;
 			}
 			if (data.type === "exit") {
@@ -150,6 +170,16 @@ export function AppFrame(props: {
 	const post = (message: ShellToFrame) => {
 		if (home) frame.current?.contentWindow?.postMessage(message, home);
 	};
+
+	if (props.control) {
+		props.control.current = {
+			locate: (selectors) => {
+				if (!connected) return false;
+				post({ source: SHELL_SOURCE, type: "locate", selectors });
+				return true;
+			},
+		};
+	}
 
 	const onLoad = () => {
 		setLoading(false);

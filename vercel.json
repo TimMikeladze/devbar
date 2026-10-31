@@ -4,22 +4,36 @@
 	"outputDirectory": "app/dist",
 	"framework": null,
 	"redirects": [
-		{ "source": "/og.png", "destination": "/og-v3.png", "permanent": true },
-		{ "source": "/og-v2.png", "destination": "/og-v3.png", "permanent": true }
+		{
+			"source": "/og.png",
+			"destination": "/og-v3.png",
+			"permanent": true
+		},
+		{
+			"source": "/og-v2.png",
+			"destination": "/og-v3.png",
+			"permanent": true
+		}
 	],
 	"headers": [
 		{
 			"source": "/og-v3.png",
 			"headers": [
-				{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
-				{ "key": "Content-Type", "value": "image/png" }
+				{
+					"key": "Cache-Control",
+					"value": "public, max-age=31536000, immutable"
+				},
+				{
+					"key": "Content-Type",
+					"value": "image/png"
+				}
 			]
 		}
 	],
 	"rewrites": [
-		{ "source": "/api/(.*)", "destination": "/api/serverless" },
-		{ "source": "/mcp", "destination": "/api/serverless" },
-		{ "source": "/health", "destination": "/api/serverless" },
-		{ "source": "/((?!api|mcp|health).*)", "destination": "/index.html" }
+		{
+			"source": "/(.*)",
+			"destination": "/index.html"
+		}
 	]
 }

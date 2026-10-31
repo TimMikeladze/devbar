@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { highlight } from "@/live/bridge";
 
 /**
  * How the Workspace shell and the app it frames talk.
@@ -7,9 +8,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * local devbar server frames `localhost:3000`), so neither can read the
  * other. The toolbar running inside the app answers the shell over
  * postMessage: where the page is, and back/forward/reload on request. It
- * answers only a parent whose origin it trusts, and only ever sends a URL, a
- * title and its light/dark theme — nothing that could make the app do more
- * than navigate.
+ * answers only a parent whose origin it trusts, and on its own only ever sends
+ * a URL, a title and its light/dark theme. Asked to outline a feature's
+ * selectors, it answers which of those exact strings matched and nothing about
+ * the elements — nothing that could make the app do more than navigate.
  */
 
 export const SHELL_SOURCE = "devbar-shell";
@@ -17,12 +19,18 @@ export const FRAME_SOURCE = "devbar-frame";
 
 export type ShellToFrame =
 	| { source: typeof SHELL_SOURCE; type: "hello" }
-	| { source: typeof SHELL_SOURCE; type: "nav"; action: "back" | "forward" | "reload" };
+	| { source: typeof SHELL_SOURCE; type: "nav"; action: "back" | "forward" | "reload" }
+	/** Outline these on the page. */
+	| { source: typeof SHELL_SOURCE; type: "locate"; selectors: string[] };
 
-/** An annotated element the person wants to discuss in the spec it belongs to. */
+/** An annotated element the person wants to discuss, or map to a feature. */
 export type Discussion = {
 	url: string;
 	selector?: string;
+	/** The React component it sits in. */
+	component?: string;
+	/** All there is to find it by is its position in the tree, which the next change can break. */
+	positional?: boolean;
 	/** Source file and line, from the React tree. */
 	file?: string;
 	/** The element's text, trimmed. */
@@ -41,6 +49,8 @@ export type FrameToShell =
 			theme?: "light" | "dark";
 	  }
 	| ({ source: typeof FRAME_SOURCE; type: "discuss" } & Discussion)
+	| ({ source: typeof FRAME_SOURCE; type: "feature" } & Discussion)
+	| { source: typeof FRAME_SOURCE; type: "located"; url: string; found: string[] }
 	/** Leave the shell for this page — the book button, pressed inside the frame. */
 	| { source: typeof FRAME_SOURCE; type: "exit"; url: string };
 
@@ -55,12 +65,24 @@ export function isFramed(): boolean {
 	}
 }
 
+/** Scroll to a selector and outline it. A selector that matches nothing, or is invalid, is false. */
+function locate(selector: string): boolean {
+	try {
+		document.querySelector(selector)?.scrollIntoView({ block: "center" });
+		highlight(selector, 2500);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /**
  * Inside the app frame: report the page's location to a trusted shell and
  * follow its navigation. `isTrusted` is read on every message, so it can widen
  * once discovery finds the local server; the shell keeps saying hello until
  * it gets an answer. `discuss` hands an annotation to that shell — and to no
- * one else — to comment on in a spec; `exit` asks it to leave for this page.
+ * one else — to comment on in a spec; `addToFeature` hands
+ * one over to map to a feature; `exit` asks it to leave for this page.
  */
 export function useShellBridge(
 	isTrusted: (origin: string) => boolean,
@@ -68,6 +90,7 @@ export function useShellBridge(
 ): {
 	connected: boolean;
 	discuss: (discussion: Discussion) => void;
+	addToFeature: (target: Discussion) => void;
 	exit: () => void;
 } {
 	const trusted = useRef(isTrusted);
@@ -112,6 +135,16 @@ export function useShellBridge(
 				if (data.action === "back") window.history.back();
 				else if (data.action === "forward") window.history.forward();
 				else if (data.action === "reload") window.location.reload();
+			} else if (data.type === "locate" && event.origin === shellOrigin) {
+				const asked = Array.isArray(data.selectors) ? data.selectors.slice(0, 50) : [];
+				const found = asked.filter((s) => typeof s === "string" && locate(s));
+				const message: FrameToShell = {
+					source: FRAME_SOURCE,
+					type: "located",
+					url: window.location.href,
+					found,
+				};
+				window.parent.postMessage(message, shellOrigin);
 			}
 		};
 
@@ -131,11 +164,17 @@ export function useShellBridge(
 		window.parent.postMessage(message, shell.current);
 	}, []);
 
+	const addToFeature = useCallback((target: Discussion) => {
+		if (!shell.current) return;
+		const message: FrameToShell = { source: FRAME_SOURCE, type: "feature", ...target };
+		window.parent.postMessage(message, shell.current);
+	}, []);
+
 	const exit = useCallback(() => {
 		if (!shell.current) return;
 		const message: FrameToShell = { source: FRAME_SOURCE, type: "exit", url: window.location.href };
 		window.parent.postMessage(message, shell.current);
 	}, []);
 
-	return { connected, discuss, exit };
+	return { connected, discuss, addToFeature, exit };
 }

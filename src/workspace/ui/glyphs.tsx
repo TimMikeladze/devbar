@@ -261,6 +261,8 @@ const FILE_GLYPHS: Record<string, string> = {
 };
 
 const KIND_GLYPHS: Record<WorkspaceKind, string> = {
+	feature: "list",
+	knowledge: "book",
 	spec: "spec",
 	skill: "skill",
 	instructions: "compass",

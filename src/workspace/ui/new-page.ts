@@ -1,8 +1,17 @@
-import type { WorkspaceEntry, WorkspaceKind } from "../types";
+import { DEFAULT_KNOWLEDGE_DIR, DEFAULT_PRODUCT_DIR } from "../feature";
+import type { WorkspaceDirs, WorkspaceEntry, WorkspaceKind } from "../types";
 
 /** Templates and homes for new pages, following the repository's own layout when it has one. */
 
-export type NewKind = "spec" | "skill" | "agent" | "command" | "instructions" | "doc";
+export type NewKind =
+	| "feature"
+	| "knowledge"
+	| "spec"
+	| "skill"
+	| "agent"
+	| "command"
+	| "instructions"
+	| "doc";
 
 export function slugify(name: string): string {
 	return (
@@ -19,6 +28,10 @@ export function slugify(name: string): string {
 export function template(kind: NewKind, title: string): string {
 	const slug = slugify(title);
 	switch (kind) {
+		case "feature":
+			return `---\nstatus: idea\n---\n\n# ${title}\n\nWhat this does, and who it's for.\n\n## Requirements\n\n- [ ] \n\n## Out of scope\n\n`;
+		case "knowledge":
+			return `# ${title}\n\n`;
 		case "spec":
 			return `---\nstatus: draft\n---\n\n# ${title}\n\n## Problem\n\nWhat is wrong or missing, and for whom.\n\n## Goals\n\n- \n\n## Requirements\n\n- \n\n## Acceptance criteria\n\n- [ ] \n`;
 		case "skill":
@@ -34,7 +47,20 @@ export function template(kind: NewKind, title: string): string {
 	}
 }
 
-export function newPath(kind: NewKind, slug: string, entries: WorkspaceEntry[]): string {
+/**
+ * Features and knowledge take the folder they are created in: `home`, else the
+ * configured root, so `+` with `product/billing/invoices.md` open lands beside it.
+ */
+export function newPath(
+	kind: NewKind,
+	slug: string,
+	entries: WorkspaceEntry[],
+	dirs?: WorkspaceDirs,
+	home?: string,
+): string {
+	if (kind === "feature") return `${home ?? (dirs?.product || DEFAULT_PRODUCT_DIR)}/${slug}.md`;
+	if (kind === "knowledge")
+		return `${home ?? (dirs?.knowledge || DEFAULT_KNOWLEDGE_DIR)}/${slug}.md`;
 	if (kind === "instructions") return "AGENTS.md";
 	if (kind === "agent") return `.claude/agents/${slug}.md`;
 	if (kind === "command") return `.claude/commands/${slug}.md`;
@@ -62,13 +88,18 @@ export function freePath(
 	slug: string,
 	taken: Set<string>,
 	entries: WorkspaceEntry[],
+	dirs?: WorkspaceDirs,
+	home?: string,
 ): string {
-	let path = newPath(kind, slug, entries);
-	for (let n = 2; taken.has(path) && n < 100; n++) path = newPath(kind, `${slug}-${n}`, entries);
+	let path = newPath(kind, slug, entries, dirs, home);
+	for (let n = 2; taken.has(path) && n < 100; n++)
+		path = newPath(kind, `${slug}-${n}`, entries, dirs, home);
 	return path;
 }
 
 export const KIND_OF_NEW: Record<NewKind, WorkspaceKind> = {
+	feature: "feature",
+	knowledge: "knowledge",
 	spec: "spec",
 	skill: "skill",
 	agent: "agent",

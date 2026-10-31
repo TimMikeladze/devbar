@@ -68,7 +68,7 @@ function resolveElement(selector: string): Element {
 	return el;
 }
 
-function highlight(selector: string, ms: number): { count: number } {
+export function highlight(selector: string, ms: number): { count: number } {
 	const matches = Array.from(document.querySelectorAll(selector));
 	if (matches.length === 0) throw new Error(`No element matches ${JSON.stringify(selector)}`);
 
@@ -259,8 +259,7 @@ export function createLiveBridge(options: LiveBridgeOptions): LiveBridge {
 				const data = (await res.json()) as { page: { id: string } };
 				pageId = data.page.id;
 
-				// EventSource cannot set headers, so a token rides in the query
-				// string — the same constraint the collaboration socket has.
+				// EventSource cannot set headers, so a token rides in the query string.
 				source = new EventSource(`${base}/api/pages/${pageId}/stream${authQuery()}`);
 				source.addEventListener("rpc", (event) => {
 					try {

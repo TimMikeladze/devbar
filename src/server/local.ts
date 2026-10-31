@@ -208,7 +208,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		const auth = ctx.req.headers.authorization;
 		if (auth?.startsWith("Bearer ") && auth.slice(7) === options.token) return true;
 		// EventSource cannot set headers, so SSE routes accept the token in the
-		// query string — same constraint the collaboration socket lives with.
+		// query string.
 		return ctx.url.searchParams.get("token") === options.token;
 	}
 

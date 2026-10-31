@@ -665,7 +665,7 @@ export function useWorkspace(options: {
 	const askTarget = agentLink
 		? `${agentLink.command} on this machine`
 		: info?.capabilities.vibe
-			? `a GitHub issue for ${info.vibeMention ?? "the agent"}`
+			? `a${info.public ? " public" : ""} GitHub issue${info.vibeMention ? ` for ${info.vibeMention}` : ""}`
 			: undefined;
 
 	const ask = useCallback(
@@ -731,7 +731,9 @@ export function useWorkspace(options: {
 					});
 					setNotice({
 						tone: "ok",
-						text: `Issue #${outcome.issue.number} opened — ${info?.vibeMention ?? "the agent"} will reply with a pull request.`,
+						text: info?.vibeMention
+							? `Issue #${outcome.issue.number} opened. ${info.vibeMention} will reply with a pull request.`
+							: `Issue #${outcome.issue.number} opened.`,
 						link: { label: "Open issue", url: outcome.issue.url },
 					});
 				}

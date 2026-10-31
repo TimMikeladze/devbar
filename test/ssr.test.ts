@@ -1,7 +1,7 @@
 import { expect, test, describe } from "bun:test";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { Devbar } from "../src/toolbar/toolbar";
+import { Devbar } from "../src/toolbar/devbar";
 
 describe("server rendering", () => {
 	// The toolbar is dropped into the root layout of frameworks that render on a

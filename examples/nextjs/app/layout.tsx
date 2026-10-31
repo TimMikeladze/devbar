@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { DevToolbar } from "./devbar";
 
-export const metadata = { title: "devbar Workspace example" };
+export const metadata = { title: "Tomato soup, a devbar example" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
 	return (

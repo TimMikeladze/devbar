@@ -38,20 +38,10 @@ describe("package metadata", () => {
 		}
 	});
 
-	// The SaaS server (Better Auth, Stripe, reports, MCP) is built for this
-	// repo's own Vercel/Fly deploys but is deliberately not published: the npm
-	// package is the embeddable toolbar plus its local CLI.
-	test("the SaaS server is not part of the package", () => {
-		expect(targets.filter((t) => t.startsWith("./dist/server"))).toEqual([]);
-		expect(pkg.files.filter((f) => f.startsWith("dist/server"))).toEqual([]);
-		expect(Object.keys(pkg.exports)).not.toContain("./server");
-	});
-
-	// The toolbar and CLI only need these two at runtime; everything the SaaS
-	// server pulls in (hono, drizzle, better-auth, stripe, …) stays a devDep so
-	// consumers do not install it.
+	// The toolbar and CLI only need these at runtime (`yaml` reads feature
+	// frontmatter in the shell, the server and `devbar product check`).
 	test("runtime dependencies stay minimal", () => {
-		expect(Object.keys(pkg.dependencies).sort()).toEqual(["html-to-image", "jiti"]);
+		expect(Object.keys(pkg.dependencies).sort()).toEqual(["html-to-image", "jiti", "yaml"]);
 	});
 
 	// Guards a build regression: two bunup configs sharing an outDir made the

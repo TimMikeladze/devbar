@@ -1,4 +1,4 @@
-import { access, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { defaultModelFor } from "./agents";
 import { which } from "./which";
@@ -7,6 +7,7 @@ import { which } from "./which";
  * `devbar init` — write a starter devbar.config.ts pointed at the agent CLI
  * this machine actually has, with defaults that dispatch real work: reports go
  * to the agent as soon as they are saved, and the agent may edit the workspace.
+ * Also adds the rules for product/ and knowledge/ to AGENTS.md.
  */
 
 /** Agents with a preset, in the order they are offered. */
@@ -115,22 +116,66 @@ ${modelLine}
 `;
 }
 
-/** `devbar init`. An explicit --agent skips both detection and the prompt. */
+/**
+ * `devbar init`. An explicit --agent skips both detection and the prompt. The
+ * agent rules are added even when the config exists, so running it again is how
+ * a repository that already has a config gets them.
+ */
 export async function commandInit(command?: string, cwd: string = process.cwd()): Promise<void> {
 	const path = join(cwd, "devbar.config.ts");
-	try {
-		await access(path);
+	if (await exists(path)) {
 		console.log(`devbar.config.ts already exists at ${path}`);
-		return;
-	} catch {}
+	} else {
+		let chosen = command;
+		if (!chosen) {
+			const { command: detected, note } = await chooseAgent(await detectAgents());
+			chosen = detected;
+			if (note) console.log(note);
+		}
 
-	let chosen = command;
-	if (!chosen) {
-		const { command: detected, note } = await chooseAgent(await detectAgents());
-		chosen = detected;
-		if (note) console.log(note);
+		await writeFile(path, renderConfig(chosen), "utf-8");
+		console.log(`wrote ${path} (agent=${chosen}, permission=auto, autoDispatch=true)`);
 	}
 
-	await writeFile(path, renderConfig(chosen), "utf-8");
-	console.log(`wrote ${path} (agent=${chosen}, permission=auto, autoDispatch=true)`);
+	const rules = await addAgentRules(cwd);
+	if (rules) console.log(`added the product rules to ${rules}`);
+}
+
+const AGENT_RULES_HEADING = "## Product and knowledge";
+
+export const AGENT_RULES: string = `${AGENT_RULES_HEADING}
+
+\`product/\` says what the app should do, and people own it. \`knowledge/\` holds what we know about the product.
+
+- Read the feature before changing behavior it covers. Its \`pages:\` and \`elements:\` say where it lives.
+- Unchecked requirements are the work still to do.
+- Before deciding something about the product, check \`knowledge/\`: read the files the feature lists under \`knowledge:\`, and search the folder for anything else relevant.
+- In \`product/\`, only tick requirements you finished, in the same change as the code. Put other changes you'd make in the PR description, unless the prompt asked you to edit the feature.
+- Give any spec you write \`feature: <id>\` in its frontmatter, like \`feature: billing/checkout\`.
+- Write things worth keeping that aren't requirements to \`knowledge/\`.
+`;
+
+async function exists(path: string): Promise<boolean> {
+	try {
+		await access(path);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Add the rules for agents to AGENTS.md, or CLAUDE.md when that is the only one.
+ * Returns the file it changed, or undefined when the rules are already there.
+ */
+async function addAgentRules(cwd: string): Promise<string | undefined> {
+	const useClaude =
+		!(await exists(join(cwd, "AGENTS.md"))) && (await exists(join(cwd, "CLAUDE.md")));
+	const name = useClaude ? "CLAUDE.md" : "AGENTS.md";
+	const path = join(cwd, name);
+	const current = (await exists(path)) ? await readFile(path, "utf-8") : "";
+	if (current.includes(AGENT_RULES_HEADING)) return undefined;
+	const lead = current ? `${current.replace(/\s*$/, "")}\n\n` : "";
+	await writeFile(path, `${lead}${AGENT_RULES}`, "utf-8");
+	return name;
 }
