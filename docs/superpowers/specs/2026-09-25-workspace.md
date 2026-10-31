@@ -54,7 +54,7 @@ Two places it runs, same shell, same HTTP contract:
   route handlers are it; Hono/Bun/Remix can mount it with one line. Routing is by
   the last path segment, so it works under any mount path.
 - **Backends are an interface** (`info, entries, read, write?, propose, changes,
-status?, vibe?`). `local` = fs + git plumbing + `gh`; `github` = REST via fetch.
+  status?, vibe?`). `local` = fs + git plumbing + `gh`; `github` = REST via fetch.
   No new runtime dependencies.
 - **Local PRs never touch the working tree or the current branch.** Commits are
   built with a temporary `GIT_INDEX_FILE`, `hash-object`, `write-tree`,
@@ -77,7 +77,7 @@ status?, vibe?`). `local` = fs + git plumbing + `gh`; `github` = REST via fetch.
 - **Access** — `authorize(req)` hook when given (returns a user, `true`, or
   deny); else a bearer token (`DEVBAR_WORKSPACE_TOKEN`); else only the local
   backend answering a loopback `Host`. Mutations need `Content-Type:
-application/json` and a same-origin (or absent) `Origin`, which closes the
+  application/json` and a same-origin (or absent) `Origin`, which closes the
   simple-request CSRF hole. The local devbar server keeps its own origin-based
   authorization and passes `authorize: () => true`.
 

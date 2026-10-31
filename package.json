@@ -131,28 +131,28 @@
 	},
 	"dependencies": {
 		"html-to-image": "^1.11.13",
-		"jiti": "^2.6.1"
+		"jiti": "^2.7.0"
 	},
 	"devDependencies": {
-		"@drizzle-team/brocli": "^0.11.0",
-		"@libsql/client": "^0.17.0",
-		"@modelcontextprotocol/sdk": "^1.27.1",
-		"@playwright/test": "^1.58.2",
-		"@types/bun": "^1.3.10",
-		"@types/react": "^19.2.14",
-		"better-auth": "^1.5.4",
-		"bumpp": "^10.4.1",
-		"bunup": "^0.16.31",
-		"drizzle-kit": "^0.31.9",
-		"drizzle-orm": "^0.45.1",
-		"hono": "^4.12.5",
-		"oxfmt": "^0.36.0",
-		"oxlint": "^1.51.0",
-		"postgres": "^3.4.8",
-		"react": "^19.2.4",
-		"react-dom": "^19.2.4",
-		"simple-git-hooks": "^2.13.1",
-		"stripe": "^20.4.1",
+		"@drizzle-team/brocli": "^0.12.1",
+		"@libsql/client": "^0.18.0",
+		"@modelcontextprotocol/sdk": "^1.32.2",
+		"@playwright/test": "^1.64.1",
+		"@types/bun": "^1.4.4",
+		"@types/react": "^19.3.0",
+		"better-auth": "^1.7.12",
+		"bumpp": "^12.3.0",
+		"bunup": "^0.16.32",
+		"drizzle-kit": "^0.31.11",
+		"drizzle-orm": "^0.45.4",
+		"hono": "^4.13.13",
+		"oxfmt": "0.74.0",
+		"oxlint": "1.89.0",
+		"postgres": "^3.4.9",
+		"react": "^19.3.1",
+		"react-dom": "^19.3.1",
+		"simple-git-hooks": "^2.14.0",
+		"stripe": "^23.0.1",
 		"typescript": "^5.9.3"
 	},
 	"peerDependencies": {
@@ -164,6 +164,9 @@
 		"typescript": {
 			"optional": true
 		}
+	},
+	"overrides": {
+		"esbuild": "^0.28.2"
 	},
 	"simple-git-hooks": {
 		"pre-commit": "bun run format && bun run lint && bun run type-check"

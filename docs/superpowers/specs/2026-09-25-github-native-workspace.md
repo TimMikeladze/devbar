@@ -145,7 +145,7 @@ never gated; GitHub actions use the `gh` user's level.
   non-fatal); a draft refused by the plan retries as ready with a warning.
 - **Adding to an open PR** (the shell is on a same-repo PR branch): new commits
   on its head, never a new PR. Deployed: tree → commit (parent = head) → `PATCH
-ref` with `force: false`. Locally: `git fetch`, `commitWithoutCheckout` on
+  ref` with `force: false`. Locally: `git fetch`, `commitWithoutCheckout` on
   `origin/<head>` (no local ref touched), `git push <sha>:refs/heads/<head>` —
   a fast-forward or nothing. Per-file check against the head: a file changed on
   the head since the draft's base is a 409 for that file; a head that moved

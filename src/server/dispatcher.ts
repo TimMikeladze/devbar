@@ -586,8 +586,7 @@ export function createDispatcher(options: DispatcherOptions): Dispatcher {
 		async drain() {
 			await ready;
 			while (inFlight.size > 0) {
-				// Snapshot: the set shrinks as promises settle.
-				await Promise.all([...inFlight]);
+				await Promise.all(inFlight);
 			}
 		},
 	};

@@ -309,7 +309,7 @@ Who may use a workspace, in order:
 2. **Single sign-on** — a session from the built-in OpenID Connect sign-in
    (below).
 3. **`authorize(request)`** — your app's own check. Return the user (`{ name,
-email }`) to allow and attribute, `true` to allow anonymously, or anything
+   email }`) to allow and attribute, `true` to allow anonymously, or anything
    falsy to refuse. A user returned here is who the PR says proposed it, and the
    commit author when there is an email.
 

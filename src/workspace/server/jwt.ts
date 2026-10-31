@@ -1,4 +1,4 @@
-import { createPublicKey, verify, type JsonWebKey, type KeyObject } from "node:crypto";
+import { createPublicKey, verify, type KeyObject, type webcrypto } from "node:crypto";
 
 /**
  * Verifying a JWT against a JSON Web Key Set, as an identity-aware proxy
@@ -63,7 +63,7 @@ export function createJwksVerifier(
 	async function load(): Promise<Map<string, KeyObject>> {
 		const res = await doFetch(options.jwksUrl, { headers: { Accept: "application/json" } });
 		if (!res.ok) throw new JwtError(`Could not fetch signing keys (${res.status})`);
-		const body = (await res.json()) as { keys?: (JsonWebKey & { kid?: string })[] };
+		const body = (await res.json()) as { keys?: (webcrypto.JsonWebKey & { kid?: string })[] };
 		const next = new Map<string, KeyObject>();
 		for (const jwk of body.keys ?? []) {
 			try {

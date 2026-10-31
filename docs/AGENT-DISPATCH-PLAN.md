@@ -418,13 +418,13 @@ build it once.
 
 **Protocol**
 
-| Step           | Call                                                                                       |
+| Step | Call |
 | -------------- | ------------------------------------------------------------------------------------------ | ------------------------------------ |
 | page registers | `POST /api/pages` `{project, url, title, viewport, frameworks, capabilities}` → `{pageId}` |
-| page listens   | `GET /api/pages/:id/stream` (SSE, 15s heartbeat; dropped after 30s silence)                |
-| agent invokes  | `POST /api/pages/:id/rpc` `{method, params, timeoutMs}` — held open                        |
-| server pushes  | SSE event `{rpcId, method, params}`                                                        |
-| page answers   | `POST /api/pages/:id/rpc/:rpcId` `{result                                                  | error}` → completes the held request |
+| page listens | `GET /api/pages/:id/stream` (SSE, 15s heartbeat; dropped after 30s silence) |
+| agent invokes | `POST /api/pages/:id/rpc` `{method, params, timeoutMs}` — held open |
+| server pushes | SSE event `{rpcId, method, params}` |
+| page answers | `POST /api/pages/:id/rpc/:rpcId` `{result                                                  | error}` → completes the held request |
 
 Timeout (default 10s) returns 504 with a specific reason — page closed, tool not
 permitted, or no page for that project — never a hang.

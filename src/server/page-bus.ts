@@ -267,7 +267,7 @@ export function createPageBus(options: PageBusOptions = {}): PageBus {
 		close() {
 			if (timer) clearInterval(timer);
 			// Snapshot: disconnect() deletes from the map we are iterating.
-			for (const id of [...pages.keys()]) bus.disconnect(id);
+			for (const id of Array.from(pages.keys())) bus.disconnect(id);
 		},
 	};
 

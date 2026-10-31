@@ -138,7 +138,7 @@ defaults apply and discovery falls back to sitemap and crawl.
 - `src/canvas/frame.tsx`: one iframe, covering the near-view observer,
   load-slot ticket, height follow and error state.
 - `src/canvas/loader.ts`: the load-slot queue, ticket-based (`request →
-done`), so a cleanup always gives the slot back.
+  done`), so a cleanup always gives the slot back.
 - `src/canvas/discover.ts`: merges and de-duplicates sources; sitemap fetch
   and re-basing; crawl.
 - `src/canvas/frame-mode.ts`: detects `devbar-canvas-frame`; used by

@@ -9,13 +9,16 @@
 	},
 	"dependencies": {
 		"devbar.sh": "file:../..",
-		"next": "^16.0.0",
-		"react": "^19.2.0",
-		"react-dom": "^19.2.0"
+		"next": "^16.4.3",
+		"react": "^19.3.1",
+		"react-dom": "^19.3.1"
 	},
 	"devDependencies": {
-		"@types/node": "^24.0.0",
-		"@types/react": "^19.2.14",
+		"@types/node": "^26.6.5",
+		"@types/react": "^19.3.0",
 		"typescript": "^5.9.3"
+	},
+	"overrides": {
+		"esbuild": "^0.28.2"
 	}
 }
