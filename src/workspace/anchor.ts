@@ -45,7 +45,9 @@ export function readMarker<T = Record<string, unknown>>(
 	kind: MarkerKind,
 ): T | undefined {
 	if (!body) return undefined;
-	const match = new RegExp(`<!-- devbar:${kind} (\\{.*?\\}) -->`).exec(body);
+	// The last one: devbar appends its marker after what the person wrote, and
+	// what they wrote can contain a marker of its own.
+	const match = [...body.matchAll(new RegExp(`<!-- devbar:${kind} (\\{.*?\\}) -->`, "g"))].at(-1);
 	if (!match) return undefined;
 	try {
 		const value = JSON.parse(match[1] as string) as unknown;

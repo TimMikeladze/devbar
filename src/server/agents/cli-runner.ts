@@ -73,13 +73,18 @@ export function createCliRunner(options: CliRunnerOptions): AgentRunner {
 		if (preset.prompt === "arg") args.push(ctx.prompt);
 		else if (preset.prompt === "file" && ctx.promptFile) args.push(ctx.promptFile);
 
-		const cwd = existsSync(ctx.cwd) ? ctx.cwd : undefined;
+		// Never fall back to wherever this server runs: that's a different repository.
+		if (!existsSync(ctx.cwd)) {
+			yield { type: "error", message: `The project directory ${ctx.cwd} does not exist` };
+			return;
+		}
+		const cwd = ctx.cwd;
 		const command = preset.command;
 
 		for (const warning of built.warnings) {
 			yield { type: "stdout", text: `[devbar] ${warning}\n` };
 		}
-		yield { type: "start", command: `${command} ${args.join(" ")}`, cwd: cwd ?? process.cwd() };
+		yield { type: "start", command: `${command} ${args.join(" ")}`, cwd };
 
 		const queue: AgentEvent[] = [];
 		let notify: (() => void) | undefined;
@@ -112,11 +117,11 @@ export function createCliRunner(options: CliRunnerOptions): AgentRunner {
 		let child: ReturnType<typeof spawn>;
 		try {
 			// Windows has no /usr/bin/env, and agent CLIs install there as .cmd
-			// shims node refuses to spawn without a shell. Args stay an array so
-			// node quotes them instead of us building a command line.
+			// shims node refuses to spawn without a shell. With a shell node joins the
+			// args unquoted, and a report's text is among them.
 			child =
 				process.platform === "win32"
-					? spawn(command, args, {
+					? spawn(command, args.map(windowsShellArg), {
 							cwd,
 							stdio: ["pipe", "pipe", "pipe"],
 							shell: true,
@@ -185,4 +190,14 @@ export function createCliRunner(options: CliRunnerOptions): AgentRunner {
 			ctx.signal.removeEventListener("abort", onAbort);
 		}
 	};
+}
+
+/**
+ * One argument for cmd.exe. Plain flags pass through. Anything else goes in double
+ * quotes, which leave only `%` and `!` live, with those, quotes, carets and line
+ * breaks taken out. Lossy on purpose: this is prompt text, not a path.
+ */
+export function windowsShellArg(arg: string): string {
+	if (/^[\w.:=/-]+$/.test(arg)) return arg;
+	return `"${arg.replace(/["%!^\r\n]/g, " ").replace(/\\+$/, "")}"`;
 }

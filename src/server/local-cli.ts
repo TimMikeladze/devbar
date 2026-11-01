@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { chmod, readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -24,10 +24,14 @@ async function loadOrCreateToken(): Promise<string> {
 	try {
 		const existing = await readFile(TOKEN_PATH, "utf-8");
 		const trimmed = existing.trim();
-		if (trimmed) return trimmed;
+		if (trimmed) {
+			// Tightened in case it was copied or restored wider than it was written.
+			await chmod(TOKEN_PATH, 0o600).catch(() => {});
+			return trimmed;
+		}
 	} catch {}
 
-	await mkdir(DEVBAR_DIR, { recursive: true });
+	await mkdir(DEVBAR_DIR, { recursive: true, mode: 0o700 });
 	const token = randomUUID();
 	// 0600: this token authorizes running an agent in your repositories.
 	await writeFile(TOKEN_PATH, token, { encoding: "utf-8", mode: 0o600 });

@@ -6,8 +6,10 @@
 
 const REDACTED = "[redacted]";
 
+// Names that hold a secret wherever the word sits (`client_secret`, `session_id`,
+// `X-Amz-Signature`), then short ones that have to be the whole name.
 const SECRET_PARAMS =
-	"access_token|refresh_token|id_token|token|api_?key|apikey|key|secret|password|passwd|pass|auth|code|session|sig|signature";
+	"[\\w.-]*(?:token|secret|password|passwd|api[_-]?key|signature|credential|session)[\\w.-]*|x-amz-[\\w-]+|key|pass|auth|code|sig";
 
 function passesLuhn(digits: string): boolean {
 	let sum = 0;
@@ -31,11 +33,35 @@ export function redactReport(text: string): string {
 			// Whatever was typed into a field: in HTML, and in the attribute list.
 			.replace(/\bvalue\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, `value="${REDACTED}"`)
 			.replace(/^(\s*- `value`:).*$/gm, `$1 ${REDACTED}`)
-			.replace(/\b(authorization|cookie|set-cookie)\s*[:=]\s*[^\n`"']+/gi, `$1: ${REDACTED}`)
+			.replace(
+				/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+				REDACTED,
+			)
+			.replace(
+				/\b(authorization|cookie|set-cookie|x-api-key|x-auth-token|x-csrf-token)\s*[:=]\s*[^\n`"']+/gi,
+				`$1: ${REDACTED}`,
+			)
+			// `<meta name="csrf-token" content="...">` and `data-api-key="..."`.
+			.replace(
+				/(\bname=["'][^"']*(?:csrf|token|secret|key)[^"']*["'][^>]*\bcontent=)(?:"[^"]*"|'[^']*')/gi,
+				`$1"${REDACTED}"`,
+			)
+			.replace(
+				/(\bdata-[\w-]*(?:token|secret|key|password|auth)[\w-]*=)(?:"[^"]*"|'[^']*')/gi,
+				`$1"${REDACTED}"`,
+			)
+			// `"password":"x"`, `password: x`, `client_secret=x`.
+			.replace(
+				/(["']?\b(?:password|passwd|client_?secret|api_?key|access_?token|auth_?token|secret)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;&"'`]+)/gi,
+				`$1${REDACTED}`,
+			)
+			// postgres://user:pw@db/app, before the email rule reads pw@db as an address.
+			.replace(/(\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:)[^\s@/]+@/gi, `$1${REDACTED}@`)
 			.replace(/\bBearer\s+[\w.~+/=-]+/g, `Bearer ${REDACTED}`)
 			.replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, REDACTED)
 			.replace(/\b(?:gh[pousr]_\w{20,}|github_pat_\w{20,})/g, REDACTED)
 			.replace(/\b(?:sk-[\w-]{20,}|[spr]k_(?:live|test)_\w{10,}|AKIA[0-9A-Z]{16})\b/g, REDACTED)
+			.replace(/\b(?:glpat-[\w-]{16,}|xox[abprs]-[\w-]{10,}|AIza[\w-]{30,}|npm_\w{30,})/g, REDACTED)
 			.replace(new RegExp(`([?&#](?:${SECRET_PARAMS})=)[^&#\\s"'\`)]+`, "gi"), `$1${REDACTED}`)
 			.replace(/\b[\w.+-]+@[A-Za-z0-9-]+\.[A-Za-z0-9.-]*[A-Za-z]\b/g, "[email]")
 			.replace(/\b\d(?:[ -]?\d){12,18}\b/g, (match) =>

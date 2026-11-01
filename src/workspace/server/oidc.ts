@@ -43,7 +43,13 @@ type Discovery = {
 
 export type SsoFlow = { state: string; nonce: string; verifier: string; back: string };
 
-const PUBLIC_ISSUERS = ["https://accounts.google.com"];
+const PUBLIC_ISSUERS = [
+	"https://accounts.google.com",
+	// Microsoft's tenant for personal accounts.
+	"https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0",
+	"https://appleid.apple.com",
+	"https://gitlab.com",
+];
 
 /** Providers anyone can sign up to must be narrowed, or "signed in" means "has an account". */
 export function needsAllowList(issuer: string): boolean {
@@ -144,6 +150,10 @@ export function createSsoClient(options: SsoOptions): SsoClient {
 			});
 			const claims = await verifier(body.id_token);
 			if (claims.nonce !== flow.nonce) throw new JwtError("The sign-in was not started here");
+			// Issued for several apps: OpenID Connect says who it was really for.
+			if (Array.isArray(claims.aud) && claims.aud.length > 1 && claims.azp !== options.clientId) {
+				throw new JwtError("The token was issued for another application");
+			}
 			return claims;
 		},
 	};

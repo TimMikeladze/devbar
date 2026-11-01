@@ -13,6 +13,28 @@ import { extractElementData, getCssSelector } from "@/tools/select/element-data"
  * while the user is still looking at the page.
  */
 
+const MUTATING = new Set(["navigate", "reload", "click", "scroll_to"]);
+
+export function refusedCall(
+	method: string,
+	permissions: { enabled?: boolean; allowMutating?: boolean },
+): { code: string; message: string } | undefined {
+	if (permissions.enabled === false)
+		return { code: "not_permitted", message: "Agent access is off for this page" };
+	if (MUTATING.has(method) && !permissions.allowMutating)
+		return { code: "not_permitted", message: `"${method}" changes the page and is not allowed` };
+	return undefined;
+}
+
+/** `navigate` stays on this site, on http(s). `javascript:` would run in the page. */
+export function sameOriginPage(url: string, here: string): string {
+	const next = new URL(url, here);
+	if (!/^https?:$/.test(next.protocol) || next.origin !== new URL(here).origin) {
+		throw new Error("navigate only goes to pages on this origin");
+	}
+	return next.href;
+}
+
 export type LivePermissions = {
 	enabled: boolean;
 	allowMutating: boolean;
@@ -148,7 +170,10 @@ export function createLiveBridge(options: LiveBridgeOptions): LiveBridge {
 			const selector = params.selector ? String(params.selector) : undefined;
 			if (selector) {
 				const el = resolveElement(selector) as HTMLElement;
-				el.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior });
+				// Scrolling moves the page, which is what `scroll_to` is gated for.
+				if (options.getPermissions().allowMutating) {
+					el.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior });
+				}
 				const rect = el.getBoundingClientRect();
 				return {
 					dataUri: await captureNode(el),
@@ -183,7 +208,7 @@ export function createLiveBridge(options: LiveBridgeOptions): LiveBridge {
 		navigate: (params) => {
 			const url = String(params.url ?? "");
 			if (!url) throw new Error("url is required");
-			window.location.assign(url);
+			window.location.assign(sameOriginPage(url, window.location.href));
 			return { ok: true };
 		},
 
@@ -213,6 +238,13 @@ export function createLiveBridge(options: LiveBridgeOptions): LiveBridge {
 		method: string;
 		params: unknown;
 	}): Promise<void> {
+		// The person's switch is here in the toolbar. What the server holds is a copy
+		// that callers can reach.
+		const refusal = refusedCall(payload.method, options.getPermissions());
+		if (refusal) {
+			await reply(payload.rpcId, undefined, refusal);
+			return;
+		}
 		const handler = methods[payload.method];
 		options.onCall?.(payload.method, payload.params);
 		if (state.status === "connected") {

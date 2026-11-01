@@ -270,6 +270,11 @@ function rollupState(state: string | undefined): CheckState | undefined {
 	return "failure";
 }
 
+/** A deployment's URL is whatever a writer's token said. The shell frames it, so http(s) only. */
+function httpUrl(value: string | null | undefined): string | undefined {
+	return value && /^https?:\/\//i.test(value) ? value : undefined;
+}
+
 export function toComment(raw: RawComment, onBehalfOf?: string): ThreadComment {
 	return {
 		id: raw.id,
@@ -438,7 +443,7 @@ export function createGitHubRepo(client: GitHubClient, fullName: string): GitHub
 				: {}),
 			mergeable: raw.mergeable,
 			mergeState: raw.mergeStateStatus,
-			...(preview ? { preview } : {}),
+			...(httpUrl(preview) ? { preview: httpUrl(preview) } : {}),
 			comments: (raw.commentCount?.totalCount ?? 0) + (raw.threadCount?.totalCount ?? 0),
 			files: (raw.files?.nodes ?? []).map((f) => f.path),
 			issues: (raw.closingIssuesReferences?.nodes ?? []).map((i) => ({
@@ -595,7 +600,7 @@ export function createGitHubRepo(client: GitHubClient, fullName: string): GitHub
 					`${base}/deployments/${d.id}/statuses?per_page=1`,
 				);
 				const url = statuses[0]?.state === "success" ? statuses[0].environment_url : undefined;
-				if (url) return url;
+				if (httpUrl(url)) return url;
 			}
 			return undefined;
 		},

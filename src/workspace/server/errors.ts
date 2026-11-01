@@ -129,7 +129,9 @@ export function onBehalfLine(actor: {
 
 /** Who a body says it was posted for, reading back `onBehalfLine`. */
 export function readOnBehalf(body: string): string | undefined {
-	return /^> \*\*([^*\n]+)\*\* via devbar/m.exec(body)?.[1];
+	const line = /^> \*\*([^*\n]+)\*\* via devbar(.*)$/m.exec(body);
+	if (!line) return undefined;
+	return line[2]?.includes("(self-reported)") ? `${line[1]} (self-reported)` : line[1];
 }
 
 /**

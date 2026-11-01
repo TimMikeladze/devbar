@@ -5,6 +5,7 @@ import { buildEntry, classifyPath, MAX_FILE_BYTES, sortEntries, workspaceDirs } 
 import { installationTokenSource, type AppCredentials } from "../github/app";
 import { createFetchClient, type GitHubClient } from "../github/client";
 import { createGitHubRepo, type GitHubRepo } from "../github/repo";
+import { atLeast } from "../types";
 import type {
 	HistoryEntry,
 	ProposeInput,
@@ -85,7 +86,11 @@ function bounded<K, V>(map: Map<K, V>, limit: number, key: K, value: V): void {
 	map.set(key, value);
 }
 
-/** Who a user token is, briefly remembered: every request checks it. */
+/**
+ * Who a user token is on a repository, briefly remembered: every request checks
+ * it. Keyed by repository too, since a permission only means something on one
+ * and one process can mount several.
+ */
 const identities = new Map<string, { at: number; value: Promise<GitHubIdentity> }>();
 
 /** Open event streams per repository, which a verified webhook delivery reaches. */
@@ -193,10 +198,15 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 		ref: string,
 	): Promise<{ content: string; sha: string } | null> {
 		try {
-			const file = await server.rest<{ sha: string; content?: string; encoding?: string }>(
-				"GET",
-				`${repoPath}/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`,
-			);
+			const file = await server.rest<{
+				sha: string;
+				path?: string;
+				content?: string;
+				encoding?: string;
+			}>("GET", `${repoPath}/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`);
+			// GitHub follows a symlink to a file in the repository and answers with
+			// the target, which has to pass the edit boundary as well.
+			if (file.path && file.path !== path && !classifyPath(file.path, config)) return null;
 			// Past 1 MB the contents API leaves `content` empty; the blob has it.
 			const content =
 				file.encoding === "base64" && file.content
@@ -376,7 +386,9 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 		},
 
 		async identify(userToken) {
-			const key = createHash("sha256").update(userToken).digest("hex");
+			const key = createHash("sha256")
+				.update(`${apiUrl}\0${options.repo}\0${userToken}`)
+				.digest("hex");
 			const hit = identities.get(key);
 			if (hit && Date.now() - hit.at < 60_000) return hit.value;
 			const personal = createGitHubRepo(clientFor(userToken), options.repo);
@@ -402,7 +414,9 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 						).tree.sha,
 					}
 				: await headOf(ref ?? (await readRef()));
-			const cached = entriesCache.get(tree);
+			// The same tree under another mount's config lists different files.
+			const cacheKey = `${tree}\0${JSON.stringify(config)}`;
+			const cached = entriesCache.get(cacheKey);
 			if (cached) return cached;
 			const listing = await server.rest<{
 				tree: { path: string; type: string; sha: string; size?: number }[];
@@ -427,7 +441,7 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 				entries.push(...batch);
 			}
 			const sorted = sortEntries(entries);
-			bounded(entriesCache, 20, tree, sorted);
+			bounded(entriesCache, 20, cacheKey, sorted);
 			return sorted;
 		},
 
@@ -453,9 +467,16 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 			const warnings: string[] = [];
 			let pr: { number: number; url: string } | undefined;
 			try {
+				// The server's token could set what GitHub only lets triage set. A label
+				// can start a workflow, so a reader doesn't get it by proxy.
+				const reach = acting.personal || atLeast(actor.permission, "triage");
+				const { labels, assignees, milestone, reviewers, ...plain } = input;
+				if (!reach && (labels?.length || assignees?.length || milestone || reviewers?.length)) {
+					warnings.push("Labels, assignees, milestones and reviewers need triage access");
+				}
 				pr = await openPull(
 					acting,
-					input,
+					reach ? input : plain,
 					branch,
 					base,
 					proposalBody({
@@ -521,7 +542,9 @@ export function createGitHubBackend(options: GitHubBackendOptions): WorkspaceBac
 			].join("\n");
 			const labels = [AGENT_LABEL, ...(config.vibe?.labels ?? [])];
 			const issue = await acting.repo.createIssue({ title, body, labels });
-			if (!issue.labels.some((l) => l.name === AGENT_LABEL)) {
+			// GitHub drops labels from a reader. Under requireGitHub that stands: the
+			// label is what starts the agent.
+			if (!actor.ownToken && !issue.labels.some((l) => l.name === AGENT_LABEL)) {
 				await repoApi.addLabels(issue.number, labels).catch(() => undefined);
 			}
 			return { issue: { number: issue.number, url: issue.html_url } };

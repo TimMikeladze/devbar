@@ -1,9 +1,13 @@
 import { expect, test, describe, beforeAll, afterAll } from "bun:test";
 import { createLocalServer } from "../src/server/local";
+import { refusedCall, sameOriginPage } from "../src/live/bridge";
+import { windowsShellArg } from "../src/server/agents/cli-runner";
 import { rm, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { networkInterfaces, tmpdir } from "node:os";
+import { request as httpRequest } from "node:http";
 import { randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 function tmpDir(): string {
 	return join(tmpdir(), `devbar-test-${randomUUID()}`);
@@ -249,10 +253,163 @@ describe("local server API", () => {
 	});
 
 	test("a local process with no Origin is trusted by default", async () => {
-		// The CLI and the MCP server reach the API this way. A browser always sends
-		// Origin, so this path cannot be exercised from a page.
+		// The CLI and the MCP server reach the API this way.
 		const res = await fetch(`${baseUrl}/api/projects`);
 		expect(res.status).toBe(200);
+	});
+
+	test("a DNS-rebinding page is refused: a same-origin GET has no Origin, but it has a Host", async () => {
+		const { hostname, port } = new URL(baseUrl);
+		const status = (host: string, path: string) =>
+			new Promise<number>((resolve, reject) => {
+				const req = httpRequest({ hostname, port, path, headers: { Host: host } }, (res) => {
+					res.resume();
+					resolve(res.statusCode ?? 0);
+				});
+				req.on("error", reject);
+				req.end();
+			});
+		expect(await status(`evil.example:${port}`, "/api/projects")).toBe(401);
+		expect(await status(`evil.example:${port}`, "/api/reports")).toBe(401);
+		expect(await status(`127.0.0.1:${port}`, "/api/projects")).toBe(200);
+		expect(await status(`localhost:${port}`, "/api/projects")).toBe(200);
+	});
+
+	test("a claimed origin reads, but can't pick the command an agent runs without the token", async () => {
+		const claim = await fetch(`${baseUrl}/api/projects`, {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({
+				slug: "claimed",
+				dir: tmpdir(),
+				origins: ["https://staging.example"],
+			}),
+		});
+		expect(claim.status).toBe(200);
+		const origin = { Origin: "https://staging.example", "Content-Type": "application/json" };
+		expect((await fetch(`${baseUrl}/api/hello`, { headers: origin })).status).toBe(200);
+		const evil = JSON.stringify({ slug: "evil", dir: tmpdir(), command: "sh" });
+		const register = await fetch(`${baseUrl}/api/projects`, {
+			method: "POST",
+			headers: origin,
+			body: evil,
+		});
+		expect(register.status).toBe(403);
+		const settings = await fetch(`${baseUrl}/api/projects/claimed/settings`, {
+			method: "PATCH",
+			headers: origin,
+			body: JSON.stringify({ command: "sh" }),
+		});
+		expect(settings.status).toBe(403);
+		const remove = await fetch(`${baseUrl}/api/projects/claimed`, {
+			method: "DELETE",
+			headers: origin,
+		});
+		expect(remove.status).toBe(403);
+		const allowed = await fetch(`${baseUrl}/api/projects/claimed`, {
+			method: "DELETE",
+			headers: headers(origin),
+		});
+		expect(allowed.status).toBe(200);
+	});
+
+	test("in the workspace a claimed origin isn't the machine's owner, and a localhost page is", async () => {
+		const dir = tmpDir();
+		await mkdir(dir, { recursive: true });
+		execFileSync("git", ["init", "-q"], { cwd: dir });
+		execFileSync("git", ["config", "user.name", "Owner"], { cwd: dir });
+		execFileSync("git", ["config", "user.email", "owner@example.com"], { cwd: dir });
+		await fetch(`${baseUrl}/api/projects`, {
+			method: "POST",
+			headers: headers(),
+			body: JSON.stringify({ slug: "owned", dir, origins: ["https://owned.example"] }),
+		});
+		const info = (origin: string) =>
+			fetch(`${baseUrl}/api/projects/owned/workspace/info`, { headers: { Origin: origin } }).then(
+				(r) => r.json(),
+			);
+		expect((await info("http://localhost:3000")).user?.name).toBe("Owner");
+		expect((await info("https://owned.example")).user).toBeUndefined();
+		// A caller can't claim to be the machine.
+		const forged = await fetch(`${baseUrl}/api/projects/owned/workspace/info`, {
+			headers: { Origin: "https://owned.example", "x-devbar-machine": "1" },
+		});
+		expect((await forged.json()).user).toBeUndefined();
+		await rm(dir, { recursive: true, force: true });
+	});
+
+	test("a claimed origin stays inside the project that claims it", async () => {
+		const register = (slug: string, extra: object) =>
+			fetch(`${baseUrl}/api/projects`, {
+				method: "POST",
+				headers: headers(),
+				body: JSON.stringify({ slug, dir: tmpdir(), ...extra }),
+			});
+		await register("scoped-a", { origins: ["https://a.example"], autoDispatch: false });
+		await register("scoped-b", { autoDispatch: false });
+		const asA = { Origin: "https://a.example", "Content-Type": "application/json" };
+		const projects = await (await fetch(`${baseUrl}/api/projects`, { headers: asA })).json();
+		expect(projects.projects.map((p: { slug: string }) => p.slug)).toEqual(["scoped-a"]);
+		const hello = await (await fetch(`${baseUrl}/api/hello`, { headers: asA })).json();
+		expect(hello.projects.map((p: { slug: string }) => p.slug)).toEqual(["scoped-a"]);
+		expect(
+			(await fetch(`${baseUrl}/api/projects/scoped-b/workspace/info`, { headers: asA })).status,
+		).toBe(404);
+
+		const other = await (
+			await fetch(`${baseUrl}/api/reports`, {
+				method: "POST",
+				headers: headers(),
+				body: JSON.stringify({ project: "scoped-b", payload: { prompt: "b's" } }),
+			})
+		).json();
+		for (const path of [`/api/reports/${other.id}`, `/api/reports/${other.id}/prompt`]) {
+			expect((await fetch(`${baseUrl}${path}`, { headers: asA })).status).toBe(404);
+		}
+		const listed = await (await fetch(`${baseUrl}/api/reports`, { headers: asA })).json();
+		expect(listed.reports.map((r: { id: string }) => r.id)).not.toContain(other.id);
+
+		// Filing for another project lands in its own, and it can't start a run there.
+		const filed = await (
+			await fetch(`${baseUrl}/api/reports`, {
+				method: "POST",
+				headers: asA,
+				body: JSON.stringify({ project: "scoped-b", payload: { prompt: "run this" } }),
+			})
+		).json();
+		expect(filed.project).toBe("scoped-a");
+		const dispatch = (body: object) =>
+			fetch(`${baseUrl}/api/dispatch`, {
+				method: "POST",
+				headers: asA,
+				body: JSON.stringify(body),
+			});
+		expect((await dispatch({ report: other.id })).status).toBe(404);
+		expect((await dispatch({ report: filed.id })).status).toBe(403);
+	});
+
+	test("a page's stream and switches are its own, and only agents call into it", async () => {
+		const page = await (
+			await fetch(`${baseUrl}/api/pages`, {
+				method: "POST",
+				headers: { Origin: "http://localhost:3000", "Content-Type": "application/json" },
+				body: JSON.stringify({ url: "http://localhost:3000/", title: "t" }),
+			})
+		).json();
+		const id = page.page.id;
+		const other = { Origin: "http://localhost:4000", "Content-Type": "application/json" };
+		const post = (path: string, body: object, h: Record<string, string> = other) =>
+			fetch(`${baseUrl}/api/pages/${id}${path}`, {
+				method: "POST",
+				headers: h,
+				body: JSON.stringify(body),
+			});
+		expect((await post("/permissions", { allowMutating: true })).status).toBe(403);
+		expect((await post("/rpc", { method: "inspect", params: {} })).status).toBe(403);
+		expect((await fetch(`${baseUrl}/api/pages/${id}/stream`, { headers: other })).status).toBe(403);
+		const own = { Origin: "http://localhost:3000", "Content-Type": "application/json" };
+		expect((await post("/permissions", { enabled: true }, own)).status).toBe(200);
+		expect((await post("/rpc", { method: "inspect", params: {} }, own)).status).toBe(403);
 	});
 
 	test("an unknown web origin is rejected without the token", async () => {
@@ -521,5 +678,67 @@ describe("local server destination routing", () => {
 		const data = await res.json();
 		const proj = data.projects.find((p: { slug: string }) => p.slug === "routed");
 		expect(proj.routes).toEqual([{ webhook: hookUrl }, "agent"]);
+	});
+});
+
+describe("local server bound beyond loopback", () => {
+	const lan = Object.values(networkInterfaces())
+		.flat()
+		.find((i) => i && i.family === "IPv4" && !i.internal)?.address;
+
+	test.skipIf(!lan)("a localhost Origin from another address needs the token", async () => {
+		const base = tmpDir();
+		await mkdir(base, { recursive: true });
+		const server = await createLocalServer({
+			port: 0,
+			host: "0.0.0.0",
+			token: "t",
+			dir: join(base, "r"),
+			resultsDir: join(base, "res"),
+			tasksDir: join(base, "tasks"),
+			projectsFile: join(base, "projects.json"),
+		});
+		const { port } = await server.start();
+		try {
+			const url = `http://${lan}:${port}/api/projects`;
+			const spoofed = await fetch(url, { headers: { Origin: "http://localhost:3000" } });
+			expect(spoofed.status).toBe(401);
+			expect((await fetch(url)).status).toBe(401);
+			const withToken = await fetch(url, { headers: { Authorization: "Bearer t" } });
+			expect(withToken.status).toBe(200);
+		} finally {
+			await server.stop();
+			await rm(base, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("arguments on a Windows shell", () => {
+	test("report text can't break out of its argument", () => {
+		expect(windowsShellArg("--model=x")).toBe("--model=x");
+		const out = windowsShellArg('a" & calc & "%PATH%^\r\nb\\');
+		expect(out.startsWith('"') && out.endsWith('"')).toBe(true);
+		expect(out.slice(1, -1)).not.toMatch(/["%^\r\n]|\\$/);
+	});
+});
+
+describe("the toolbar's own gate", () => {
+	test("it refuses by its own switches, whatever the server let through", () => {
+		expect(refusedCall("navigate", { enabled: true, allowMutating: false })?.code).toBe(
+			"not_permitted",
+		);
+		expect(refusedCall("inspect", { enabled: false, allowMutating: true })?.code).toBe(
+			"not_permitted",
+		);
+		expect(refusedCall("inspect", { enabled: true, allowMutating: false })).toBeUndefined();
+		expect(refusedCall("navigate", { enabled: true, allowMutating: true })).toBeUndefined();
+	});
+
+	test("navigate stays on the page's origin, on http(s)", () => {
+		const here = "http://localhost:3000/a";
+		expect(sameOriginPage("/b", here)).toBe("http://localhost:3000/b");
+		for (const url of ["javascript:fetch('/x')", "https://evil.example/", "data:text/html,x"]) {
+			expect(() => sameOriginPage(url, here)).toThrow();
+		}
 	});
 });

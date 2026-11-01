@@ -37,8 +37,8 @@ export type WorkspaceServerOptions = WorkspaceConfig &
 		| "events"
 	> & {
 		/**
-		 * `auto` (default) serves the working tree unless NODE_ENV is
-		 * production, where it serves the GitHub repository. Override with
+		 * `auto` (default) serves the working tree when NODE_ENV is development or
+		 * test, and the GitHub repository otherwise. Override with
 		 * DEVBAR_WORKSPACE_BACKEND, or pass a backend of your own.
 		 */
 		backend?: "auto" | "local" | "github" | WorkspaceBackend;
@@ -54,7 +54,9 @@ function pickBackend(options: WorkspaceServerOptions, env: Record<string, string
 	if (typeof options.backend === "object") return "custom" as const;
 	const chosen = options.backend ?? env.DEVBAR_WORKSPACE_BACKEND ?? "auto";
 	if (chosen === "local" || chosen === "github") return chosen;
-	return env.NODE_ENV === "production" ? "github" : "local";
+	// Named environments only: a server started without NODE_ENV must not end up
+	// serving its working tree on the strength of a Host header.
+	return env.NODE_ENV === "development" || env.NODE_ENV === "test" ? "local" : "github";
 }
 
 /**
@@ -169,7 +171,8 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 					clientSecret: oidcClientSecret,
 					secret: sessionSecret,
 					...(env.DEVBAR_OIDC_LABEL ? { label: env.DEVBAR_OIDC_LABEL } : {}),
-					...(oidcAllow?.length ? { user: allowEmails(oidcAllow) } : {}),
+					// Set but blank admits nobody: it's a list someone meant to fill in.
+					...(oidcAllow ? { user: allowEmails(oidcAllow) } : {}),
 				}
 			: undefined);
 
@@ -201,7 +204,8 @@ export function createWorkspace(options: WorkspaceServerOptions = {}): Workspace
 		token: token ?? env.DEVBAR_WORKSPACE_TOKEN,
 		// Only the working tree on this machine is open to localhost callers by
 		// default. A GitHub repository is reachable from anywhere the site is.
-		allowLoopback: allowLoopback ?? kind === "local",
+		// and never in production, where nothing vouches for a Host header.
+		allowLoopback: allowLoopback ?? (kind === "local" && env.NODE_ENV !== "production"),
 		checkOrigin,
 		maxBodyBytes,
 		shell,

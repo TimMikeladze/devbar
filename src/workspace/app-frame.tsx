@@ -35,6 +35,15 @@ const DEVICE_WIDTH: Record<Device, number | undefined> = {
 	phone: 390,
 };
 
+/** Only ever an http(s) page in the frame or out of it: `data:` has the origin "null", which matches another "null". */
+function httpPage(url: string): boolean {
+	try {
+		return /^https?:$/.test(new URL(url, window.location.href).protocol);
+	} catch {
+		return false;
+	}
+}
+
 function originOf(url: string): string | undefined {
 	try {
 		return new URL(url, window.location.href).origin;
@@ -77,7 +86,7 @@ export function AppFrame(props: {
 	onTheme?: (theme: "light" | "dark") => void;
 }): React.ReactNode {
 	const frame = useRef<HTMLIFrameElement>(null);
-	const [src, setSrc] = useState(props.initialUrl);
+	const [src, setSrc] = useState(httpPage(props.initialUrl) ? props.initialUrl : "");
 	const home = src ? originOf(src) : undefined;
 	const [input, setInput] = useState(() =>
 		props.initialUrl ? display(props.initialUrl, home) : "",
@@ -150,15 +159,21 @@ export function AppFrame(props: {
 			}
 			if (data.type === "exit") {
 				// Out to the app's own page only, never somewhere the frame names.
-				if (originOf(data.url) === home) window.location.assign(data.url);
+				if (httpPage(data.url) && originOf(data.url) === home) window.location.assign(data.url);
 				return;
 			}
-			if (data.type !== "location") return;
+			if (data.type !== "location" || !httpPage(data.url)) return;
 			setConnected(true);
 			clearInterval(hello.current);
 			const theme = data.theme === "light" || data.theme === "dark" ? data.theme : undefined;
 			if (theme) onTheme.current?.(theme);
-			update({ url: data.url, title: typeof data.title === "string" ? data.title : "" }, theme);
+			update(
+				{
+					url: data.url.slice(0, 2000),
+					title: typeof data.title === "string" ? data.title.slice(0, 200) : "",
+				},
+				theme,
+			);
 		};
 		window.addEventListener("message", onMessage);
 		return () => {

@@ -71,13 +71,9 @@ function Byline({ comment }: { comment: ThreadComment }): React.ReactNode {
 				url={comment.onBehalfOf ? undefined : comment.author?.avatarUrl}
 			/>
 			<strong>{comment.onBehalfOf ?? comment.author?.login ?? "ghost"}</strong>
+			{/* The name is whatever the body says, so the account that posted it stays visible. */}
 			{comment.onBehalfOf && (
-				<span
-					className="devbar-nt-muted"
-					title={`Posted by ${comment.author?.login ?? "the workspace"} on their behalf`}
-				>
-					via devbar
-				</span>
+				<span className="devbar-nt-muted">via {comment.author?.login ?? "devbar"}</span>
 			)}
 			<span className="devbar-nt-muted">{ago(comment.createdAt)}</span>
 			{comment.pending && <span className="devbar-nt-tag devbar-nt-tag-yellow">pending</span>}

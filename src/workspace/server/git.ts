@@ -299,7 +299,8 @@ export async function pushCommit(
 	return {
 		ok: result.code === 0,
 		rejected: /\[rejected\]|non-fast-forward|fetch first|stale info/i.test(text),
-		message: text.trim().split("\n").pop() ?? "",
+		// A remote URL can carry a token, and this message goes to the browser.
+		message: (text.trim().split("\n").pop() ?? "").replace(/\/\/[^/@\s]+@/g, "//"),
 	};
 }
 

@@ -269,27 +269,41 @@ Dispatch means a web page can cause code to run on your machine. The rules:
 
 1. **Loopback by default.** The server binds `127.0.0.1`. `--host` beyond that
    prints a warning and needs the token.
-2. **Origin decides, not the socket.** A page's `fetch` arrives from the
-   browser, so the remote address is always loopback — it proves nothing (this
-   is the DNS-rebinding shape). Requests are authorized on `Origin`:
-   `http://localhost:*`, `http://127.0.0.1:*`, and any origin a project claims
-   in `origins`. Everything else must present the bearer token from
-   `~/.devbar/token` (mode 0600).
-3. **No wildcard CORS.** The server reflects only origins it would authorize.
-4. **No Private Network Access opt-in.** An `https://` page on the public
+2. **Origin decides, on a loopback socket.** A page's `fetch` arrives from the
+   browser, so a loopback address alone proves nothing (this is the DNS-rebinding
+   shape). Requests from loopback are authorized on `Origin`:
+   `http://localhost:*`, `http://127.0.0.1:*`, and any origin a project claims in
+   `origins`. Everything else, and anything from another address whatever its
+   `Origin` says, must present the bearer token from `~/.devbar/token` (mode 0600).
+   A claimed origin only sees the project that claims it: its reports, tasks,
+   pages and Workspace. It can file reports, and dispatch only if that project has
+   `autoDispatch` on. Registering a project, removing one, or changing its settings
+   (which choose the command an agent runs) needs a loopback origin, a local process
+   or the token. In the Workspace it's capped at `write`, doesn't act as your `gh`
+   account, and can't propose from disk. 3. **No wildcard CORS.** The server reflects only origins it would authorize.
+3. **No Private Network Access opt-in.** An `https://` page on the public
    internet cannot reach the loopback server, by design.
-5. **Local processes are trusted.** A request from loopback with no `Origin`
-   header is the CLI or the MCP server — a browser always sends `Origin` here.
-   Those processes can read the token file anyway. Set
-   `trustLocalProcesses: false` to require the token from everything.
-6. **Agent defaults dispatch.** A fresh config runs the agent on every report
+4. **Local processes are trusted.** A request from loopback with no `Origin` and
+   a loopback `Host` is the CLI, the MCP server, or you opening the shell. A
+   rebinding page's same-origin GET has no `Origin` either, but its `Host` is its
+   own name, so it's refused. Another user on the same machine counts as local too:
+   they can send any `Origin`, so loopback is not a boundary between accounts. Don't
+   run this server on a shared box. `trustLocalProcesses: false` requires the token
+   from clients with no `Origin`, but not from one that sends a localhost `Origin`. 6. **Agent defaults dispatch.** A fresh config runs the agent on every report
    (`autoDispatch: true`) and lets it edit the workspace (`permission: "auto"`).
    Both are one line to tighten; the 10-minute timeout and `maxBudgetUsd` are
    the other bounds worth setting.
-7. **Bounded input.** Report bodies are capped (25 MB by default) and asset
+5. **Bounded input.** Report bodies are capped (25 MB by default) and asset
    paths are generated names only, never taken from the request.
-8. **No `eval` tool.** The live bridge deliberately has no arbitrary-JS escape
-   hatch.
+6. **No `eval` tool.** The live bridge deliberately has no arbitrary-JS escape
+   hatch. `navigate` stays on the page's own origin, and the toolbar checks its own
+   switches before answering a call, whatever the server's copy says. Only the CLI,
+   the MCP server or the token can call into a page, and only the page itself can use
+   its stream or change its switches.
+7. **Your own files.** `~/.devbar` is mode 0700.
+8. **`devbar` runs the project's config.** `devbar.config.ts` is code, and it picks
+   the agent's command and the origins it trusts, so treat `devbar`, `doctor`, `link`
+   and `product check` in a repository you don't trust like running its `npm` scripts.
 
 ## Troubleshooting
 

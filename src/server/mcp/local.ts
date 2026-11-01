@@ -182,6 +182,13 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): LocalMcpSer
 	}
 
 	/** Every handler funnels through here so a stopped server reads as a message, not a crash. */
+	/** Why this session can't touch a report: `--project` restricts every tool. */
+	async function outOfScope(c: LocalClient, id: string): Promise<ToolResult | undefined> {
+		if (!options.project) return undefined;
+		const report = (await c.listReports({ project: options.project })).find((r) => r.id === id);
+		return report ? undefined : failure(`No report ${id} in project ${options.project}`);
+	}
+
 	async function withClient(fn: (c: LocalClient) => Promise<ToolResult>): Promise<ToolResult> {
 		try {
 			return await fn(await connect());
@@ -247,6 +254,8 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): LocalMcpSer
 		handler: (args) =>
 			withClient(async (c) => {
 				const id = String(args.report_id);
+				const refused = await outOfScope(c, id);
+				if (refused) return refused;
 				const reports = await c.listReports();
 				const report = reports.find((r) => r.id === id);
 				if (!report) return failure(`No report ${id}`);
@@ -277,9 +286,11 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): LocalMcpSer
 			required: ["report_id"],
 		},
 		handler: (args) =>
-			withClient(async (c) =>
-				json(summarize(await c.setReportStatus(String(args.report_id), "claimed"))),
-			),
+			withClient(async (c) => {
+				const refused = await outOfScope(c, String(args.report_id));
+				if (refused) return refused;
+				return json(summarize(await c.setReportStatus(String(args.report_id), "claimed")));
+			}),
 	});
 
 	server.tool({
@@ -296,8 +307,10 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): LocalMcpSer
 			required: ["report_id", "summary"],
 		},
 		handler: (args) =>
-			withClient(async (c) =>
-				json(
+			withClient(async (c) => {
+				const refused = await outOfScope(c, String(args.report_id));
+				if (refused) return refused;
+				return json(
 					summarize(
 						await c.resolveReport(
 							String(args.report_id),
@@ -305,8 +318,8 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): LocalMcpSer
 							args.commit ? String(args.commit) : undefined,
 						),
 					),
-				),
-			),
+				);
+			}),
 	});
 
 	server.tool({
@@ -320,9 +333,11 @@ export function createLocalMcpServer(options: LocalMcpOptions = {}): LocalMcpSer
 			required: ["report_id"],
 		},
 		handler: (args) =>
-			withClient(async (c) =>
-				json({ tasks: await c.dispatch({ report: String(args.report_id) }) }),
-			),
+			withClient(async (c) => {
+				const refused = await outOfScope(c, String(args.report_id));
+				if (refused) return refused;
+				return json({ tasks: await c.dispatch({ report: String(args.report_id) }) });
+			}),
 	});
 
 	server.tool({

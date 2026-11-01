@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile, symlink, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { classifyPath } from "../src/workspace/classify";
 import { createLocalBackend } from "../src/workspace/server/local-backend";
 import type { Actor } from "../src/workspace/server/backend";
 import { WorkspaceHttpError } from "../src/workspace/server/errors";
@@ -248,5 +249,73 @@ describe("local workspace backend", () => {
 			400,
 		);
 		expect(sh(root, "branch", "--list", "devbar/*")).toBe("");
+	});
+});
+
+describe("symlinks out of the project", () => {
+	test("a dangling link is refused as a write target", async () => {
+		const { root } = await repo();
+		const outside = join(root, "..", "outside.md");
+		await mkdir(join(root, "docs"), { recursive: true });
+		await symlink(outside, join(root, "docs", "link.md"));
+		const backend = createLocalBackend({ root });
+		await rejects(
+			backend.write?.([{ path: "docs/link.md", content: "x" }]) as Promise<unknown>,
+			403,
+		);
+		expect(await stat(outside).catch(() => null)).toBeNull();
+	});
+});
+
+describe("a path counts as where it lands", () => {
+	test("a link inside the project can't reach what the boundary keeps out", async () => {
+		const { root } = await repo();
+		await mkdir(join(root, "docs", "private"), { recursive: true });
+		await writeFile(join(root, ".env"), "API_KEY=secret\n");
+		await writeFile(join(root, "docs", "private", "s.md"), "# hidden\n");
+		await symlink(join(root, ".env"), join(root, "docs", "leak.md"));
+		await symlink(join(root, ".git", "config"), join(root, "docs", "cfg.md"));
+		await symlink(join(root, "docs", "private"), join(root, "docs", "alias"));
+		const backend = createLocalBackend({ root, config: { exclude: ["docs/private"] } });
+		await rejects(backend.read("docs/leak.md"), 403);
+		await rejects(backend.read("docs/alias/s.md"), 403);
+		const before = await readFile(join(root, ".git", "config"), "utf-8");
+		await rejects(
+			backend.write?.([{ path: "docs/cfg.md", content: "x" }]) as Promise<unknown>,
+			403,
+		);
+		expect(await readFile(join(root, ".git", "config"), "utf-8")).toBe(before);
+		const listed = (await backend.entries()).map((e) => e.path);
+		expect(listed).not.toContain("docs/leak.md");
+	});
+
+	test("a link between workspace files still works", async () => {
+		const { root } = await repo();
+		await writeFile(join(root, "AGENTS.md"), "# Rules\n");
+		await rm(join(root, "CLAUDE.md"), { force: true });
+		await symlink(join(root, "AGENTS.md"), join(root, "CLAUDE.md"));
+		const backend = createLocalBackend({ root });
+		expect((await backend.read("CLAUDE.md"))?.content).toBe("# Rules\n");
+	});
+
+	test("exclude and .git ignore case, for a disk that does", () => {
+		const config = { exclude: ["docs/private"] };
+		expect(classifyPath("docs/PRIVATE/secret.md", config)).toBeNull();
+		expect(classifyPath(".GIT/CLAUDE.md")).toBeNull();
+		expect(classifyPath("docs/.Git/x.md")).toBeNull();
+	});
+
+	test("an excluded file can't be proposed from disk", async () => {
+		const { root } = await repo();
+		await mkdir(join(root, "docs", "private"), { recursive: true });
+		await writeFile(join(root, "docs", "private", "s.md"), "# hidden\n");
+		const backend = createLocalBackend({ root, config: { exclude: ["docs/private"] } });
+		await rejects(
+			backend.propose(
+				{ title: "x", files: [{ path: "docs/private/s.md", fromDisk: true }] },
+				ANYONE,
+			),
+			403,
+		);
 	});
 });

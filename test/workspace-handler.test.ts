@@ -50,6 +50,40 @@ describe("workspace handler access", () => {
 		expect((await closed(new Request("http://localhost:3000/api/devbar/info"))).status).toBe(401);
 	});
 
+	test("a request forwarded from another machine is not loopback, whatever its Host says", async () => {
+		const handler = createWorkspaceHandler({ backend: stubBackend(), allowLoopback: true });
+		const from = (headers: Record<string, string>) =>
+			handler(new Request("http://localhost:3000/api/devbar/info", { headers }));
+		expect((await from({ "X-Forwarded-For": "192.168.1.20" })).status).toBe(401);
+		expect((await from({ "X-Forwarded-For": "127.0.0.1, 192.168.1.20" })).status).toBe(401);
+		expect((await from({ "X-Real-IP": "203.0.113.9" })).status).toBe(401);
+		// What `next dev` adds for a browser on this machine.
+		expect((await from({ "X-Forwarded-For": "::1" })).status).toBe(200);
+		expect((await from({ "X-Forwarded-For": "::ffff:127.0.0.1" })).status).toBe(200);
+	});
+
+	test("opening an issue counts as submitting: below the floor it is refused, and it is rate limited", async () => {
+		const backend = {
+			...stubBackend(),
+			createIssue: async () => ({ number: 1, title: "t", state: "open", url: "u" }),
+		} as WorkspaceBackend;
+		const issue = (handler: (r: Request) => Promise<Response>) =>
+			handler(post("https://app.example/api/devbar/issues", { title: "t" }));
+		const belowFloor = createWorkspaceHandler({
+			backend,
+			authorize: () => ({ name: "Kim", permission: "read" }),
+			submitPermission: "write",
+		});
+		expect((await issue(belowFloor)).status).toBe(403);
+		const limited = createWorkspaceHandler({
+			backend,
+			authorize: () => ({ name: "Kim" }),
+			rateLimit: { max: 1 },
+		});
+		expect((await issue(limited)).status).toBe(200);
+		expect((await issue(limited)).status).toBe(429);
+	});
+
 	test("a bearer token opens the workspace, and the 401 says one would be accepted", async () => {
 		const handler = createWorkspaceHandler({ backend: stubBackend(), token: "s3cret" });
 		const denied = await handler(new Request("https://app.example/api/devbar/info"));
@@ -250,6 +284,14 @@ describe("createWorkspace", () => {
 	test("production is closed to anonymous callers even on localhost", async () => {
 		const handler = createWorkspace({ env: { NODE_ENV: "production" } });
 		expect((await handler(new Request("http://localhost:3000/api/devbar/info"))).status).toBe(401);
+	});
+
+	test("an unset or unknown NODE_ENV does not serve the working tree", async () => {
+		for (const env of [{}, { NODE_ENV: "staging" }]) {
+			const handler = createWorkspace({ root: tmpdir(), env });
+			const res = await handler(new Request("http://localhost:3000/api/devbar/info"));
+			expect(res.status).toBe(401);
+		}
 	});
 
 	test("development serves the working tree to localhost, through the Next routes too", async () => {

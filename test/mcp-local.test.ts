@@ -314,3 +314,49 @@ describe("product and knowledge tools", () => {
 		expect(result.content[0]?.text).toContain("a, b");
 	});
 });
+
+describe("--project", () => {
+	test("reaches every report tool, not just the lists", async () => {
+		let touched = false;
+		const { client } = fakeClient({
+			listReports: async (filter) => (filter?.project === "demo" ? [report] : []),
+			getPrompt: async () => {
+				touched = true;
+				return "";
+			},
+			setReportStatus: async () => {
+				touched = true;
+				return report;
+			},
+			resolveReport: async () => {
+				touched = true;
+				return report;
+			},
+			dispatch: async () => {
+				touched = true;
+				return [];
+			},
+		});
+		const server = createLocalMcpServer({ project: "other", createClient: async () => client });
+		await server.handle({
+			jsonrpc: "2.0",
+			id: 1,
+			method: "initialize",
+			params: {
+				protocolVersion: "2024-11-05",
+				capabilities: {},
+				clientInfo: { name: "t", version: "1" },
+			},
+		});
+		for (const name of ["get_report", "claim_report", "resolve_report", "dispatch_report"]) {
+			const out = await server.handle({
+				jsonrpc: "2.0",
+				id: 2,
+				method: "tools/call",
+				params: { name, arguments: { report_id: "r1", summary: "s" } },
+			});
+			expect(firstText(out?.result)).toContain("No report r1");
+		}
+		expect(touched).toBe(false);
+	});
+});

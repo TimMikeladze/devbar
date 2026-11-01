@@ -20,6 +20,7 @@ import {
 	createSealer,
 	randomState,
 	readCookie,
+	sameSecret,
 	serializeCookie,
 	verifyWebhookSignature,
 	type GitHubSession,
@@ -67,10 +68,17 @@ export type WorkspaceHandlerOptions = {
 	token?: string;
 	/**
 	 * Answer requests whose Host is loopback without `authorize` or a token.
-	 * Meant for the local backend in development; checking Host (not the
-	 * socket) is what stops a DNS-rebinding page from counting as local.
+	 * Meant for the local backend in development; checking Host is what stops a
+	 * DNS-rebinding page from counting as local. It does not stop a client that
+	 * can reach the port and sends its own Host: a Web Request has no socket to
+	 * check. Keep the server bound to loopback.
 	 */
 	allowLoopback?: boolean;
+	/**
+	 * Whether an anonymous `authorize` answer is the owner of this machine, who
+	 * may use its `gh` account. Default: never. A loopback caller always is.
+	 */
+	machine?: (request: Request) => boolean;
 	/**
 	 * Refuse a mutation whose Origin is not this request's own origin. On by
 	 * default; the local devbar server turns it off because it serves pages on
@@ -147,10 +155,11 @@ export type ShellOptions = {
 export type WorkspaceHandler = (request: Request) => Promise<Response>;
 
 /** The routes that put something on GitHub in someone's name. */
-const SUBMITS = new Set(["changes", "vibe", "comment", "reply", "review"]);
+const SUBMITS = new Set(["changes", "vibe", "comment", "reply", "review", "issues"]);
 const RATE_LIMIT_KEYS = 5000;
 
 const LOOPBACK_HOST = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\]|[a-z0-9-]+\.localhost)(:\d+)?$/i;
+const LOOPBACK_ADDRESS = /^(::1|(::ffff:)?127(\.\d{1,3}){3})$/i;
 const SESSION_COOKIE = "devbar_session";
 const OAUTH_COOKIE = "devbar_oauth";
 const SSO_COOKIE = "devbar_sso";
@@ -191,6 +200,52 @@ function hostsOf(request: Request): Set<string> {
 	return hosts;
 }
 
+/** Whether a proxy, a tunnel or `next dev` says this came from another machine. */
+function forwardedFromElsewhere(request: Request): boolean {
+	return ["x-forwarded-for", "x-real-ip"].some((header) =>
+		(request.headers.get(header) ?? "")
+			.split(",")
+			.map((address) => address.trim())
+			.some((address) => address && !LOOPBACK_ADDRESS.test(address)),
+	);
+}
+
+/**
+ * The body, or undefined past the limit. Reads as it goes: a chunked body has no
+ * Content-Length to refuse early, and the webhook route reads before any check.
+ */
+async function readLimited(request: Request, max: number): Promise<string | undefined> {
+	if (Number(request.headers.get("content-length") ?? 0) > max) return undefined;
+	if (!request.body) return "";
+	const reader = request.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		size += value.length;
+		if (size > max) {
+			await reader.cancel().catch(() => {});
+			return undefined;
+		}
+		chunks.push(value);
+	}
+	return Buffer.concat(chunks).toString("utf8");
+}
+
+/** A page's address for a PR or issue body: an http(s) URL, so one line and no `Closes #1`. */
+function pageUrlOf(value: unknown): string | undefined {
+	if (typeof value !== "string") return undefined;
+	try {
+		const url = new URL(value);
+		return url.protocol === "http:" || url.protocol === "https:"
+			? url.href.slice(0, 2000)
+			: undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 function bearer(request: Request): string | undefined {
 	const header = request.headers.get("authorization");
 	return header?.startsWith("Bearer ") ? header.slice(7) : undefined;
@@ -210,6 +265,17 @@ function asUser(value: unknown): WorkspaceUser | undefined {
 
 function asPermission(value: unknown): Permission | undefined {
 	return typeof value === "string" && PERMISSIONS.has(value) ? (value as Permission) : undefined;
+}
+
+/** What a host's answer grants: `write` if it names no level, nothing if it names a bad one. */
+function grantOf(value: unknown): Permission | undefined {
+	if (value === undefined || value === null) return "write";
+	const permission = asPermission(value);
+	return permission && permission !== "none" ? permission : undefined;
+}
+
+function lower(a: Permission, b: Permission): Permission {
+	return PERMISSION_RANK[a] <= PERMISSION_RANK[b] ? a : b;
 }
 
 function higher(a: Permission, b: Permission): Permission {
@@ -271,9 +337,13 @@ function escapeHtml(value: string): string {
  */
 export function createWorkspaceHandler(options: WorkspaceHandlerOptions): WorkspaceHandler {
 	const maxBodyBytes = options.maxBodyBytes ?? 8 * 1024 * 1024;
-	const sealer = options.signIn ? createSealer(options.signIn.secret) : undefined;
+	const sealer = options.signIn ? createSealer(options.signIn.secret, SESSION_COOKIE) : undefined;
+	const oauthSealer = options.signIn
+		? createSealer(options.signIn.secret, OAUTH_COOKIE)
+		: undefined;
 	const sso = options.sso ? createSsoClient(options.sso) : undefined;
-	const ssoSealer = options.sso ? createSealer(options.sso.secret) : undefined;
+	const ssoSealer = options.sso ? createSealer(options.sso.secret, SSO_COOKIE) : undefined;
+	const ssoFlowSealer = options.sso ? createSealer(options.sso.secret, SSO_FLOW_COOKIE) : undefined;
 	// Refuse to run half-safe: with a provider anyone can sign up to, "signed
 	// in" alone would admit the whole internet.
 	const ssoProblem =
@@ -363,25 +433,23 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 		const ssoSession = ssoSealer?.open<{ user: WorkspaceUser; permission?: Permission }>(
 			readCookie(request, SSO_COOKIE),
 		);
-		if (options.token && bearer(request) === options.token) {
+		const ssoGrant = isUser(ssoSession?.user) ? grantOf(ssoSession?.permission) : undefined;
+		if (options.token && sameSecret(bearer(request), options.token)) {
 			actor = { verified: false, permission: "write" };
-		} else if (ssoSession) {
-			actor = {
-				user: ssoSession.user,
-				verified: true,
-				permission: asPermission(ssoSession.permission) ?? "write",
-			};
+		} else if (ssoSession && ssoGrant) {
+			actor = { user: ssoSession.user, verified: true, permission: ssoGrant };
 		} else if (options.authorize) {
 			const result = await options.authorize(request);
-			if (isUser(result)) {
+			const grant = isUser(result) ? grantOf(result.permission) : undefined;
+			if (isUser(result) && grant) {
 				const user = asUser(result);
-				actor = {
-					...(user ? { user } : {}),
-					verified: true,
-					permission: asPermission(result.permission) ?? "write",
-				};
+				actor = { ...(user ? { user } : {}), verified: true, permission: grant };
 			} else if (result === true) {
-				actor = { verified: false, permission: "write" };
+				actor = {
+					verified: false,
+					permission: "write",
+					...(options.machine?.(request) ? { machine: true } : {}),
+				};
 			} else {
 				return fail(401, "Not authorized", {
 					tokenAccepted: !!options.token,
@@ -394,9 +462,10 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 			if (
 				options.allowLoopback &&
 				hosts.length > 0 &&
-				hosts.every((host) => LOOPBACK_HOST.test(host))
+				hosts.every((host) => LOOPBACK_HOST.test(host)) &&
+				!forwardedFromElsewhere(request)
 			) {
-				actor = { verified: false, permission: "write" };
+				actor = { verified: false, permission: "write", machine: true };
 			}
 		}
 
@@ -459,24 +528,45 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 				...(actor.user?.email ? { email: actor.user.email } : {}),
 			};
 			actor.verified = true;
-			actor.permission = higher(actor.permission, id.permission);
+			if (options.requireGitHub) {
+				actor.permission = id.permission;
+				actor.ownToken = true;
+			} else actor.permission = higher(actor.permission, id.permission);
 		} else {
 			const b = await backend();
 			if (b.identity) {
-				// The machine's own identity: git's name and email, gh's account.
+				// The machine's own identity: git's name and email, gh's account. They
+				// belong to its owner. Anyone else a host let in doesn't wear them, and
+				// gets what the host granted, up to what gh could do.
 				const local = await b.identity();
-				if (local.user && !actor.user) {
-					actor.user = local.user;
-					actor.verified = true;
-				}
-				if (local.github) {
-					actor.github = local.github;
-					actor.permission = local.github.permission;
+				if (actor.machine) {
+					if (local.user && !actor.user) {
+						actor.user = local.user;
+						actor.verified = true;
+					}
+					if (local.github) {
+						actor.github = local.github;
+						actor.permission = local.github.permission;
+					}
+				} else if (local.github) {
+					actor.permission = lower(actor.permission, local.github.permission);
 				}
 			}
 		}
 		// Admitted, but without a GitHub identity of their own the server token
-		// would act for them — which this host has ruled out.
+		// would act for them — which this host has ruled out. An account with no
+		// access to the repository is no identity: anyone can make one.
+		if (options.requireGitHub && github && !atLeast(github.identity.permission, "read")) {
+			if (options.requireGitHub === "all") {
+				return fail(
+					403,
+					`The GitHub account ${github.identity.login} has no access to this repository`,
+					{ hint: "Ask a maintainer for access" },
+				);
+			}
+			delete actor.github;
+			delete actor.ownToken;
+		}
 		if (options.requireGitHub && !actor.github) {
 			const hint = options.signIn
 				? "Sign in with GitHub"
@@ -560,10 +650,8 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 	}
 
 	async function readBody(request: Request): Promise<Record<string, unknown>> {
-		const declared = Number(request.headers.get("content-length") ?? 0);
-		if (declared > maxBodyBytes) throw new WorkspaceHttpError(413, "Payload too large");
-		const raw = await request.text();
-		if (raw.length > maxBodyBytes) throw new WorkspaceHttpError(413, "Payload too large");
+		const raw = await readLimited(request, maxBodyBytes);
+		if (raw === undefined) throw new WorkspaceHttpError(413, "Payload too large");
 		try {
 			const body = raw ? JSON.parse(raw) : {};
 			if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();
@@ -644,8 +732,10 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 
 	/** A same-origin path to come back to after signing in — never another site. */
 	function returnPath(value: string | null, url: URL): string {
-		if (value && value.startsWith("/") && !value.startsWith("//") && !value.includes("\\"))
-			return value;
+		// A browser strips tabs and newlines from a URL before parsing it, so
+		// `/<tab>/evil.example` is another site. Backslashes count as slashes.
+		const plain = [...(value ?? "")].every((c) => c > "\u001f" && c !== "\u007f" && c !== "\\");
+		if (value && plain && value.startsWith("/") && !value.startsWith("//")) return value;
 		return `${mountOf(url)}/shell`;
 	}
 
@@ -661,7 +751,8 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 
 	async function signInRoute(request: Request, url: URL, route: string): Promise<Response> {
 		const signIn = options.signIn;
-		if (!signIn || !sealer) return fail(404, "Signing in with GitHub is not set up here");
+		if (!signIn || !sealer || !oauthSealer)
+			return fail(404, "Signing in with GitHub is not set up here");
 		const webUrl = (signIn.webUrl ?? "https://github.com").replace(/\/$/, "");
 		const redirectUri = signIn.redirectUri ?? `${url.origin}${mountOf(url)}/callback`;
 		const cookiePath = mountOf(url);
@@ -678,7 +769,7 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 				headers: {
 					Location: authorize.href,
 					"Cache-Control": "no-store",
-					"Set-Cookie": serializeCookie(OAUTH_COOKIE, sealer.seal({ state, back }, 600), {
+					"Set-Cookie": serializeCookie(OAUTH_COOKIE, oauthSealer.seal({ state, back }, 600), {
 						path: cookiePath,
 						maxAge: 600,
 						secure: secure(request, url),
@@ -687,7 +778,9 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 			});
 		}
 		// The callback: the state must be the one this browser was sent off with.
-		const stored = sealer.open<{ state: string; back: string }>(readCookie(request, OAUTH_COOKIE));
+		const stored = oauthSealer.open<{ state: string; back: string }>(
+			readCookie(request, OAUTH_COOKIE),
+		);
 		const back = stored?.back ?? `${cookiePath}/shell`;
 		const code = url.searchParams.get("code");
 		if (!stored || !code || url.searchParams.get("state") !== stored.state) {
@@ -725,7 +818,8 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 	}
 
 	async function ssoRoute(request: Request, url: URL, route: string): Promise<Response> {
-		if (!sso || !ssoSealer || !options.sso) return fail(404, "Single sign-on is not set up here");
+		if (!sso || !ssoSealer || !ssoFlowSealer || !options.sso)
+			return fail(404, "Single sign-on is not set up here");
 		const redirectUri = options.sso.redirectUri ?? `${url.origin}${mountOf(url)}/sso-callback`;
 		const cookiePath = mountOf(url);
 		const flowCookie = (value: string, maxAge: number) =>
@@ -743,14 +837,14 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 					headers: {
 						Location: to,
 						"Cache-Control": "no-store",
-						"Set-Cookie": flowCookie(ssoSealer.seal(flow, 600), 600),
+						"Set-Cookie": flowCookie(ssoFlowSealer.seal(flow, 600), 600),
 					},
 				});
 			} catch (err) {
 				return signInPage(502, (err as Error).message, back);
 			}
 		}
-		const flow = ssoSealer.open<SsoFlow>(readCookie(request, SSO_FLOW_COOKIE));
+		const flow = ssoFlowSealer.open<SsoFlow>(readCookie(request, SSO_FLOW_COOKIE));
 		const back = flow?.back ?? `${cookiePath}/shell`;
 		const code = url.searchParams.get("code");
 		if (!flow || !code || url.searchParams.get("state") !== flow.state) {
@@ -767,7 +861,8 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 			const claims = await sso.finish(code, redirectUri, flow);
 			const result = options.sso.user ? await options.sso.user(claims) : userFromClaims(claims);
 			const user = isUser(result) ? asUser(result) : undefined;
-			if (!user)
+			const grant = isUser(result) ? grantOf(result.permission) : undefined;
+			if (!user || !grant)
 				return signInPage(
 					403,
 					`${sso.label} signed you in, but this workspace does not admit that account.`,
@@ -797,8 +892,8 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 
 	async function webhookRoute(request: Request): Promise<Response> {
 		if (!options.webhookSecret) return fail(404, "No webhook is set up here");
-		const raw = await request.text();
-		if (raw.length > maxBodyBytes) return fail(413, "Payload too large");
+		const raw = await readLimited(request, maxBodyBytes);
+		if (raw === undefined) return fail(413, "Payload too large");
 		if (
 			!verifyWebhookSignature(
 				options.webhookSecret,
@@ -997,6 +1092,9 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 				}
 				return json(200, { ok: true });
 			}
+			// On a machine's working tree anything else here happens as its owner: their
+			// `gh`, their files.
+			if (!actor.machine && (await backend()).identity) need(actor, "write");
 			if (options.requireGitHub && !actor.github) {
 				throw new WorkspaceHttpError(403, "Making changes here needs a GitHub account", {
 					hint: options.signIn ? "Sign in with GitHub" : "It needs a GitHub identity of your own",
@@ -1026,17 +1124,28 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 				case "write":
 					if (!b.write)
 						return fail(501, "This workspace cannot write files directly — propose a change");
+					// gh's level on the remote says nothing about this machine's own files.
+					if (!actor.machine) need(actor, "write");
 					return json(200, await b.write(parseFiles(body.files)));
 				case "changes": {
 					const title = text(body.title, "title", 200);
 					const pr = body.pr === undefined ? undefined : positive(body.pr, "pr");
+					// `fromDisk` publishes the owner's working tree, whatever is in it.
+					if (
+						b.identity &&
+						!actor.machine &&
+						Array.isArray(body.files) &&
+						body.files.some((f) => (f as { fromDisk?: unknown })?.fromDisk === true)
+					) {
+						throw new WorkspaceHttpError(403, "Proposing from disk is for this machine's owner");
+					}
 					// Adding to someone's pull request is a push; a new one is open to anyone admitted.
 					if (pr) need(actor, "write");
 					const input: ProposeInput = {
 						title,
 						files: parseFiles(body.files),
 						...(typeof body.body === "string" ? { body: body.body.slice(0, 20_000) } : {}),
-						...(typeof body.pageUrl === "string" ? { pageUrl: body.pageUrl.slice(0, 2000) } : {}),
+						...(pageUrlOf(body.pageUrl) ? { pageUrl: pageUrlOf(body.pageUrl) } : {}),
 						...(typeof body.ref === "string" && body.ref ? { ref: assertRef(body.ref) } : {}),
 						...(pr ? { pr } : {}),
 						...(body.draft === true ? { draft: true } : {}),
@@ -1058,7 +1167,7 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 						prompt: text(body.prompt, "prompt", 20_000),
 						...(typeof body.title === "string" ? { title: body.title.slice(0, 200) } : {}),
 						...(typeof body.path === "string" ? { path: body.path } : {}),
-						...(typeof body.pageUrl === "string" ? { pageUrl: body.pageUrl.slice(0, 2000) } : {}),
+						...(pageUrlOf(body.pageUrl) ? { pageUrl: pageUrlOf(body.pageUrl) } : {}),
 					};
 					return json(200, await b.vibe(input, who));
 				}
@@ -1099,7 +1208,8 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 					} else {
 						// GitHub lets authors resolve their own; below triage, the person
 						// needs an identity for GitHub to judge that.
-						if (!actor.github) need(actor, "triage");
+						// An account with no access proves nothing, and the server token would act.
+						if (!atLeast(actor.github?.permission, "read")) need(actor, "triage");
 						await b.resolve?.({ thread, kind, number, resolved: body.resolved !== false }, who);
 					}
 					return json(200, { ok: true });
@@ -1169,6 +1279,8 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 		const method = request.method.toUpperCase();
 		if (method === "OPTIONS") return new Response(null, { status: 204 });
 		const url = new URL(request.url);
+		// `//evil.example/shell` would become the shell's script and API address.
+		if (url.pathname.startsWith("//")) return fail(404, "Not found");
 		const name = url.pathname.split("/").filter(Boolean).pop() ?? "";
 
 		if (method === "GET" && (name === "shell" || name === "shell.js") && options.shell !== false) {

@@ -84,7 +84,9 @@ skipped, and locally only files git would track are listed (untracked ones
 included, ignored ones not).
 
 That list is also the edit boundary: the workspace reads and writes these files
-and nothing else. It will not open `src/app.ts` for editing, whoever asks.
+and nothing else. It will not open `src/app.ts` for editing, whoever asks. A symlink
+counts as where it lands: `CLAUDE.md -> AGENTS.md` works, `docs/x.md -> ../.env`
+doesn't. Paths are compared without case for `exclude` and `.git`.
 
 A page opens in a **side peek** beside the app; **⤢** makes it a full page, and
 **App** in the sidebar brings the app back. At the top of every page: its icon,
@@ -437,11 +439,11 @@ which browsers only expose in a secure context, so Select does nothing on a plai
 
 The route picks its backend from the environment:
 
-| When                                     | Backend  | Needs                                                 |
-| ---------------------------------------- | -------- | ----------------------------------------------------- |
-| `NODE_ENV` is not `production`           | `local`  | nothing — serves `process.cwd()` to localhost         |
-| `NODE_ENV=production`                    | `github` | `DEVBAR_GITHUB_TOKEN`, and the repository (see below) |
-| `DEVBAR_WORKSPACE_BACKEND=local\|github` | that one | as above                                              |
+| When                                     | Backend  | Needs                                                   |
+| ---------------------------------------- | -------- | ------------------------------------------------------- |
+| `NODE_ENV` is `development` or `test`    | `local`  | nothing — serves `process.cwd()` to localhost           |
+| anything else, `NODE_ENV` unset included | `github` | `DEVBAR_GITHUB_TOKEN`, and the repository (see below)   |
+| `DEVBAR_WORKSPACE_BACKEND=local\|github` | that one | as above; `local` in production has no localhost way in |
 
 | Variable                                             | What                                                                                                |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
@@ -511,13 +513,32 @@ Who may use a workspace, in order:
 4. **A GitHub sign-in** with at least read access to the repository — when
    `authorize` is not set (with it, `authorize` decides and GitHub only says
    whose token acts).
-5. **Localhost** — the local backend answers requests whose `Host` is loopback,
-   and only that. It checks the Host header rather than the socket, so a
-   DNS-rebinding page (a hostile name resolving to 127.0.0.1) is refused. Expose
-   `next dev` beyond localhost — a tunnel, `-H 0.0.0.0` — and it needs one of the
-   others.
+5. **Localhost** — the local backend answers requests whose `Host` is loopback
+   and whose `X-Forwarded-For` and `X-Real-IP`, if any, are too. A DNS-rebinding
+   page (a hostile name resolving to 127.0.0.1) and a request through a tunnel or
+   proxy that sets those headers are refused.
 
-With none of them, a production workspace refuses everyone.
+   This only stops browsers and proxies. A route handler can't see the socket, so
+   anyone who can reach the port directly can send `Host: localhost` and
+   `X-Forwarded-For: 127.0.0.1` themselves. They get the workspace, and locally
+   that includes acting through your `gh` account. `next dev` binds `0.0.0.0` by
+   default, so on a shared network run it on loopback:
+
+   ```bash
+   next dev -H 127.0.0.1
+   ```
+
+   Or turn this way in off and use one of the others:
+   `createWorkspaceRoutes({ allowLoopback: false, token })`.
+
+With none of them, a deployed workspace refuses everyone.
+
+A cookie session is sealed with `DEVBAR_SESSION_SECRET` and nothing is stored on
+the server, so one can't be revoked on its own. Someone removed from your identity
+provider stays in until their single sign-on session runs out (12 hours by
+default). To end every session now, change the secret. A GitHub sign-in is checked
+against the repository at most a minute apart, so removing a collaborator takes
+effect within a minute.
 
 ### Single sign-on
 
@@ -552,9 +573,11 @@ createWorkspaceRoutes({
 ```
 
 A company tenant (Okta, Entra) only signs in its own people, so everyone it
-signs in is admitted by default. Google signs in anyone with a Google account,
-so with Google's issuer an allow-list is required — without one the workspace
-answers 503 rather than admit the internet. `allowEmails` only counts verified
+signs in is admitted by default. That's only true if the tenant has signups
+closed: on an Auth0 or Keycloak tenant with open signups, pass `user`. Google,
+Microsoft personal accounts, Apple and GitLab sign in anyone with an account, so
+those issuers require an allow-list. Without one the workspace answers 503 rather
+than admit the internet. `allowEmails` only counts verified
 addresses. A sign-in lasts 12 hours (`maxAgeSeconds`).
 
 People signed in this way act through the server token, like anyone else
@@ -604,6 +627,11 @@ createWorkspaceRoutes({
 | `"writes"`        | reads; every change answers 403; the shell hides editing, proposing, comments and new issues, and offers **Sign in with GitHub** |
 | `"all"`           | is not let in; the shell shows its sign-in screen                                                                                |
 
+Once it's on, the server token never acts for anyone, and GitHub's level replaces
+the one `authorize` returned. A reader's proposal goes to GitHub with their token
+and comes back refused. An account with no access to the repository doesn't count
+as an identity, so a throwaway account gets nothing.
+
 A GitHub identity is a sign-in (`DEVBAR_GITHUB_CLIENT_ID`,
 `DEVBAR_GITHUB_CLIENT_SECRET`, `DEVBAR_SESSION_SECRET`), your own
 `githubToken(request)`, or locally `gh`'s account. Deployed with neither of the
@@ -627,9 +655,35 @@ a reader can still open a PR and start your agent on a private repository. Raise
 if that's not what you want. Someone below the level can still read, and the shell
 hides what they can't do.
 
+A reader who gets through still can't set labels, assignees, milestones or
+reviewers on the PR, since the server token would be setting what GitHub keeps for
+triage. The PR opens without them and the response carries a warning.
+
 People admitted by the shared token, single sign-on or `authorize` count as `write`
-unless `authorize` returns a lower `permission`. On a public repository, that's
+unless `authorize` returns a lower `permission`. `permission: "none"`, or a level
+that doesn't exist, refuses them. On a public repository, that's
 what lets someone in without a GitHub level of their own, so keep that list short.
+
+### What the server token won't do
+
+On top of the levels above, for anyone acting through the server token:
+
+- Replying to or resolving a review thread needs the thread to be on the pull
+  request named in the request.
+- Deleting a branch only works on `devbar/` branches. Nobody deletes the default
+  branch or `baseBranch`.
+- `GET pull` gives the diff of a workspace file. For any other file it gives the
+  name, and the diff only to someone with a GitHub identity with at least read.
+  Files under `exclude` aren't listed to anyone.
+
+A GitHub App's installation token is minted for the configured repository alone. A
+PAT reaches whatever it was created for, so give it one repository.
+
+On the local backend, `gh`'s account and git's name belong to whoever owns the
+machine: a loopback caller. Someone let in by `authorize`, single sign-on or the
+token doesn't use them. They get the level the host granted, capped by what `gh`
+could do, and every change needs `write`, because it happens in the owner's working
+tree.
 
 ### Rate limits
 

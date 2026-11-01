@@ -1,11 +1,12 @@
 import { watch as fsWatch, type FSWatcher } from "node:fs";
-import { mkdir, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import type { WorkspaceConfig } from "../../config";
 import {
 	buildEntry,
 	classifyPath,
+	isExcluded,
 	MAX_FILE_BYTES,
 	normalizePath,
 	sortEntries,
@@ -247,14 +248,27 @@ export function createLocalBackend(options: LocalBackendOptions): WorkspaceBacke
 			try {
 				const real = await realpath(probe);
 				if (real !== base && !real.startsWith(base + sep)) break;
+				// Where it really lands, on disk's own spelling. The name asked for passed
+				// the edit boundary, so a link inside the project (docs/x.md -> ../.env) or
+				// another case (docs/PRIVATE) has to pass it too. CLAUDE.md -> AGENTS.md does.
+				const landed = relative(base, join(real, relative(probe, target)))
+					.split(sep)
+					.join("/");
+				if (landed !== path && !classifyPath(landed, config)) break;
 				return target;
 			} catch {
+				// Dangling: realpath can't say where it leads, and a write would follow it.
+				const exists = await lstat(probe).then(
+					() => true,
+					() => false,
+				);
+				if (exists) break;
 				const parent = dirname(probe);
 				if (parent === probe) break;
 				probe = parent;
 			}
 		}
-		throw new WorkspaceHttpError(403, `${path} resolves outside the project`);
+		throw new WorkspaceHttpError(403, `${path} resolves outside the workspace files`);
 	}
 
 	async function current(path: string): Promise<{ content: string; sha: string } | null> {
@@ -415,7 +429,10 @@ export function createLocalBackend(options: LocalBackendOptions): WorkspaceBacke
 					return commit ? ((await showFile(top, commit, repoPath))?.content ?? null) : null;
 				}
 				try {
-					return await readFile(join(top, repoPath), "utf-8");
+					// A checked-out repository's template can be a symlink to anything.
+					const [real, realTop] = await Promise.all([realpath(join(top, repoPath)), realpath(top)]);
+					if (!real.startsWith(realTop + sep)) return null;
+					return await readFile(real, "utf-8");
 				} catch {
 					return null;
 				}
@@ -523,6 +540,7 @@ export function createLocalBackend(options: LocalBackendOptions): WorkspaceBacke
 			const changes: TreeChange[] = [];
 			const listed: { path: string; deleted?: boolean }[] = [];
 			const conflicts: string[] = [];
+			let followDirty: Set<string> | undefined;
 			for (const file of input.files) {
 				if ("fromDisk" in file) {
 					const path = normalizePath(file.path);
@@ -535,6 +553,15 @@ export function createLocalBackend(options: LocalBackendOptions): WorkspaceBacke
 					// Only files the PR branch has not moved since this checkout's HEAD:
 					// otherwise committing the disk copy would revert someone's change.
 					if ((await blobAt(parent, path)) !== (await blobAt("HEAD", path))) conflicts.push(path);
+					if (isExcluded(path, config))
+						throw new WorkspaceHttpError(403, `${path} is excluded from the workspace`);
+					// The same rule as a new proposal: git's add takes ignored files as
+					// readily as any other, so the browser can't be the one naming them.
+					followDirty ??= new Set(
+						(await workingTreeChanges(top, repository.prefix)).map((f) => f.path),
+					);
+					if (!followDirty.has(path))
+						throw new WorkspaceHttpError(400, `${path} has no uncommitted changes`);
 					changes.push({ repoPath: repository.prefix + path, fromDisk: true });
 					listed.push({ path });
 					continue;
@@ -842,6 +869,8 @@ export function createLocalBackend(options: LocalBackendOptions): WorkspaceBacke
 							"Working-tree changes belong to the branch checked out",
 						);
 					}
+					if (isExcluded(path, config))
+						throw new WorkspaceHttpError(403, `${path} is excluded from the workspace`);
 					// Only what is already changed on disk: the browser names files, it
 					// never supplies their content on this path.
 					dirty ??= new Set(

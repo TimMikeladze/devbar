@@ -32,9 +32,14 @@ export type Sealer = {
 	open<T>(sealed: string | undefined): T | undefined;
 };
 
-export function createSealer(secret: string): Sealer {
+/**
+ * One sealer per cookie. `purpose` goes into the key because the secret is
+ * shared and some sealed values go to anyone who asks: with a single key, the
+ * state cookie `sso-login` hands out would also open as a signed-in session.
+ */
+export function createSealer(secret: string, purpose: string): Sealer {
 	if (secret.length < 32) throw new Error("The session secret must be at least 32 characters");
-	const key = createHash("sha256").update(`devbar-session:${secret}`).digest();
+	const key = createHash("sha256").update(`devbar-session:${purpose}:${secret}`).digest();
 	return {
 		seal(value, ttlSeconds) {
 			const iv = randomBytes(12);
@@ -100,6 +105,13 @@ export function verifyWebhookSignature(
 	);
 	const given = Buffer.from(signature);
 	return given.length === expected.length && timingSafeEqual(given, expected);
+}
+
+/** Constant time, whatever the lengths: both sides are hashed first. */
+export function sameSecret(given: string | null | undefined, expected: string): boolean {
+	if (typeof given !== "string") return false;
+	const hash = (value: string) => createHash("sha256").update(value).digest();
+	return timingSafeEqual(hash(given), hash(expected));
 }
 
 export function randomState(): string {

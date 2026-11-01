@@ -45,6 +45,10 @@ export type Actor = {
 	verified: boolean;
 	permission: Permission;
 	github?: { login: string; id?: number; permission: Permission; token?: string };
+	/** `requireGitHub`: the person's token acts, and GitHub refuses what it refuses. Never the server's. */
+	ownToken?: boolean;
+	/** Let in as whoever owns this machine (a loopback caller, or the local devbar server's own check). */
+	machine?: boolean;
 };
 
 /** A GitHub identity behind a user token, as a backend reads it. */

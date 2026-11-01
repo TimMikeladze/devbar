@@ -3,7 +3,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "next dev --webpack",
+		"dev": "next dev --webpack -H 127.0.0.1",
 		"build": "next build --webpack",
 		"start": "next start"
 	},

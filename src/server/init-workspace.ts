@@ -143,7 +143,9 @@ export async function commandInitWorkspace(
 	log("");
 	log("Next:");
 	log('  1. Point the toolbar at it: <Devbar workspace="/api/devbar" />');
-	log("  2. `next dev`, then open /api/devbar/shell");
+	log(
+		"  2. `next dev -H 127.0.0.1`, then open /api/devbar/shell. Plain `next dev` listens on every interface, and anyone who can reach the port can pass as localhost",
+	);
 	log("  3. For production, set:");
 	for (const line of workspaceEnv(auth)) log(`       ${line}`);
 	return { written: route };

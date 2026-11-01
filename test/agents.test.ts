@@ -175,10 +175,18 @@ describe("codex event parsing", () => {
 });
 
 describe("cli runner", () => {
+	test("a project directory that's gone fails the run, it doesn't run somewhere else", async () => {
+		const { runner } = resolveRunner({ command: "echo" });
+		const events = [];
+		for await (const event of runner(ctx({ cwd: "/devbar/not/here" }))) events.push(event);
+		expect(events.map((e) => e.type)).toEqual(["error"]);
+	});
+
 	test("streams a real process to completion", async () => {
 		const { runner } = resolveRunner({ command: "echo" });
 		const events = [];
-		for await (const event of runner(ctx({ prompt: "hello" }))) events.push(event);
+		for await (const event of runner(ctx({ cwd: process.cwd(), prompt: "hello" })))
+			events.push(event);
 
 		expect(events[0]?.type).toBe("start");
 		expect(events.at(-1)).toEqual({ type: "done", exitCode: 0 });
@@ -187,7 +195,7 @@ describe("cli runner", () => {
 	test("a missing binary fails the run instead of throwing", async () => {
 		const { runner } = resolveRunner({ command: "devbar-not-a-real-binary" });
 		const events = [];
-		for await (const event of runner(ctx())) events.push(event);
+		for await (const event of runner(ctx({ cwd: process.cwd() }))) events.push(event);
 
 		const done = events.at(-1);
 		expect(done?.type).toBe("done");
@@ -200,7 +208,8 @@ describe("cli runner", () => {
 
 		const events = [];
 		setTimeout(() => controller.abort(), 50);
-		for await (const event of runner(ctx({ signal: controller.signal }))) events.push(event);
+		for await (const event of runner(ctx({ cwd: process.cwd(), signal: controller.signal })))
+			events.push(event);
 
 		expect(events.some((e) => e.type === "error" && e.message === "cancelled")).toBe(true);
 		expect(events.at(-1)?.type).toBe("done");

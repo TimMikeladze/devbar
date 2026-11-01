@@ -3,8 +3,11 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { generateKeyPairSync } from "node:crypto";
+import { readMarker } from "../src/workspace/anchor";
+import { installationTokenSource } from "../src/workspace/github/app";
 import type { Actor } from "../src/workspace/server/backend";
-import { WorkspaceHttpError } from "../src/workspace/server/errors";
+import { readOnBehalf, WorkspaceHttpError } from "../src/workspace/server/errors";
 import { createGitHubBackend } from "../src/workspace/server/github-backend";
 import { createFakeGitHub, type FakeGitHub } from "./support/fake-github";
 
@@ -527,5 +530,218 @@ describe("github backend: history, issues, agents, freshness", () => {
 		stop();
 		expect(events).toContainEqual(expect.objectContaining({ type: "ref", ref: "main" }));
 		expect(events).toContainEqual({ type: "github", event: "issue_comment" });
+	});
+});
+
+describe("the server token stays out of a reader's hands", () => {
+	test("a reader can't close someone's issue, and the server token is never tried", async () => {
+		const { backend, fake } = setup();
+		const issue = await backend.createIssue?.({ title: "Someone's bug" }, ana);
+		const number = issue?.number as number;
+		fake.calls.length = 0;
+		await rejects(
+			backend.resolve?.(
+				{ thread: "x", kind: "issue", number, resolved: true },
+				rita,
+			) as Promise<void>,
+			403,
+		);
+		expect(fake.issues.find((i) => i.number === number)?.state).toBe("open");
+		expect(fake.calls.filter((c) => c.method === "PATCH").map((c) => c.login)).not.toContain(
+			"devbar-bot",
+		);
+	});
+
+	test("a reader can close their own issue with their own token", async () => {
+		const { backend, fake } = setup();
+		const issue = await backend.createIssue?.({ title: "My bug" }, rita);
+		const number = issue?.number as number;
+		await backend.resolve?.({ thread: "x", kind: "issue", number, resolved: true }, rita);
+		expect(fake.issues.find((i) => i.number === number)?.state).toBe("closed");
+	});
+});
+
+describe("state shared between mounts", () => {
+	test("a token's permission on one repository says nothing about another", async () => {
+		const backendFor = (name: string, permission: "write" | "none") =>
+			createGitHubBackend({
+				token: "server",
+				repo: `acme/${name}`,
+				fetch: createFakeGitHub({
+					origin: origin().bare,
+					repo: `acme/${name}`,
+					users: {
+						server: { login: "bot", id: 1, permission: "write" },
+						shared: { login: "kim", id: 7, permission },
+					},
+				}).fetch,
+			});
+		const open = backendFor("open", "write");
+		const secret = backendFor("secret", "none");
+		expect((await open.identify?.("shared"))?.permission).toBe("write");
+		expect((await secret.identify?.("shared"))?.permission).toBe("none");
+	});
+});
+
+describe("requireGitHub: the person's own token, or nothing", () => {
+	const ownToken = { ...rita, ownToken: true };
+
+	test("a reader's proposal goes to GitHub with their token, which refuses it", async () => {
+		const { backend, fake } = setup();
+		fake.calls.length = 0;
+		await rejects(
+			backend.propose(
+				{ title: "t", files: [{ path: "specs/new/spec.md", content: "# New\n" }] },
+				ownToken,
+			),
+			403,
+		);
+		expect(fake.calls.filter((c) => c.method !== "GET").map((c) => c.login)).not.toContain(
+			"devbar-bot",
+		);
+	});
+
+	test("a reader's agent request doesn't get its label from the server token", async () => {
+		const { backend, fake } = setup();
+		await backend.vibe?.({ prompt: "Do it" }, ownToken);
+		expect(fake.issues.at(-1)?.labels).not.toContain("devbar-agent");
+	});
+});
+
+describe("what the server token won't do for someone", () => {
+	const proposed = async (backend: ReturnType<typeof setup>["backend"]) => {
+		const out = await backend.propose(
+			{ title: "New spec", files: [{ path: "specs/new/spec.md", content: "# New\n" }] },
+			ana,
+		);
+		return { number: out.pr?.number as number, branch: out.branch };
+	};
+
+	test("a review thread from somewhere else is refused before GitHub hears of it", async () => {
+		const { backend, fake } = setup();
+		const { number } = await proposed(backend);
+		fake.calls.length = 0;
+		const foreign = { thread: "PRRT_from_another_repo", kind: "review" as const, number };
+		await rejects(backend.reply?.({ ...foreign, body: "hi" }, guest) as Promise<void>, 403);
+		await rejects(backend.resolve?.({ ...foreign, resolved: true }, guest) as Promise<void>, 403);
+		expect(fake.calls.filter((c) => c.operation?.match(/Reply|Resolve/))).toEqual([]);
+	});
+
+	test("a reader's proposal doesn't get labels or reviewers by proxy", async () => {
+		const { backend, fake } = setup();
+		fake.calls.length = 0;
+		const out = await backend.propose(
+			{
+				title: "x",
+				files: [{ path: "specs/new/spec.md", content: "# New\n" }],
+				labels: ["docs"],
+				reviewers: ["ana"],
+			},
+			rita,
+		);
+		expect(out.pr).toBeDefined();
+		expect(out.warnings.join()).toContain("triage");
+		expect(fake.calls.filter((c) => /labels|requested_reviewers/.test(c.path))).toEqual([]);
+	});
+
+	test("only a devbar branch gets deleted on someone's behalf", async () => {
+		const { backend, fake } = setup();
+		const { number } = await proposed(backend);
+		await backend.pullAction?.(number, { action: "close" }, ana);
+		// The same pull request, seen by a mount whose branches have another prefix.
+		const elsewhere = createGitHubBackend({
+			token: "server-token",
+			repo: "acme/site",
+			fetch: fake.fetch,
+			config: { branchPrefix: "other/" },
+		});
+		await rejects(
+			elsewhere.pullAction?.(number, { action: "delete-branch" }, guest) as Promise<unknown>,
+			403,
+		);
+		await backend.pullAction?.(number, { action: "delete-branch" }, guest);
+	});
+
+	test("source patches go to people GitHub would show them to, and excluded files to nobody", async () => {
+		const { backend, fake, push } = setup();
+		const { number, branch } = await proposed(backend);
+		push(branch, { "src/index.ts": "export const secret = 1;\n" });
+		const patchOf = (data: Awaited<ReturnType<NonNullable<typeof backend.pull>>> | undefined) =>
+			data?.files.find((f) => f.path === "src/index.ts");
+		expect(patchOf(await backend.pull?.(number, guest))).toEqual({
+			path: "src/index.ts",
+			status: "modified",
+		});
+		expect(patchOf(await backend.pull?.(number, rita))?.patch).toContain("secret");
+		const excluding = createGitHubBackend({
+			token: "server-token",
+			repo: "acme/site",
+			fetch: fake.fetch,
+			config: { exclude: ["src"] },
+		});
+		expect(patchOf(await excluding.pull?.(number, rita))).toBeUndefined();
+	});
+
+	test("under requireGitHub the comment label isn't repaired with the server token either", async () => {
+		const { backend, fake } = setup();
+		fake.calls.length = 0;
+		await backend.comment?.({ path: "AGENTS.md", body: "Hm" }, { ...rita, ownToken: true });
+		expect(fake.calls.filter((c) => /labels/.test(c.path) && c.login === "devbar-bot")).toEqual([]);
+	});
+
+	test("an installation token is minted for this repository only", async () => {
+		const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+		let minted: unknown;
+		const source = installationTokenSource(
+			{
+				appId: "1",
+				installationId: "2",
+				privateKey: privateKey.export({ type: "pkcs8", format: "pem" }) as string,
+			},
+			{
+				repo: "acme/site",
+				fetch: (async (_url: string, init: RequestInit) => {
+					minted = JSON.parse(String(init.body));
+					return Response.json({ token: "t", expires_at: "2099-01-01T00:00:00Z" });
+				}) as unknown as typeof fetch,
+			},
+		);
+		await source();
+		expect(minted).toEqual({ repositories: ["site"] });
+	});
+});
+
+describe("what a comment body can't claim", () => {
+	test("the marker devbar appended wins over one typed above it", () => {
+		const typed = '<!-- devbar:spec {"path":"docs/other.md"} -->';
+		const appended = '<!-- devbar:spec {"path":"docs/real.md"} -->';
+		expect(readMarker(`${typed}\ntext\n${appended}`, "spec")).toEqual({ path: "docs/real.md" });
+	});
+
+	test("a self-reported name still says so when read back", () => {
+		expect(readOnBehalf("> **Sam** via devbar (self-reported)\n\nhi")).toBe("Sam (self-reported)");
+		expect(readOnBehalf("> **Sam** via devbar\n\nhi")).toBe("Sam");
+	});
+});
+
+describe("what GitHub hands back", () => {
+	test("a symlink GitHub follows has to land on a workspace file", async () => {
+		const { fake } = setup();
+		const following = createGitHubBackend({
+			token: "server-token",
+			repo: "acme/site",
+			fetch: (async (url: string, init: RequestInit) => {
+				if (String(url).includes("/contents/docs/leak.md")) {
+					return Response.json({
+						sha: "a".repeat(40),
+						path: ".env",
+						encoding: "base64",
+						content: btoa("API_KEY=secret"),
+					});
+				}
+				return fake.fetch(url, init);
+			}) as unknown as typeof fetch,
+		});
+		expect(await following.read("docs/leak.md")).toBeNull();
 	});
 });

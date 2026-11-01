@@ -44,7 +44,7 @@ export function installationTokenSource(
 	let cached: { token: string; expires: number } | undefined;
 	let installationId = app.installationId;
 
-	async function call<T>(method: string, path: string): Promise<T> {
+	async function call<T>(method: string, path: string, payload?: unknown): Promise<T> {
 		const res = await doFetch(`${apiUrl}${path}`, {
 			method,
 			headers: {
@@ -53,6 +53,7 @@ export function installationTokenSource(
 				"X-GitHub-Api-Version": "2022-11-28",
 				"User-Agent": "devbar-workspace",
 			},
+			...(payload ? { body: JSON.stringify(payload) } : {}),
 		});
 		const body = (await res.json().catch(() => ({}))) as T;
 		if (!res.ok) throw githubError(res.status, body, res.headers, res.statusText);
@@ -67,6 +68,8 @@ export function installationTokenSource(
 		const minted = await call<{ token: string; expires_at: string }>(
 			"POST",
 			`/app/installations/${installationId}/access_tokens`,
+			// An installation can cover the whole account. This token gets one repository.
+			{ repositories: [options.repo.split("/")[1]] },
 		);
 		cached = { token: minted.token, expires: Date.parse(minted.expires_at) };
 		return minted.token;

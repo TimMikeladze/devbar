@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { mkdir, readFile } from "node:fs/promises";
+import { chmod, mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { createRegistry, type Registry, type ProjectConfig } from "./registry";
@@ -16,6 +16,7 @@ import {
 } from "./project-overrides";
 import { createWorkspaceHandler, type WorkspaceHandler } from "../workspace/server/handler";
 import { createLocalBackend } from "../workspace/server/local-backend";
+import { sameSecret } from "../workspace/server/session";
 
 const DEVBAR_DIR = join(homedir(), ".devbar");
 const REPORTS_DIR = join(DEVBAR_DIR, "reports");
@@ -27,7 +28,10 @@ const PROJECT_OVERRIDES_FILE = join(DEVBAR_DIR, "project-overrides.json");
 /** Refuse bodies bigger than this. A report with screenshots is ~1-5 MB. */
 const DEFAULT_MAX_BODY_BYTES = 25 * 1024 * 1024;
 
+const MACHINE_HEADER = "x-devbar-machine";
 const LOOPBACK_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+
+const LOOPBACK_HOST = /^(localhost|127(?:\.\d{1,3}){3}|\[::1\]|[a-z0-9-]+\.localhost)(:\d+)?$/i;
 
 export function isLoopbackOrigin(origin: string): boolean {
 	return LOOPBACK_ORIGIN.test(origin.trim());
@@ -81,13 +85,14 @@ export type LocalServerOptions = {
 	/** Max request body size in bytes. */
 	maxBodyBytes?: number;
 	/**
-	 * Treat token-less loopback requests that carry no Origin header as trusted
-	 * local processes (the CLI, the MCP server). Default true.
+	 * Treat token-less requests with no Origin, a loopback socket and a loopback
+	 * Host as trusted local processes (the CLI, the MCP server). Default true.
 	 *
-	 * A browser always sends Origin to this server, so this cannot be exercised
-	 * by a web page. It only covers native processes running as the same user —
-	 * which can read ~/.devbar/token anyway. Set false to require the token from
-	 * everything.
+	 * A browser leaves Origin off a same-origin GET, so the Host is what keeps a
+	 * DNS-rebinding page out. A page's own navigation to this server (opening the
+	 * shell) counts as local, and so does any native process running as the same
+	 * user, which can read ~/.devbar/token anyway. Set false to require the token
+	 * from everything.
 	 */
 	trustLocalProcesses?: boolean;
 	/** Called after each report is written to disk */
@@ -115,6 +120,8 @@ type RequestContext = {
 	origin: string;
 	/** True when the caller is a local process (CLI, MCP server), not a page. */
 	localProcess: boolean;
+	/** The one project a claimed origin may touch. Absent for local callers and the token. */
+	scope?: string;
 };
 
 export async function createLocalServer(options: LocalServerOptions = {}): Promise<LocalServer> {
@@ -131,6 +138,12 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			: PROJECT_OVERRIDES_FILE);
 	const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
 
+	// Reports hold screenshots and page text, and projects name what runs: only the
+	// owner reads ~/.devbar. Everything under it inherits that, so files can stay as they are.
+	if ([reportsDir, resultsDir, tasksDir, projectsFile].some((p) => p.startsWith(DEVBAR_DIR))) {
+		await mkdir(DEVBAR_DIR, { recursive: true, mode: 0o700 });
+		await chmod(DEVBAR_DIR, 0o700).catch(() => {});
+	}
 	await mkdir(reportsDir, { recursive: true });
 	await mkdir(resultsDir, { recursive: true });
 	await mkdir(tasksDir, { recursive: true });
@@ -164,6 +177,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			// `authorize` below has already vetted the caller by origin or token,
 			// and the pages it serves live on other ports than this server.
 			authorize: () => true,
+			machine: (request) => request.headers.has(MACHINE_HEADER),
 			checkOrigin: false,
 			maxBodyBytes,
 			shell: {
@@ -195,21 +209,71 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 	 * loopback — the remote address proves nothing (this is the DNS-rebinding
 	 * shape). Origin is what we can act on:
 	 *
-	 * - no Origin + loopback socket → a local process (CLI, MCP). Trusted.
-	 * - Origin on localhost, or an origin a project claims → trusted.
+	 * - no Origin + loopback socket + loopback Host → a local process (CLI, MCP).
+	 *   Trusted.
+	 * - Origin on localhost, or an origin a project claims, on a loopback socket
+	 *   → trusted. From any other address the Origin is just a header someone
+	 *   typed: a browser there would be on another machine.
 	 * - anything else → must present the bearer token.
 	 */
 	function authorize(ctx: RequestContext): boolean {
 		if (ctx.localProcess && options.trustLocalProcesses !== false) return true;
-		if (ctx.origin && (isLoopbackOrigin(ctx.origin) || registry.findByOrigin(ctx.origin))) {
+		if (
+			ctx.origin &&
+			isLoopbackAddress(ctx.req.socket.remoteAddress) &&
+			(isLoopbackOrigin(ctx.origin) || registry.findByOrigin(ctx.origin))
+		) {
 			return true;
 		}
+		return hasToken(ctx);
+	}
+
+	function hasToken(ctx: RequestContext): boolean {
 		if (!options.token) return false;
 		const auth = ctx.req.headers.authorization;
-		if (auth?.startsWith("Bearer ") && auth.slice(7) === options.token) return true;
+		if (auth?.startsWith("Bearer ") && sameSecret(auth.slice(7), options.token)) return true;
 		// EventSource cannot set headers, so SSE routes accept the token in the
 		// query string.
-		return ctx.url.searchParams.get("token") === options.token;
+		return sameSecret(ctx.url.searchParams.get("token"), options.token);
+	}
+
+	/**
+	 * A claimed origin can be a site on the internet, so it gets its own project and
+	 * nothing else. This covers the routes that name a report, task or MCP session.
+	 */
+	async function scopedAway(ctx: RequestContext): Promise<boolean> {
+		const { scope } = ctx;
+		if (!scope) return false;
+		const path = ctx.url.pathname;
+		if (path.startsWith("/api/mcp/sessions")) return ctx.req.method !== "GET";
+		const task = /^\/api\/tasks\/([^/]+)/.exec(path);
+		if (task) return dispatcher.getTask(task[1] as string)?.projectSlug !== scope;
+		const report = /^\/api\/reports\/([^/]+)/.exec(path);
+		if (report)
+			return (await store.get(decodeURIComponent(report[1] as string)))?.project !== scope;
+		return false;
+	}
+
+	/**
+	 * A page's stream, replies and switches are that page's own, and calling into it
+	 * is for agents: the CLI and MCP server. Otherwise any page could read another.
+	 */
+	function pageRefused(ctx: RequestContext): boolean {
+		const match = /^\/api\/pages\/([^/]+)(\/.*)?$/.exec(ctx.url.pathname);
+		if (!match || ctx.localProcess || hasToken(ctx)) return false;
+		if (match[2] === "/rpc") return true;
+		const page = pages.get(match[1] as string);
+		return !!page && page.origin !== ctx.origin;
+	}
+
+	/**
+	 * Registering a project and its settings choose the command an agent runs. A
+	 * claimed origin can be a remote site, and XSS there must not reach this, so
+	 * these need a local caller or the token.
+	 */
+	function canConfigure(ctx: RequestContext): boolean {
+		if (!ctx.origin || isLoopbackOrigin(ctx.origin)) return true;
+		return hasToken(ctx);
 	}
 
 	function corsHeaders(origin: string): Record<string, string> {
@@ -286,7 +350,10 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			res,
 			url,
 			origin,
-			localProcess: !origin && isLoopbackAddress(req.socket.remoteAddress),
+			localProcess:
+				!origin &&
+				isLoopbackAddress(req.socket.remoteAddress) &&
+				LOOPBACK_HOST.test(req.headers.host ?? ""),
 		};
 
 		if (url.pathname !== "/health") {
@@ -311,7 +378,19 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			return;
 		}
 
+		if (origin && !isLoopbackOrigin(origin) && !hasToken(ctx)) {
+			ctx.scope = registry.findByOrigin(origin)?.slug;
+		}
+
 		try {
+			if (await scopedAway(ctx)) {
+				respond(ctx, 404, { error: "Not found" });
+				return;
+			}
+			if (pageRefused(ctx)) {
+				respond(ctx, 403, { error: "That belongs to the page itself, or to a local agent" });
+				return;
+			}
 			await route(ctx);
 		} catch (err) {
 			console.log(`[devbar] request failed: ${err}`);
@@ -337,31 +416,41 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 				// whether it fires without asking are the facts they need in front
 				// of them before they press Submit — not ones to go read a config
 				// file for.
-				projects: effectiveProjects().map((p) => ({
-					slug: p.slug,
-					dir: p.dir,
-					origins: p.origins ?? [],
-					autoDispatch: p.autoDispatch,
-					model: p.model,
-					effort: p.effort,
-					command: p.command ?? "claude",
-					permission: p.permission,
-					permissionMode: p.permissionMode,
-					concurrency: p.concurrency,
-					maxBudgetUsd: p.maxBudgetUsd,
-					timeoutMs: p.timeoutMs,
-					resumeSession: p.resumeSession,
-					routes: (p.routes ?? []).map((r) => (typeof r === "string" ? r : "webhook")),
-					live: p.live ?? { enabled: true, allowMutating: false },
-					hasAgentOverrides: p.hasAgentOverrides,
-					workspace: p.workspace?.enabled !== false,
-				})),
+				projects: effectiveProjects()
+					.filter((p) => !ctx.scope || p.slug === ctx.scope)
+					.map((p) => ({
+						slug: p.slug,
+						dir: p.dir,
+						origins: p.origins ?? [],
+						autoDispatch: p.autoDispatch,
+						model: p.model,
+						effort: p.effort,
+						command: p.command ?? "claude",
+						permission: p.permission,
+						permissionMode: p.permissionMode,
+						concurrency: p.concurrency,
+						maxBudgetUsd: p.maxBudgetUsd,
+						timeoutMs: p.timeoutMs,
+						resumeSession: p.resumeSession,
+						routes: (p.routes ?? []).map((r) => (typeof r === "string" ? r : "webhook")),
+						live: p.live ?? { enabled: true, allowMutating: false },
+						hasAgentOverrides: p.hasAgentOverrides,
+						workspace: p.workspace?.enabled !== false,
+					})),
 				mcpSessions: mcpSessions.list().length,
 			});
 			return;
 		}
 
 		// ─── projects ───────────────────────────────────────────────────────
+		if (
+			(method === "POST" || method === "PATCH" || method === "DELETE") &&
+			/^\/api\/projects(\/[^/]+(\/settings)?)?$/.test(path) &&
+			!canConfigure(ctx)
+		) {
+			respond(ctx, 403, { error: "Only a local caller or the token can configure projects" });
+			return;
+		}
 		if (method === "POST" && path === "/api/projects") {
 			const body = await readJson<Partial<ProjectConfig>>(ctx);
 			if (!body) return;
@@ -395,7 +484,9 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		}
 
 		if (method === "GET" && path === "/api/projects") {
-			respond(ctx, 200, { projects: effectiveProjects() });
+			respond(ctx, 200, {
+				projects: effectiveProjects().filter((p) => !ctx.scope || p.slug === ctx.scope),
+			});
 			return;
 		}
 
@@ -445,7 +536,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		const workspaceMatch = /^\/api\/projects\/([^/]+)\/workspace\/([^/]+)$/.exec(path);
 		if (workspaceMatch) {
 			const project = registry.get(decodeURIComponent(workspaceMatch[1] as string));
-			if (!project) {
+			if (!project || (ctx.scope && project.slug !== ctx.scope)) {
 				respond(ctx, 404, { error: "Project not found" });
 				return;
 			}
@@ -467,7 +558,15 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			const response = await workspaceFor(project)(
 				new Request(`http://127.0.0.1${url.pathname}${url.search}`, {
 					method,
-					headers: { "Content-Type": String(req.headers["content-type"] ?? "") },
+					headers: {
+						"Content-Type": String(req.headers["content-type"] ?? ""),
+						// Set here, on a request built here: nothing the caller sent is copied.
+						// A claimed origin is a site on the internet, and not your `gh`.
+						...((ctx.localProcess || isLoopbackOrigin(ctx.origin)) &&
+						isLoopbackAddress(req.socket.remoteAddress)
+							? { [MACHINE_HEADER]: "1" }
+							: {}),
+					},
 					...(body !== undefined ? { body } : {}),
 				}),
 			);
@@ -539,6 +638,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			const all = registry.list();
 			const byOrigin = ctx.origin ? registry.findByOrigin(ctx.origin) : undefined;
 			const project =
+				ctx.scope ??
 				(body.project && registry.get(body.project)?.slug) ??
 				byOrigin?.slug ??
 				(all.length === 1 ? all[0]?.slug : undefined);
@@ -590,7 +690,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 
 		if (method === "GET" && path === "/api/reports") {
 			const reports = await store.list({
-				project: url.searchParams.get("project") ?? undefined,
+				project: ctx.scope ?? url.searchParams.get("project") ?? undefined,
 			});
 			respond(ctx, 200, { reports });
 			return;
@@ -681,6 +781,24 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 		if (method === "POST" && path === "/api/dispatch") {
 			const body = await readJson<{ project?: string; report?: string }>(ctx);
 			if (!body) return;
+			if (ctx.scope) {
+				// A report's text is the agent's prompt, so starting a run here is as good
+				// as choosing what it does. A project that runs on its own has said yes.
+				const slug = body.report
+					? (await store.get(body.report))?.project
+					: (body.project ?? ctx.scope);
+				if (slug !== ctx.scope) {
+					respond(ctx, 404, { error: "Not found" });
+					return;
+				}
+				if (!effectiveProject(slug)?.autoDispatch) {
+					respond(ctx, 403, {
+						error: "Only a local caller or the token can dispatch this project",
+					});
+					return;
+				}
+				body.project = slug;
+			}
 			if (body.report) {
 				const report = await store.get(body.report);
 				if (!report?.project) {
@@ -701,7 +819,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			respond(ctx, 200, {
 				tasks: dispatcher.getTasks({
 					status: url.searchParams.get("status") ?? undefined,
-					project: url.searchParams.get("project") ?? undefined,
+					project: ctx.scope ?? url.searchParams.get("project") ?? undefined,
 				}),
 			});
 			return;
@@ -709,7 +827,10 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 
 		if (method === "GET" && path === "/api/events") {
 			const send = openStream(ctx);
-			const unsubscribe = dispatcher.subscribe((event) => send(event.kind, event));
+			const unsubscribe = dispatcher.subscribe((event) => {
+				const task = event.kind === "task" ? event.task : dispatcher.getTask(event.taskId);
+				if (!ctx.scope || task?.projectSlug === ctx.scope) send(event.kind, event);
+			});
 			const ping = setInterval(() => send("ping", { at: Date.now() }), 15_000);
 			ctx.req.on("close", () => {
 				clearInterval(ping);
@@ -791,7 +912,9 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			// be fresh, and a timer would keep the process awake for bookkeeping.
 			mcpSessions.sweep();
 			respond(ctx, 200, {
-				sessions: mcpSessions.list({ project: url.searchParams.get("project") ?? undefined }),
+				sessions: mcpSessions.list({
+					project: ctx.scope ?? url.searchParams.get("project") ?? undefined,
+				}),
 			});
 			return;
 		}
@@ -819,7 +942,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 			const originGuess = ctx.origin || (typeof body.url === "string" ? body.url : "");
 			const claimed = originGuess ? registry.findByOrigin(new URL(originGuess).origin) : undefined;
 			const page = pages.register({
-				project: (body.project as string) ?? claimed?.slug,
+				project: ctx.scope ?? (body.project as string) ?? claimed?.slug,
 				url: (body.url as string) ?? "",
 				title: body.title as string,
 				origin: ctx.origin || undefined,
@@ -834,7 +957,7 @@ export async function createLocalServer(options: LocalServerOptions = {}): Promi
 
 		if (method === "GET" && path === "/api/pages") {
 			respond(ctx, 200, {
-				pages: pages.list({ project: url.searchParams.get("project") ?? undefined }),
+				pages: pages.list({ project: ctx.scope ?? url.searchParams.get("project") ?? undefined }),
 			});
 			return;
 		}

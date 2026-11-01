@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { Actor } from "../src/workspace/server/backend";
@@ -158,6 +158,16 @@ describe("local backend with gh", () => {
 		).toBe(true);
 	});
 
+	test("a pull request template that is a symlink out of the repository isn't read", async () => {
+		const { backend, dir } = workspace();
+		writeFileSync(join(dir, "..", "key"), "PRIVATE");
+		rmSync(join(dir, ".github", "pull_request_template.md"), { force: true });
+		mkdirSync(join(dir, ".github"), { recursive: true });
+		symlinkSync(join(dir, "..", "key"), join(dir, ".github", "pull_request_template.md"));
+		const options = await backend.proposeOptions?.(["AGENTS.md"], undefined, await me(backend));
+		expect(JSON.stringify(options)).not.toContain("PRIVATE");
+	});
+
 	test("follow-ups go onto the PR head from origin — the checkout's branch never moves", async () => {
 		const { backend, dir, origin } = workspace();
 		const actor = await me(backend);
@@ -207,6 +217,17 @@ describe("local backend with gh", () => {
 		await rejects(
 			backend.propose(
 				{ title: "disk", pr: first.pr?.number, files: [{ path: "AGENTS.md", fromDisk: true }] },
+				actor,
+			),
+			400,
+		);
+		// Ignored or clean, the browser can't name a file into a pull request.
+		git(dir, "checkout", "-q", first.branch);
+		writeFileSync(join(dir, ".gitignore"), ".env\n");
+		writeFileSync(join(dir, ".env"), "API_KEY=secret\n");
+		await rejects(
+			backend.propose(
+				{ title: "leak", pr: first.pr?.number, files: [{ path: ".env", fromDisk: true }] },
 				actor,
 			),
 			400,

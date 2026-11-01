@@ -96,12 +96,22 @@ export function workspaceDirs(config: WorkspaceConfig = {}): WorkspaceDirs {
 	};
 }
 
+/** A path the config's `exclude` keeps out of the workspace altogether. */
+export function isExcluded(path: string, config: WorkspaceConfig = {}): boolean {
+	// Lowercased because the disk may not care: on APFS docs/PRIVATE is docs/private.
+	const lower = path.toLowerCase();
+	return !!config.exclude?.some((prefix) => {
+		const dir = prefix.toLowerCase();
+		return lower === dir || within(lower, dir);
+	});
+}
+
 export function classifyPath(path: string, config: WorkspaceConfig = {}): Classification | null {
 	const p = normalizePath(path);
 	if (!p) return null;
 	const segments = p.split("/");
-	if (segments.some((segment) => EXCLUDED_SEGMENTS.has(segment))) return null;
-	if (config.exclude?.some((prefix) => p === prefix || within(p, prefix))) return null;
+	if (segments.some((s) => EXCLUDED_SEGMENTS.has(s) || s.toLowerCase() === ".git")) return null;
+	if (isExcluded(p, config)) return null;
 	const name = segments[segments.length - 1] as string;
 	const upper = name.toUpperCase();
 	const atRoot = segments.length === 1;

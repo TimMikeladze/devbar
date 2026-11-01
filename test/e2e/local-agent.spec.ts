@@ -149,6 +149,15 @@ test.describe("local agent", () => {
 
 		const pageId = server?.pages.list()[0]?.id as string;
 
+		// Registered is not listening yet: the page opens its stream right after.
+		await expect
+			.poll(() =>
+				server?.pages.call(pageId, "inspect", { selector: "#agent-target" }).then(
+					() => true,
+					() => false,
+				),
+			)
+			.toBe(true);
 		const inspected = (await server?.pages.call(pageId, "inspect", {
 			selector: "#agent-target",
 		})) as { tagName: string; innerText: string };

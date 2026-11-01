@@ -9,7 +9,7 @@ import {
 	stripMarkers,
 	type Placement,
 } from "../anchor";
-import { classifyPath, parseDoc } from "../classify";
+import { classifyPath, isExcluded, parseDoc } from "../classify";
 import { CODEOWNERS_PATHS, parseCodeowners, reviewersFor } from "../codeowners";
 import { lineMap, mapRange, patchHunks, splitLines, withinHunks } from "../diff";
 import {
@@ -116,6 +116,7 @@ export function chooseActing(
 	personal: GitHubRepo | undefined,
 	server: GitHubRepo | undefined,
 ): Acting {
+	if (personal && actor.ownToken) return { repo: personal, personal: true };
 	if (personal && actor.github && atLeast(actor.github.permission, need)) {
 		return { repo: personal, personal: true };
 	}
@@ -398,7 +399,7 @@ export async function createThread(
 		labels: [COMMENT_LABEL],
 	});
 	if (!created.labels.some((l) => l.name === COMMENT_LABEL)) {
-		if (c.labelRepair) await c.labelRepair(created.number, COMMENT_LABEL);
+		if (c.labelRepair && !actor.ownToken) await c.labelRepair(created.number, COMMENT_LABEL);
 		else
 			return {
 				warning: `GitHub dropped the ${COMMENT_LABEL} label (it needs triage access), so issue #${created.number} will not show as a thread`,
@@ -407,17 +408,43 @@ export async function createThread(
 	return {};
 }
 
+/**
+ * A thread id is global to GitHub, and the server's token may reach further than
+ * this repository. A person's own token gets judged by GitHub; the server's has
+ * to be held to the pull request it was asked about.
+ */
+async function assertOwnThread(
+	c: Collab,
+	acting: Acting,
+	thread: string,
+	number: number,
+): Promise<void> {
+	if (acting.personal) return;
+	const data = await c.repo.pull(number, c.isDevbar);
+	if (!data?.threads.some((t) => t.id === thread)) {
+		throw new WorkspaceHttpError(403, `That thread isn't on pull request #${number}`);
+	}
+}
+
 export async function replyToThread(c: Collab, input: ReplyInput, actor: Actor): Promise<void> {
 	const acting = c.act(actor, "read");
 	const body = withBehalf(acting, input.body.trim());
 	if (input.kind === "issue") await acting.repo.commentOnIssue(input.number, body);
-	else await acting.repo.replyToThread(input.thread, body);
+	else {
+		await assertOwnThread(c, acting, input.thread, input.number);
+		await acting.repo.replyToThread(input.thread, body);
+	}
 }
 
 export async function resolveThread(c: Collab, input: ResolveInput, actor: Actor): Promise<void> {
-	const acting = c.act(actor, "triage");
+	// Below triage GitHub still lets authors close their own, so it has to judge
+	// that with the person's token. The server's would close anyone's.
+	const acting = c.act(actor, atLeast(actor.permission, "triage") ? "triage" : "read");
 	if (input.kind === "issue") await acting.repo.setIssueOpen(input.number, !input.resolved);
-	else await acting.repo.setThreadResolved(input.thread, input.resolved);
+	else {
+		await assertOwnThread(c, acting, input.thread, input.number);
+		await acting.repo.setThreadResolved(input.thread, input.resolved);
+	}
 }
 
 export async function reactTo(c: Collab, input: ReactInput, actor: Actor): Promise<void> {
@@ -467,15 +494,20 @@ export async function pullReview(c: Collab, number: number, actor: Actor): Promi
 			? await c.mergeBase(pull.base, pull.headSha).catch(() => undefined)
 			: undefined;
 	const files: PullFile[] = [];
+	// Who GitHub would show the source to. Everyone else was let in to the workspace
+	// files, and gets the names of the rest.
+	const seesSource = atLeast(actor.github?.permission, "read");
 	for (const file of await c.repo.pullFiles(number)) {
 		if (!file.filename.startsWith(c.prefix)) continue;
 		const path = file.filename.slice(c.prefix.length);
+		if (isExcluded(path, c.config)) continue;
+		const classified = classifyPath(path, c.config);
 		const entry: PullFile = {
 			path,
 			status: file.status,
-			...(file.patch ? { patch: file.patch } : {}),
+			...(file.patch && (classified || seesSource) ? { patch: file.patch } : {}),
 		};
-		if (classifyPath(path, c.config) && files.filter((f) => f.after !== undefined).length < 20) {
+		if (classified && files.filter((f) => f.after !== undefined).length < 20) {
 			const previous = file.previous_filename?.startsWith(c.prefix)
 				? file.previous_filename.slice(c.prefix.length)
 				: path;
@@ -574,10 +606,14 @@ export async function pullAction(
 				throw new WorkspaceHttpError(409, "Merge or close the pull request first");
 			if (!pull.sameRepo) throw new WorkspaceHttpError(403, "The branch lives in a fork");
 			const meta = await c.repo.meta();
-			if (pull.branch === meta.defaultBranch) {
-				throw new WorkspaceHttpError(403, "The default branch is never deleted");
+			if (pull.branch === meta.defaultBranch || pull.branch === c.config.baseBranch) {
+				throw new WorkspaceHttpError(403, "The base branch is never deleted");
 			}
-			await c.act(actor, "write").repo.deleteBranch(pull.branch);
+			const acting = c.act(actor, "write");
+			if (!acting.personal && !pull.devbar) {
+				throw new WorkspaceHttpError(403, "Only devbar branches get deleted on someone's behalf");
+			}
+			await acting.repo.deleteBranch(pull.branch);
 			return { ok: true, message: `Deleted ${pull.branch}` };
 		}
 	}
