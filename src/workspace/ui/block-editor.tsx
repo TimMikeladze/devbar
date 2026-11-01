@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { PlusIcon } from "@/toolbar/icons";
 import {
@@ -12,6 +12,7 @@ import {
 	type BlockKind,
 	type SlashCommand,
 } from "../blocks";
+import { carryLine, lineMap, mapOffset } from "../diff";
 import { Markdown } from "../markdown";
 import { Glyph } from "./glyphs";
 
@@ -127,6 +128,13 @@ export function BlockEditor(props: {
 	onComment?: (block: Block, start: number, end: number) => void;
 	/** "New issue from task" on a to-do. */
 	onTaskIssue?: (block: Block, line: number) => void;
+	/**
+	 * The body is shared: write on every keystroke rather than at the end of an
+	 * edit, and expect it to change underneath an edit.
+	 */
+	live?: boolean;
+	/** The file line being edited (1-based), or null. */
+	onActiveLine?: (line: number | null) => void;
 }): React.ReactNode {
 	const { body } = props;
 	const fileRange = (block: Block): [number, number] => [
@@ -165,6 +173,86 @@ export function BlockEditor(props: {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [targetKey]);
 
+	// What this editor last wrote or caught up to. A body that differs came from someone else.
+	const known = useRef(body);
+	// The text on screen has something the body doesn't, so it can't be replaced from the body.
+	const unwritten = useRef(false);
+	const restoreCaret = useRef<number | null>(null);
+
+	useLayoutEffect(() => {
+		if (body === known.current) return;
+		const prev = known.current;
+		known.current = body;
+		const current = editingRef.current;
+		if (!props.live || !current) return;
+		const map = lineMap(prev, body).oldToNew;
+		const fresh = splitBlocks(body);
+		const blockOn = (line: number) => fresh.find((b) => b.start <= line && line < b.end);
+		if (current.target.mode === "new") {
+			const { after } = current.target;
+			const moved = after === null ? undefined : blockOn(carryLine(map, after));
+			setEditing({ ...current, target: { mode: "new", after: moved?.start ?? after } });
+			return;
+		}
+		const block = blockOn(carryLine(map, current.target.start));
+		if (!block) {
+			setEditing(null);
+			return;
+		}
+		const target: Target = { mode: "block", start: block.start };
+		if (unwritten.current) {
+			setEditing({ ...current, target });
+			return;
+		}
+		const { prefix, text } = parsePrefix(block.source);
+		const caret = mapOffset(current.text, text, input.current?.selectionStart ?? text.length);
+		restoreCaret.current = caret;
+		setEditing({ target, prefix, text, caret });
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [body]);
+
+	useLayoutEffect(() => {
+		const caret = restoreCaret.current;
+		const el = input.current;
+		// The render that sets the new value is still to come, and setting a value moves the caret.
+		if (caret === null || !el || el.value !== editingRef.current?.text) return;
+		restoreCaret.current = null;
+		if (document.activeElement === el) el.setSelectionRange(caret, caret);
+		autosize(el);
+	});
+
+	const activeLine = editing
+		? editing.target.mode === "block"
+			? editing.target.start
+			: editing.target.after
+		: null;
+	const onActiveLine = props.onActiveLine;
+	useEffect(() => {
+		onActiveLine?.(activeLine === null ? null : props.lineOffset + activeLine + 1);
+	}, [activeLine, props.lineOffset, onActiveLine]);
+
+	/** In a shared body, write what's typed now, if it's in a state others should see. */
+	function writeLive(next: Editing, el: HTMLTextAreaElement) {
+		if (!props.live) return;
+		const composed = compose(next.prefix, next.text);
+		const ready =
+			!!next.text.trim() &&
+			// Half a slash command, or a block about to split, isn't a block yet. Blur settles those.
+			!/^\/[\w ]*$/.test(next.text) &&
+			(next.prefix.raw || splitBlocks(composed).length === 1);
+		unwritten.current = !ready;
+		if (!ready) return;
+		const done = commit(next);
+		apply(done.body);
+		if (next.target.mode === "new" && done.start !== null) {
+			setEditing({
+				...next,
+				target: { mode: "block", start: done.start },
+				caret: el.selectionStart,
+			});
+		}
+	}
+
 	const blockAt = (start: number | null, within: Block[] = all): Block | null =>
 		start === null ? null : (within.find((b) => b.start === start) ?? null);
 
@@ -187,6 +275,7 @@ export function BlockEditor(props: {
 	}
 
 	function apply(next: string) {
+		known.current = next;
 		if (next !== body) props.onChange(next);
 	}
 
@@ -199,6 +288,7 @@ export function BlockEditor(props: {
 
 	function startEdit(block: Block, caret: number | "end" = "end") {
 		if (editing) apply(commit(editing).body);
+		unwritten.current = false;
 		const { prefix, text } = parsePrefix(block.source);
 		setEditing({ target: { mode: "block", start: block.start }, prefix, text, caret });
 		setSlashIndex(0);
@@ -206,6 +296,7 @@ export function BlockEditor(props: {
 
 	/** A fresh block below `after` (a block's start line; null for the top). */
 	function startNew(after: number | null, lead = "") {
+		unwritten.current = false;
 		const { prefix, text } = lead
 			? parsePrefix(lead)
 			: { prefix: { kind: "paragraph" as BlockKind, lead: "", raw: false }, text: "" };
@@ -378,8 +469,10 @@ export function BlockEditor(props: {
 				return;
 			}
 		}
-		setEditing({ ...editing, text: value });
+		const next = { ...editing, text: value };
+		setEditing(next);
 		setSlashIndex(0);
+		writeLive(next, e.target);
 	}
 
 	function renderEditor() {
@@ -486,7 +579,12 @@ export function BlockEditor(props: {
 				const decoration = props.decorate?.(block, fileStart, fileEnd);
 				return (
 					<div
-						key={`${block.start}:${block.source.length}`}
+						// The block being typed in keeps one key, or its textarea would remount, and lose focus, on every keystroke.
+						key={
+							editing?.target.mode === "block" && editing.target.start === block.start
+								? "editing"
+								: `${block.start}:${block.source.length}`
+						}
 						className={`devbar-nt-block-wrap${decoration?.className ? ` ${decoration.className}` : ""}`}
 						data-start={fileStart}
 						data-end={fileEnd}

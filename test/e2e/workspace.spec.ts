@@ -382,3 +382,116 @@ test.describe("workspace shell", () => {
 		expect(prompt).toContain("- Workspace file: `specs/001-auth/spec.md`");
 	});
 });
+
+// A stand-in provider: two tabs share one string over a BroadcastChannel. Enough to
+// test the editor, since the shell only ever sees the file as a string.
+function sharedDraftProvider() {
+	const devbar = { value: undefined as unknown };
+	const channel = new BroadcastChannel("draft");
+	const texts = new Map<string, string>();
+	const listeners = new Set<() => void>();
+	channel.onmessage = (e) => {
+		texts.set(e.data.path, e.data.text);
+		for (const l of listeners) l();
+	};
+	const drafts = {
+		open: (page: { path: string; content: string }) => {
+			if (!texts.has(page.path)) texts.set(page.path, page.content);
+			const session = {
+				ready: () => true,
+				content: () => texts.get(page.path) as string,
+				edit: (next: string) => {
+					texts.set(page.path, next);
+					channel.postMessage({ path: page.path, text: next });
+					for (const l of listeners) l();
+				},
+				subscribe: (l: () => void) => {
+					listeners.add(l);
+					return () => listeners.delete(l);
+				},
+				setActiveLine: () => {},
+				peers: () => [],
+				close: () => {},
+			};
+			(window as unknown as { __draft: unknown }).__draft = session;
+			return session;
+		},
+	};
+	Object.defineProperty(window, "Devbar", {
+		configurable: true,
+		get: () => devbar.value,
+		set: (next: { shell: (el: Element, props: object) => unknown }) => {
+			devbar.value = {
+				...next,
+				shell: (el: Element, props: object) => next.shell(el, { ...props, drafts }),
+			};
+		},
+	});
+}
+
+test.describe("shared drafts", () => {
+	test.afterEach(() => {
+		git(repo, "checkout", "--", ".");
+		git(repo, "clean", "-fdq");
+	});
+
+	test("the block being typed in survives someone else's edits", async ({ browser }) => {
+		test.skip(unavailable, "ports 3100–3103 are all in use");
+		const context = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+		await context.addInitScript(sharedDraftProvider);
+		await context.addInitScript((serverUrl) => {
+			sessionStorage.setItem("devbar:local-server", serverUrl);
+		}, `http://127.0.0.1:${port}`);
+
+		const open = async () => {
+			const page = await context.newPage();
+			await page.goto("/local-agent");
+			await page.locator(".devbar-bar").getByRole("button", { name: "Workspace" }).click();
+			await page.waitForURL(/\/workspace\/shell/);
+			await page.locator(".devbar-nt-side").getByText("Auth", { exact: true }).first().click();
+			await page.locator(".devbar-nt-block").filter({ hasText: "magic link" }).waitFor();
+			return page;
+		};
+		const mine = await open();
+		const theirs = await open();
+		const input = mine.locator("textarea.devbar-nt-input");
+		const remote = (from: string, to: string) =>
+			theirs.evaluate(
+				([from, to]) => {
+					const draft = (
+						window as unknown as {
+							__draft: { content(): string; edit(next: string, base: string): void };
+						}
+					).__draft;
+					const content = draft.content();
+					draft.edit(content.replace(from as string, to as string), content);
+				},
+				[from, to],
+			);
+
+		await mine.locator(".devbar-nt-block").filter({ hasText: "magic link" }).click();
+		await mine.keyboard.type(" one");
+		await expect(
+			theirs.locator(".devbar-nt-block").filter({ hasText: "magic link. one" }),
+		).toBeVisible();
+
+		// A new block above moves this one down two lines. Typing has to stay in it.
+		await remote("Sign in", "A new block.\n\nSign in");
+		await expect(mine.locator(".devbar-nt-block").filter({ hasText: "A new block" })).toBeVisible();
+		await expect(input).toBeFocused();
+		await mine.keyboard.type(" two");
+		await expect(input).toHaveValue("Sign in with a magic link. one two");
+		await expect(
+			theirs.locator(".devbar-nt-block").filter({ hasText: "A new block" }),
+		).toBeVisible();
+		await expect(theirs.locator(".devbar-nt-block").filter({ hasText: "one two" })).toBeVisible();
+
+		// A remote change before the caret carries the caret along, and one after leaves it.
+		await input.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(1, 1));
+		await remote("Sign in", "XSign in");
+		await expect(input).toHaveValue("XSign in with a magic link. one two");
+		await mine.keyboard.type("Y");
+		await expect(input).toHaveValue("XSYign in with a magic link. one two");
+		await context.close();
+	});
+});

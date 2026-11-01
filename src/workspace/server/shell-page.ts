@@ -16,6 +16,8 @@ export type ShellPageConfig = {
 	title?: string;
 	/** The theme the app's toolbar was in when it opened the shell. Absent: follow the OS. */
 	theme?: "light" | "dark";
+	/** ES modules to import before mounting. A module's `drafts` export becomes the shell's provider. */
+	modules?: string[];
 };
 
 function escapeHtml(text: string): string {
@@ -34,6 +36,19 @@ function scriptJson(value: unknown): string {
 	return JSON.stringify(value)
 		.replace(/</g, "\\u003c")
 		.replace(separators, (c) => `\\u${c.charCodeAt(0).toString(16)}`);
+}
+
+function mountScript(config: ShellPageConfig): string {
+	const { modules, ...props } = config;
+	const element = `document.getElementById("devbar-shell")`;
+	if (!modules?.length) return `window.Devbar.shell(${element}, ${scriptJson(props)});`;
+	// A module that fails to load costs the feature, not the page.
+	return `Promise.all(${scriptJson(modules)}.map(function (url) {
+	return import(url).catch(function (err) { console.error("[devbar] shell module failed: " + url, err); return {}; });
+})).then(function (loaded) {
+	var found = loaded.filter(function (m) { return m.drafts; })[0];
+	window.Devbar.shell(${element}, Object.assign(${scriptJson(props)}, found ? { drafts: found.drafts } : {}));
+});`;
 }
 
 export function shellHtml(config: ShellPageConfig, scriptUrl: string): string {
@@ -60,7 +75,7 @@ ${background}
 <body>
 <div id="devbar-shell"></div>
 <script src="${escapeHtml(scriptUrl)}"></script>
-<script>window.Devbar.shell(document.getElementById("devbar-shell"), ${scriptJson(config)});</script>
+<script>${mountScript(config)}</script>
 </body>
 </html>
 `;

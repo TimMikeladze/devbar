@@ -119,6 +119,39 @@ export function lineMap(oldText: string, newText: string): LineMap {
 }
 
 /**
+ * Where a line (0-based) went. A line that changed has no entry in the map, so it
+ * goes by the nearest surviving line above it, keeping its distance.
+ */
+export function carryLine(map: Int32Array, line: number): number {
+	for (let i = Math.min(line, map.length - 1); i >= 0; i--) {
+		const to = map[i] as number;
+		if (to >= 0) return to + (line - i);
+	}
+	return line;
+}
+
+/**
+ * Where a character offset in `prev` lands in `next`. Text inserted exactly at the
+ * offset stays after it, so someone else typing at your caret doesn't move it.
+ */
+export function mapOffset(prev: string, next: string, offset: number): number {
+	if (prev === next) return offset;
+	const a = prev.split("");
+	let old = 0;
+	let delta = 0;
+	for (const op of diffSequences(a, next.split(""))) {
+		if (op.type === "insert") {
+			if (old < offset) delta++;
+			continue;
+		}
+		if (op.a >= offset) break;
+		if (op.type === "delete") delta--;
+		old = op.a + 1;
+	}
+	return Math.max(0, Math.min(next.length, offset + delta));
+}
+
+/**
  * Carry lines `start..end` (1-based, inclusive) across a map. Every line must
  * have survived unchanged and still be together; otherwise null — the lines
  * were edited, which is what makes a comment on them outdated.

@@ -223,3 +223,20 @@ test.describe("Select Tool: sibling navigation", () => {
 		expect(Math.abs((back?.x ?? 0) + 2 - (feature?.x ?? -99))).toBeLessThan(3);
 	});
 });
+
+test("a plugin's setup can read annotations and hears when they change", async ({ page }) => {
+	await page.goto("/plugin-setup");
+	await page
+		.locator(".devbar-bar")
+		.getByRole("button", { name: /Select/ })
+		.click();
+	await page.waitForSelector(".devbar-instruction");
+	await page.locator("h1").first().click();
+	await page.waitForSelector("[data-devbar='note-input']");
+	await page.keyboard.press("Enter");
+	await expect
+		.poll(() =>
+			page.evaluate(() => (window as unknown as { annotationCount?: number }).annotationCount),
+		)
+		.toBe(1);
+});

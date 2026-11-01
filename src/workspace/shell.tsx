@@ -1,3 +1,4 @@
+import type { DraftProvider } from "./drafts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type React from "react";
 import { ExternalIcon } from "@/toolbar/icons";
@@ -38,6 +39,8 @@ export type DevbarShellProps = {
 	agent?: { server: string; project: string } | false;
 	user?: WorkspaceUser;
 	theme?: DevbarTheme;
+	/** Back drafts with something other than localStorage. See `DraftProvider`. */
+	drafts?: DraftProvider;
 };
 
 type View = "app" | "page" | "changes" | "review";
@@ -108,6 +111,7 @@ export function DevbarShell(props: DevbarShellProps): React.ReactNode {
 		app: props.app,
 		agent: props.agent,
 		user: props.user,
+		...(props.drafts ? { drafts: props.drafts } : {}),
 	});
 	const narrow = useNarrow();
 	const [view, setView] = useState<View>("app");

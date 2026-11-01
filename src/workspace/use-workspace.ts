@@ -1,3 +1,4 @@
+import type { DraftPeer, DraftProvider, DraftSession } from "./drafts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { discoverLocalServer, isLocalPage } from "@/live/discovery";
 import type { AppLocation } from "./app-frame";
@@ -39,6 +40,8 @@ export type Draft = {
 	/** The content the edit started from, so undoing an edit by hand clears the draft. */
 	original?: string;
 	conflict?: boolean;
+	/** A copy of a shared draft. The session owns the text, so this is never pushed back to it. */
+	shared?: boolean;
 };
 
 export type Drafts = Record<string, Draft>;
@@ -106,6 +109,10 @@ export type Workspace = {
 	collab: Collab;
 	/** Bumped when GitHub says something changed, so panels can refresh. */
 	liveVersion: number;
+	/** The open page's draft is shared: edits go out as they're typed. */
+	live: boolean;
+	peers: DraftPeer[];
+	setActiveLine: (line: number | null) => void;
 	signInUrl: string | undefined;
 	signOut: () => Promise<void>;
 	save: (path: string) => Promise<boolean>;
@@ -182,6 +189,7 @@ export function useWorkspace(options: {
 	app?: string;
 	agent?: { server: string; project: string } | false;
 	user?: WorkspaceUser;
+	drafts?: DraftProvider;
 }): Workspace {
 	const { endpoint } = options;
 	const tokenKey = `devbar:workspace:token:${endpoint}`;
@@ -293,8 +301,98 @@ export function useWorkspace(options: {
 
 	const closePage = useCallback(() => setOpen(null), []);
 
+	const session = useRef<{ path: string; session: DraftSession } | null>(null);
+	const [live, setLive] = useState(false);
+	const [peers, setPeers] = useState<DraftPeer[]>([]);
+	const provider = options.drafts;
+	const sessionFile = open?.file;
+	const sessionPath = open?.path;
+	const sessionKind = open?.kind;
+	const backend = info?.backend;
+
+	useEffect(() => {
+		if (!provider || !backend || !sessionPath || !sessionKind || !sessionFile) return;
+		const file = sessionFile;
+		const path = sessionPath;
+		const kind = sessionKind;
+		const opened = provider.open({
+			path,
+			kind,
+			ref: refName,
+			content: file.content,
+			sha: file.sha,
+			backend,
+		});
+		if (!opened) return;
+		session.current = { path, session: opened };
+		setLive(true);
+
+		let pushed = false;
+
+		const mirror = () => {
+			setPeers(opened.peers());
+			if (!opened.ready()) return;
+			if (!pushed) {
+				pushed = true;
+				// A draft made here before the page was shared goes in once, as an edit.
+				const before = draftsRef.current[path];
+				if (before?.content !== undefined && !before.shared && before.baseSha === file.sha) {
+					opened.edit(before.content, file.content);
+				}
+			}
+			const text = opened.content();
+			const baseSha = opened.baseSha?.() ?? file.sha;
+			setDrafts((prev) => {
+				const existing = prev[path];
+				if (text === file.content && baseSha === file.sha && !existing?.conflict) {
+					if (!existing) return prev;
+					const copy = { ...prev };
+					delete copy[path];
+					return copy;
+				}
+				if (existing?.content === text && existing.baseSha === baseSha && existing.shared) {
+					return prev;
+				}
+				return {
+					...prev,
+					[path]: {
+						kind,
+						content: text,
+						baseSha,
+						original: file.content,
+						shared: true,
+						// Someone changed the file since this draft started.
+						...(existing?.conflict || baseSha !== file.sha ? { conflict: true } : {}),
+					},
+				};
+			});
+		};
+		const unsubscribe = opened.subscribe(mirror);
+		mirror();
+		return () => {
+			unsubscribe();
+			opened.close();
+			session.current = null;
+			setLive(false);
+			setPeers([]);
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [provider, backend, sessionPath, sessionKind, sessionFile?.sha, refName]);
+
+	const setActiveLine = useCallback((line: number | null) => {
+		session.current?.session.setActiveLine(line);
+	}, []);
+
 	const edit = useCallback(
 		(path: string, kind: WorkspaceKind, next: string) => {
+			if (session.current?.path === path && session.current.session.ready()) {
+				const shown =
+					draftsRef.current[path]?.content ??
+					(open?.path === path ? open.file?.content : undefined);
+				// The session fires its listeners, and the mirror takes the merged text from there.
+				session.current.session.edit(next, shown ?? next);
+				return;
+			}
 			setDrafts((prev) => {
 				const existing = prev[path];
 				const file = open?.path === path ? open.file : undefined;
@@ -318,6 +416,11 @@ export function useWorkspace(options: {
 	);
 
 	const discard = useCallback((path: string) => {
+		// Discarding a shared draft discards it for everyone on the page.
+		const original = draftsRef.current[path]?.original;
+		if (session.current?.path === path && original !== undefined) {
+			session.current.session.edit(original, draftsRef.current[path]?.content ?? original);
+		}
 		setDrafts((prev) => {
 			const copy = { ...prev };
 			delete copy[path];
@@ -928,6 +1031,9 @@ export function useWorkspace(options: {
 		refInfo,
 		collab,
 		liveVersion,
+		live,
+		peers,
+		setActiveLine,
 		signInUrl,
 		signOut,
 		save,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import {
 	removeProperty,
@@ -9,7 +9,7 @@ import {
 	type Block,
 } from "../blocks";
 import { parseDoc } from "../classify";
-import { lineMap } from "../diff";
+import { lineMap, mapOffset } from "../diff";
 import { untickEdited } from "../feature";
 import { toggleTask } from "../markdown";
 import type { BlameRange, HistoryEntry, WorkspaceKind } from "../types";
@@ -177,6 +177,19 @@ export function NotionPage(props: {
 		: parsed.frontmatter.title || parsed.frontmatter.name || fileLabel(path);
 	const [titleText, setTitleText] = useState(title);
 	useEffect(() => setTitleText(title), [title, path]);
+
+	// The raw editor's value can change underneath it on a shared page, and a
+	// controlled textarea sends the caret to the end when it does.
+	const rawInput = useRef<HTMLTextAreaElement>(null);
+	const rawKnown = useRef(content);
+	useLayoutEffect(() => {
+		const el = rawInput.current;
+		const prev = rawKnown.current;
+		rawKnown.current = content;
+		if (!el || prev === content || document.activeElement !== el || !ws.live) return;
+		const at = mapOffset(prev, content, el.selectionStart);
+		el.setSelectionRange(at, at);
+	}, [content, ws.live]);
 	const lineOffset = head ? head.split("\n").length - 1 : 0;
 
 	// Blame is for the saved file; a draft carries it over the way its edit moved the lines.
@@ -231,8 +244,14 @@ export function NotionPage(props: {
 		const focused = threads.some((t) => t.id === collab.focus);
 		const who = blameOn ? blameOf(start, end) : undefined;
 		const refs = block.kind === "todo" ? issueRefs(block.source.split("\n")[0] ?? "") : [];
+		const here = ws.peers.filter((p) => p.line !== null && p.line >= start && p.line <= end);
 		const gutter = (
 			<>
+				{here.map((p) => (
+					<span key={p.id} className="devbar-nt-peer" title={`${p.name} is editing this`}>
+						{p.name}
+					</span>
+				))}
 				{refs.map((n) => (
 					<IssueChip key={n} number={n} issue={collab.issues[n]} />
 				))}
@@ -272,7 +291,7 @@ export function NotionPage(props: {
 							: "devbar-nt-block-commented",
 					}
 				: {}),
-			...(threads.length || who || refs.length ? { gutter } : {}),
+			...(threads.length || who || refs.length || here.length ? { gutter } : {}),
 		};
 	};
 
@@ -684,6 +703,10 @@ export function NotionPage(props: {
 									placeholder="Untitled"
 									onChange={(e) => {
 										setTitleText(e.target.value);
+										// On a shared page the title goes out as it's typed, like the body.
+										if (ws.live && e.target.value.trim()) {
+											edit(setTitle(content, e.target.value.trim()));
+										}
 										e.target.style.height = "0px";
 										e.target.style.height = `${e.target.scrollHeight}px`;
 									}}
@@ -757,10 +780,14 @@ export function NotionPage(props: {
 									<VersionView ws={ws} entry={version} onClose={() => setVersion(null)} />
 								) : raw ? (
 									<textarea
+										ref={rawInput}
 										className="devbar-nt-raw"
 										value={content}
 										spellCheck={false}
-										onChange={(e) => edit(e.target.value)}
+										onChange={(e) => {
+											rawKnown.current = e.target.value;
+											edit(e.target.value);
+										}}
 										aria-label={`Edit ${path} as markdown`}
 									/>
 								) : (
@@ -775,6 +802,8 @@ export function NotionPage(props: {
 										onNavigate={props.onNavigate}
 										basePath={path}
 										decorate={decorate}
+										live={ws.live}
+										onActiveLine={ws.setActiveLine}
 										{...(collab.canPost
 											? {
 													onComment: (block: Block, start: number, end: number) =>
