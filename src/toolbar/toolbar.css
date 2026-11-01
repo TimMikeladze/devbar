@@ -6798,6 +6798,17 @@ a.devbar-nt-list-row:hover {
 	width: 100%;
 }
 
+/* who else is in this block on a shared page */
+.devbar-nt-peer {
+	font-size: 11px;
+	line-height: 16px;
+	padding: 0 6px;
+	border-radius: 4px;
+	white-space: nowrap;
+	color: var(--devbar-nt-text, inherit);
+	background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
 /* block gutters: comment markers, blame, task issues */
 
 .devbar-nt-gutter {

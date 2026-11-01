@@ -9,6 +9,7 @@ import { LightThemePage } from "./pages/light-theme";
 import { DarkThemePage } from "./pages/dark-theme";
 import { AutoThemePage } from "./pages/auto-theme";
 import { ClipboardOnlyPage } from "./pages/clipboard-only";
+import { PluginSetupPage } from "./pages/plugin-setup";
 import { HostileHostCssPage } from "./pages/hostile-host-css";
 import { LocalAgentPage } from "./pages/local-agent";
 import { WorkspaceGatePage } from "./pages/workspace-gate";
@@ -39,6 +40,11 @@ const routes: Record<string, { label: string; group: string; component: () => Re
 		label: "Clipboard Only",
 		group: "Output Modes",
 		component: ClipboardOnlyPage,
+	},
+	"/plugin-setup": {
+		label: "Plugin setup",
+		group: "Output Modes",
+		component: PluginSetupPage,
 	},
 	"/custom-tools": {
 		label: "Custom Tools (select + marker)",

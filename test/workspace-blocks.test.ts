@@ -1,3 +1,4 @@
+import { shellHtml } from "../src/workspace/server/shell-page";
 import { describe, expect, test } from "bun:test";
 import {
 	continuation,
@@ -121,5 +122,23 @@ describe("titles and properties", () => {
 		const spec = "---\nstatus: draft\nicon: 🧭\n---\n# A";
 		expect(removeProperty(spec, "icon")).toBe("---\nstatus: draft\n---\n# A");
 		expect(removeProperty("# none", "icon")).toBe("# none");
+	});
+});
+
+describe("shell page modules", () => {
+	test("no modules mounts straight away", () => {
+		const html = shellHtml({ endpoint: "/api/devbar", app: "/" }, "/api/devbar/shell.js");
+		expect(html).not.toContain("import(");
+		expect(html).toContain("window.Devbar.shell");
+	});
+
+	test("modules load first, and a closing tag in a URL can't break out of the script", () => {
+		const html = shellHtml(
+			{ endpoint: "/api/devbar", app: "/", modules: ["/m.js?</script>"] },
+			"/api/devbar/shell.js",
+		);
+		expect(html).toContain("import(url)");
+		expect(html).not.toContain('</script>"');
+		expect(html).toContain("\\u003c/script>");
 	});
 });

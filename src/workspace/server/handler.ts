@@ -148,6 +148,12 @@ export type ShellOptions = {
 	agent?: { server: string; project: string };
 	/** Shown in the page title. */
 	title?: string;
+	/**
+	 * ES modules the shell page imports before mounting. A module exporting `drafts`
+	 * (a `DraftProvider`) backs the shell's drafts. They run with the shell's access,
+	 * so only list code you trust.
+	 */
+	modules?: string[];
 	/** The browser bundle. Default: the one inlined in the package. */
 	script?: () => Promise<string>;
 };
@@ -714,6 +720,7 @@ export function createWorkspaceHandler(options: WorkspaceHandlerOptions): Worksp
 				app,
 				...(shell.agent ? { agent: shell.agent } : {}),
 				...(shell.title ? { title: shell.title } : {}),
+				...(shell.modules?.length ? { modules: shell.modules } : {}),
 				...(theme === "light" || theme === "dark" ? { theme } : {}),
 			},
 			`${mount}/shell.js`,

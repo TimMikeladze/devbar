@@ -11,7 +11,9 @@ import {
 import { parseCodeowners, reviewersFor } from "../src/workspace/codeowners";
 import {
 	blockDiff,
+	carryLine,
 	lineMap,
+	mapOffset,
 	mapRange,
 	patchHunks,
 	unifiedDiff,
@@ -133,5 +135,30 @@ describe("CODEOWNERS", () => {
 		const only = parseCodeowners("docs/* @bo");
 		expect(reviewersFor(only, ["docs/intro.txt"]).users).toEqual(["bo"]);
 		expect(reviewersFor(only, ["docs/deep/intro.txt"]).users).toEqual([]);
+	});
+});
+
+describe("following an edit made by someone else", () => {
+	test("mapOffset moves past text before the offset and ignores text after it", () => {
+		expect(mapOffset("hello", "XXhello", 3)).toBe(5);
+		expect(mapOffset("hello", "helloXX", 3)).toBe(3);
+	});
+
+	test("mapOffset stays before text inserted exactly at the offset", () => {
+		expect(mapOffset("ab", "aXb", 1)).toBe(1);
+	});
+
+	test("mapOffset lands where a deleted range was", () => {
+		expect(mapOffset("abcdef", "af", 3)).toBe(1);
+	});
+
+	test("carryLine follows an insert above", () => {
+		const { oldToNew } = lineMap("a\nb\nc", "new\na\nb\nc");
+		expect(carryLine(oldToNew, 2)).toBe(3);
+	});
+
+	test("carryLine keeps a changed line's distance from the line above it", () => {
+		const { oldToNew } = lineMap("a\nb\nc", "new\na\nB\nc");
+		expect(carryLine(oldToNew, 1)).toBe(2);
 	});
 });

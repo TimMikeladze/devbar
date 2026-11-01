@@ -263,6 +263,39 @@ proposal is checked against it. If the file changed underneath — an agent edit
 it, a PR merged — the page says so and offers **Keep my version** (yours, on top
 of the new one) or **Use theirs**. Nothing is overwritten silently.
 
+### Shared drafts
+
+Drafts live in one browser's localStorage. A `DraftProvider` backs them with something other people edit too, which is how the paid multiplayer service plugs in. The shell page imports it from a module:
+
+```ts
+createWorkspaceRoutes({ shell: { modules: ["/my-drafts.js"] } });
+```
+
+```ts
+// /my-drafts.js
+export const drafts = {
+	// Null leaves this page on localStorage drafts.
+	open({ path, ref, content, sha, backend }) {
+		return {
+			ready() {}, // false until content() holds the shared text
+			content() {}, // the whole file
+			baseSha() {}, // optional: the version the shared text started from, if older than `sha`
+			edit(next, base) {}, // apply the change from base to next, not from content() to next
+			subscribe(listener) {}, // call it on any change, including your own edit()
+			setActiveLine(line) {}, // the file line this person is in, or null
+			peers() {}, // [{ id, name, avatarUrl?, line }]
+			close() {},
+		};
+	},
+};
+```
+
+If you render `<DevbarShell>` yourself, pass `drafts` as a prop. Modules run with the shell's access, so only list code you trust. One that fails to load logs an error and the shell mounts without it.
+
+While a page is shared, the block editor writes on every keystroke, except for an empty block, half a slash command, or text about to split into two blocks. Those go out on blur. A draft already in localStorage goes in once as an edit, if it was based on the same version of the file. Discarding a shared draft discards it for everyone.
+
+Return null for a local workspace on its checkout. It autosaves drafts to disk, so a shared draft would write to everyone's working tree.
+
 ## Pull requests
 
 **Propose** on a page (or the **Changes** page, for several at once) opens one

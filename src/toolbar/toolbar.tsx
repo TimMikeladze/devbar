@@ -83,6 +83,14 @@ export type DevbarPlugin = {
 	barButton?: () => React.ReactNode;
 	onActivate?: () => void;
 	onDeactivate?: () => void;
+	/** Runs when the toolbar mounts, with read access to its annotations. Return a cleanup. */
+	setup?: (context: DevbarPluginContext) => void | (() => void);
+};
+
+export type DevbarPluginContext = {
+	getAnnotations: () => Annotation[];
+	/** Called after annotations change. Returns an unsubscribe. */
+	subscribe: (listener: () => void) => () => void;
 };
 
 export type DevbarProps = {
@@ -1304,6 +1312,30 @@ export function Devbar({
 	onTurnOff,
 }: ToolbarProps): React.ReactNode {
 	const state = useDevbarState();
+	const annotationsForPlugins = useRef(state.annotations);
+	annotationsForPlugins.current = state.annotations;
+	const annotationListeners = useRef(new Set<() => void>());
+	useEffect(() => {
+		for (const listener of annotationListeners.current) listener();
+	}, [state.annotations]);
+	const pluginKeys = plugins.map((p) => p.key).join();
+	// Keyed by plugin, since hosts often pass a new array each render.
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	useEffect(() => {
+		const context: DevbarPluginContext = {
+			getAnnotations: () => annotationsForPlugins.current,
+			subscribe: (listener) => {
+				annotationListeners.current.add(listener);
+				return () => {
+					annotationListeners.current.delete(listener);
+				};
+			},
+		};
+		const cleanups = plugins.map((p) => p.setup?.(context));
+		return () => {
+			for (const cleanup of cleanups) if (cleanup) cleanup();
+		};
+	}, [pluginKeys]);
 	// Local token management — when server is set but no token prop,
 	// allow entering a bearer token via the toolbar UI
 	const STORAGE_KEY = "devbar-local-token";
